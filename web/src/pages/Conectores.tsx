@@ -156,7 +156,8 @@ export function Conectores() {
               <p className="text-muted-foreground">
                 Tools liberadas ao conectar: <span className="font-mono">gmail_search</span>,{' '}
                 <span className="font-mono">gmail_read</span>, <span className="font-mono">drive_search_read</span> e{' '}
-                <span className="font-mono">gmail_send</span> (desligada em cada conversa até você ligar).
+                <span className="font-mono">gmail_send</span> (só prepara o rascunho; o e-mail sai quando você clica em
+                Enviar).
               </p>
             )}
           </CardContent>

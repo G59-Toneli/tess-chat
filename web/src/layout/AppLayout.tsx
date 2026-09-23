@@ -49,7 +49,7 @@ const itensMenu = [
   { to: '/creditos', rotulo: 'Créditos' },
   { to: '/auditoria', rotulo: 'Auditoria' },
   { to: '/compartilhados', rotulo: 'Compartilhados' },
-  { to: '/perfil', rotulo: 'Perfil' },
+  // /perfil fica fora do menu até existir: hoje é placeholder. E-mail, tema e Sair já estão aqui.
   { to: '/admin', rotulo: 'Administração' },
 ]
 
@@ -71,13 +71,16 @@ function LayoutAutenticado() {
   const navigate = useNavigate()
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [conversas, setConversas] = useState<Conversa[] | null>(null)
+  const [erroConversas, setErroConversas] = useState(false)
 
   const recarregarConversas = useCallback(async () => {
     try {
       setConversas(await listarConversas())
+      setErroConversas(false)
     } catch {
+      // Falha no primeiro carregamento: a sidebar mostra o erro. Depois disso, a lista antiga fica.
       toast.error('Não foi possível carregar as conversas.')
-      setConversas((c) => c ?? [])
+      setErroConversas(true)
     }
   }, [])
 
@@ -97,7 +100,7 @@ function LayoutAutenticado() {
         <Link to="/" className="flex h-14 shrink-0 items-center gap-2 px-4 font-semibold">
           <IconeApp className="size-7" /> {NOME_APP}
         </Link>
-        <SidebarConversas conversas={conversas} recarregar={recarregarConversas} />
+        <SidebarConversas conversas={conversas} erro={erroConversas} recarregar={recarregarConversas} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-end border-b px-4">
@@ -136,7 +139,15 @@ function LayoutAutenticado() {
   )
 }
 
-function SidebarConversas({ conversas, recarregar }: { conversas: Conversa[] | null; recarregar: () => Promise<void> }) {
+function SidebarConversas({
+  conversas,
+  erro,
+  recarregar,
+}: {
+  conversas: Conversa[] | null
+  erro: boolean
+  recarregar: () => Promise<void>
+}) {
   const [busca, setBusca] = useState('')
   const [renomeando, setRenomeando] = useState<Conversa | null>(null)
   const [apagando, setApagando] = useState<Conversa | null>(null)
@@ -167,7 +178,15 @@ function SidebarConversas({ conversas, recarregar }: { conversas: Conversa[] | n
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversas">
-        {conversas === null && (
+        {conversas === null && erro && (
+          <div className="flex flex-col items-start gap-2 px-3 py-2 text-sm text-muted-foreground" role="alert">
+            Não foi possível carregar as conversas.
+            <Button variant="outline" size="sm" onClick={() => void recarregar()}>
+              Tentar de novo
+            </Button>
+          </div>
+        )}
+        {conversas === null && !erro && (
           <div className="flex flex-col gap-2 px-2" role="status" aria-label="Carregando conversas">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-8 w-full" />
@@ -208,6 +227,7 @@ function ItemConversa({
     <div className="group/item relative">
       <NavLink
         to={`/c/${conversa.id}`}
+        title={conversa.title}
         className={({ isActive }) =>
           cn(
             'block truncate rounded-md py-2 pr-9 pl-3 text-sm hover:bg-sidebar-accent',

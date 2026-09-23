@@ -49,6 +49,7 @@ export function Mcp() {
     try {
       const novo = await alternarServidor(s.id, ativo)
       setServidores((ss) => ss?.map((x) => (x.id === s.id ? novo : x)) ?? ss)
+      toast.success(ativo ? `${s.nome} ligado: as tools voltam às conversas.` : `${s.nome} desligado: as tools saem das conversas.`)
     } catch {
       toast.error('Não foi possível alterar o servidor. Tente de novo.')
       void carregar()
@@ -102,7 +103,9 @@ export function Mcp() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => removendo && void remover(removendo)}>Remover</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={() => removendo && void remover(removendo)}>
+              Remover
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -143,7 +146,7 @@ function FormNovo({ onCadastrado }: { onCadastrado: (s: McpServidor) => void }) 
           <CardTitle className="text-base">Adicionar servidor</CardTitle>
           <CardDescription>O app conecta, lista as tools e só grava se a conexão der certo.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 pt-4 sm:grid-cols-[1fr_2fr]">
+        <CardContent className="grid gap-4 pt-4 pb-2 sm:grid-cols-[1fr_2fr]">
           <div className="space-y-2">
             <Label htmlFor="mcp-nome">Nome</Label>
             <Input id="mcp-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="GitHub" required maxLength={60} />
@@ -210,7 +213,7 @@ function CardServidor({
           )}
           <div className="ml-auto flex items-center gap-2">
             <Label htmlFor={id} className="text-sm font-normal text-muted-foreground">
-              {s.ativo ? 'Ativo' : 'Desligado'}
+              {s.ativo ? 'Ligado' : 'Desligado'}
             </Label>
             <Switch id={id} checked={s.ativo} onCheckedChange={(v) => onAlternar(s, v)} />
           </div>
