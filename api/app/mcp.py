@@ -43,6 +43,9 @@ class McpServer(Base):
     url: Mapped[str] = mapped_column(Text)
     headers: Mapped[str] = mapped_column(Text)  # JSON {nome: valor} cifrado com Fernet
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Nulo: cadastro por header. Com OAuth, `headers` guarda o Bearer do access token atual (ticket 52).
+    oauth: Mapped[str | None] = mapped_column(Text)  # JSON cifrado com Fernet
+    estado: Mapped[str] = mapped_column(Text, default="ok")  # ok | aguardando_oauth | expirado
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -139,6 +142,8 @@ class McpServerOut(BaseModel):
     url: str
     ativo: bool
     tem_auth: bool
+    estado: str
+    oauth: bool
     created_at: datetime
     tools: list[McpToolOut]
 
@@ -156,6 +161,8 @@ async def _saida(session: Sessao, srv: McpServer) -> McpServerOut:
         url=srv.url,
         ativo=srv.ativo,
         tem_auth=bool(_decifrar(srv.headers)),
+        estado=srv.estado,
+        oauth=srv.oauth is not None,
         created_at=srv.created_at,
         tools=[McpToolOut(nome=t.nome, descricao=t.descricao, descricao_usuario=t.descricao_usuario) for t in tools],
     )
@@ -175,14 +182,35 @@ async def listar(session: Sessao, user: Usuario) -> list[McpServerOut]:
     return [await _saida(session, s) for s in (await session.scalars(q)).all()]
 
 
+async def registrar_tools(session: Sessao, srv: McpServer, listadas: list[Any]) -> None:
+    """Grava no registro as tools listadas que ainda não estão lá. Reconectar não duplica nem perde toggles."""
+    from app.tools import Tool  # tools importa este módulo
+
+    ja = set((await session.scalars(select(Tool.nome).where(Tool.mcp_server_id == srv.id))).all())
+    p = prefixo(srv)
+    for t in listadas:
+        nome = f"{p}_{t.name}"
+        if len(nome) <= LIMITE_NOME and nome not in ja:
+            descricao = t.description or t.name
+            session.add(
+                Tool(
+                    nome=nome,
+                    origem="mcp",
+                    descricao=descricao,
+                    descricao_usuario=descricao[:LIMITE_DESCRICAO_USUARIO],  # sem texto próprio: a do servidor, curta
+                    schema=t.input_schema,
+                    ativa_global=True,
+                    mcp_server_id=srv.id,
+                )
+            )
+
+
 # REVISAR(human): conecta e lista as tools ANTES de gravar qualquer linha. Falha de rede, 401 ou
 # protocolo vira 502 com texto legível e nada fica no banco. Tool com nome acima do limite do
 # Gemini fica de fora do registro (o modelo recusaria a declaração).
 @router.post("", response_model=McpServerOut, status_code=201)
 async def cadastrar(body: McpServerIn, session: Sessao, user: Usuario) -> McpServerOut:
     """Conecta no servidor, lista as tools e grava servidor e tools no registro com origem mcp."""
-    from app.tools import Tool  # tools importa este módulo
-
     try:
         await validar_url(body.url)
     except UrlRecusada as e:
@@ -203,22 +231,7 @@ async def cadastrar(body: McpServerIn, session: Sessao, user: Usuario) -> McpSer
         await session.flush()  # a FK das tools precisa do servidor antes
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail="Você já tem um servidor MCP com esse nome") from e
-    p = prefixo(srv)
-    for t in listadas:
-        nome = f"{p}_{t.name}"
-        if len(nome) <= LIMITE_NOME:
-            descricao = t.description or t.name
-            session.add(
-                Tool(
-                    nome=nome,
-                    origem="mcp",
-                    descricao=descricao,
-                    descricao_usuario=descricao[:LIMITE_DESCRICAO_USUARIO],  # sem texto próprio: a do servidor, curta
-                    schema=t.input_schema,
-                    ativa_global=True,
-                    mcp_server_id=srv.id,
-                )
-            )
+    await registrar_tools(session, srv, listadas)
     await audit(
         session,
         "mcp_server_added",
