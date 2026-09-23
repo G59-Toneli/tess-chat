@@ -404,7 +404,7 @@ async def test_tool_mcp_que_falha_duas_vezes_encerra_o_turno_com_aviso(client, d
     assert aviso["data"]["motivo"] == "tool_falhou" and aviso["data"]["tool"] == hora
     assert aviso["data"]["texto"] == f"A tool {hora} falhou: {ERRO_DEMO}"
     msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
-    # O adapter parte a resposta em duas Mensagens depois do retry; o par começa no usuário.
+    # Turno com mais de um passo persiste várias Mensagens de assistente; começa no usuário.
     assert msgs[0]["role"] == "user" and msgs[-1]["role"] == "assistant"
     assert aviso["data"]["tool_call_ids"] == ["c2"]
     assert any(p["type"] == "data-turno-interrompido" for p in msgs[-1]["parts"])
