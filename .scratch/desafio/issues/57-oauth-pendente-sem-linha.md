@@ -15,7 +15,7 @@
 - Alternativa descartada: manter a linha e esconder/purgar as pendentes num job. Continua gravando lixo e exige filtro em toda leitura.
 - Fora do escopo: o app registrado no provedor a cada clique (DCR sem reaproveitamento). Fica registrado como lacuna.
 
-**Limpeza:** migração `0021_mcp_sem_pendentes.py` apaga as linhas `estado='aguardando_oauth'` sem tools no registro. O downgrade é no-op. Se o front perder o uso do estado `aguardando_oauth`, remova o badge e o texto; o valor pode ficar no enum do banco.
+**Limpeza:** migração `0022_mcp_sem_pendentes.py` apaga as linhas `estado='aguardando_oauth'` sem tools no registro. O downgrade é no-op. Se o front perder o uso do estado `aguardando_oauth`, remova o badge e o texto; o valor pode ficar no enum do banco.
 
 **Docs:**
 - Atualize o ADR 0022 com uma nota "Atualizado no ticket 57": onde vive o estado pendente e por quê.
@@ -28,6 +28,6 @@
 - Reconectar com `sid` e abandonar: o servidor continua com o mesmo `estado`, `ativo` e `headers`.
 - Callback com cookie de outro fluxo (nonce diferente do state) volta com erro e não cria nada.
 - Callback sem cookie volta com `erro=pkce_ausente`.
-- A migração 0021 apaga uma linha pendente sem tools e mantém uma `ok`.
+- A migração 0022 apaga uma linha pendente sem tools e mantém uma `ok`.
 - Os testes existentes de `test_mcp_oauth` e `test_mcp` continuam passando.
 - `npm run build` limpo.
