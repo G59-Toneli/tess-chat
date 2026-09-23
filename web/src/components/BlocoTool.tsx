@@ -64,16 +64,18 @@ export function BlocoTool({
   parte,
   duracaoMs,
   interrompida = false,
+  somenteLeitura = false,
 }: {
   parte: ToolUIPart
   duracaoMs?: number
   interrompida?: boolean
+  somenteLeitura?: boolean
 }) {
   const nome = nomeDaTool(parte)
   const { servidor, tool } = partesDoNome(nome)
   // gmail_send vira cartão com Enviar/Descartar. Erro da tool (texto) segue no bloco comum.
   if (nome === 'gmail_send' && parte.state === 'output-available' && ehRascunho(parte.output))
-    return <RascunhoEmail saida={parte.output} />
+    return <RascunhoEmail saida={parte.output} somenteLeitura={somenteLeitura} />
   const fontes = nome === 'web_search' ? fontesDaBusca(parte.output) : []
   const saida = typeof parte.output === 'string' && parte.output.length > RESUMO_CHARS
     ? `${parte.output.slice(0, RESUMO_CHARS)}…`

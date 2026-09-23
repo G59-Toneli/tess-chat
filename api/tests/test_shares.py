@@ -1,5 +1,6 @@
 import uuid
 
+from app.conectores import EmailDraft
 from app.conversas import Message
 from app.db import SessionLocal
 from tests.test_auth import eventos
@@ -115,3 +116,42 @@ async def test_criar_e_revogar_exigem_login(client):
     assert (await client.post(f"/api/conversations/{uuid.uuid4()}/share")).status_code == 401
     assert (await client.delete("/api/shares/x")).status_code == 401
     assert (await client.get("/api/shares")).status_code == 401
+
+
+async def rascunho_na_conversa(uid: uuid.UUID, cid: str, estado: str) -> str:
+    """EmailDraft com o estado dado e a Mensagem com a part da tool, gravada em 'pendente' como no chat."""
+    async with SessionLocal() as s:
+        d = EmailDraft(user_id=uid, conversation_id=uuid.UUID(cid), para="ana@x.com", assunto="Oi", corpo="c", estado=estado)
+        s.add(d)
+        await s.flush()
+        saida = {"draft_id": str(d.id), "estado": "pendente", "para": "ana@x.com", "assunto": "Oi", "corpo": "c", "thread_id": None}
+        parte = {"type": "tool-gmail_send", "toolCallId": "c1", "state": "output-available", "input": {}, "output": saida}
+        s.add(Message(conversation_id=uuid.UUID(cid), role="assistant", parts=[parte]))
+        await s.commit()
+        return str(d.id)
+
+
+async def test_link_mostra_o_estado_real_do_rascunho(client):
+    uid, h = await usuario(client)
+    conv = await criar(client, h)
+    await rascunho_na_conversa(uid, conv["id"], "enviado")
+    share = await compartilhar(client, h, conv["id"])
+
+    corpo = (await client.get(f"/api/s/{share['id']}")).json()
+    assert corpo["messages"][0]["parts"][0]["output"]["estado"] == "enviado"
+
+
+async def test_link_nao_le_rascunho_de_outra_conversa(client):
+    uid, h = await usuario(client)
+    outra = await criar(client, h)
+    draft_id = await rascunho_na_conversa(uid, outra["id"], "enviado")
+    conv = await criar(client, h)
+    # Part que aponta para o rascunho de outra Conversa: fica como gravada.
+    parte = {"type": "tool-gmail_send", "toolCallId": "c9", "state": "output-available", "input": {}, "output": {"draft_id": draft_id, "estado": "pendente"}}
+    async with SessionLocal() as s:
+        s.add(Message(conversation_id=uuid.UUID(conv["id"]), role="assistant", parts=[parte]))
+        await s.commit()
+    share = await compartilhar(client, h, conv["id"])
+
+    corpo = (await client.get(f"/api/s/{share['id']}")).json()
+    assert corpo["messages"][0]["parts"][0]["output"]["estado"] == "pendente"

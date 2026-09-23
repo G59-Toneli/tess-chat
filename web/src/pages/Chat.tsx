@@ -31,6 +31,7 @@ import {
   authHeader,
   criarConversa,
   enviarAnexo,
+  juntarTurnos,
   listarMensagens,
   sair,
   textoErroAnexo,
@@ -130,16 +131,7 @@ function CarregarConversa({ id }: { id: string }) {
         decisoesDoRoteador(id).catch(() => []),
       ])
       const visiveis = linhas.filter((m) => m.role === 'user' || m.role === 'assistant')
-      // Um turno com tool vira várias linhas assistant seguidas. Junto numa só, como no stream.
-      // Fica o id da última linha: é ela que tem o uso.
-      const mensagens: UIMessage[] = []
-      for (const m of visiveis) {
-        const anterior = mensagens.at(-1)
-        const parts = m.parts as UIMessage['parts']
-        if (m.role === 'assistant' && anterior?.role === 'assistant')
-          mensagens[mensagens.length - 1] = { ...anterior, id: String(m.id), parts: [...anterior.parts, ...parts] }
-        else mensagens.push({ id: String(m.id), role: m.role as 'user' | 'assistant', parts })
-      }
+      const mensagens = juntarTurnos(linhas)
       setInicial({
         usos: usoPorMensagem(linhas, decisoes),
         mensagens,

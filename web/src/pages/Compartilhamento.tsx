@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
+import type { UIMessage } from 'ai'
 import { LinkIcon } from 'lucide-react'
+import { BlocoTool, partesDeTool } from '@/components/BlocoTool'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
 import { IconeApp, NOME_APP } from '@/components/Logo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { ErroApi, lerToken, type MensagemApi } from '@/lib/api'
+import { ErroApi, juntarTurnos, lerToken } from '@/lib/api'
 import { iniciais } from '@/lib/datas'
 import { lerSharePublico, type SharePublico } from '@/lib/shares'
 import { cn } from '@/lib/utils'
@@ -77,7 +79,8 @@ function LinkIndisponivel() {
 }
 
 function ConversaPublica({ share }: { share: SharePublico }) {
-  const visiveis = share.messages.filter((m) => m.role !== 'tool' && textoDe(m).length > 0)
+  // Mesmas partes do Chat: texto e cards de tool (com o Rascunho só leitura). Anexo e compactação ficam fora.
+  const visiveis = juntarTurnos(share.messages).filter((m) => m.parts.some(desenhavel))
   return (
     <>
       <div className="mb-6 rounded-lg border bg-muted/40 px-4 py-3">
@@ -100,11 +103,11 @@ function ConversaPublica({ share }: { share: SharePublico }) {
   )
 }
 
-const textoDe = (m: MensagemApi) =>
-  m.parts.filter((p) => p.type === 'text' && typeof p.text === 'string').map((p) => p.text as string)
+const desenhavel = (p: UIMessage['parts'][number]) => (p.type === 'text' && p.text.length > 0) || p.type.startsWith('tool-')
 
-function LinhaPublica({ mensagem, autor }: { mensagem: MensagemApi; autor: string }) {
+function LinhaPublica({ mensagem, autor }: { mensagem: UIMessage; autor: string }) {
   const usuario = mensagem.role === 'user'
+  const tools = partesDeTool(mensagem)
   return (
     <div className={cn('flex gap-3', usuario && 'flex-row-reverse')}>
       {usuario ? (
@@ -116,9 +119,16 @@ function LinhaPublica({ mensagem, autor }: { mensagem: MensagemApi; autor: strin
       )}
       <Message from={usuario ? 'user' : 'assistant'} className="min-w-0 max-w-[85%]">
         <MessageContent>
-          {textoDe(mensagem).map((t, i) => (
-            <MessageResponse key={i}>{t}</MessageResponse>
-          ))}
+          {mensagem.parts.map((p, i) => {
+            if (p.type === 'text') return p.text ? <MessageResponse key={i}>{p.text}</MessageResponse> : null
+            const parte = tools.find((t) => t === p)
+            // Wrapper como no Chat: o Card tem overflow-hidden e, filho direto do flex, encolhia e cortava o corpo.
+            return parte ? (
+              <div key={i}>
+                <BlocoTool parte={parte} somenteLeitura />
+              </div>
+            ) : null
+          })}
         </MessageContent>
       </Message>
     </div>

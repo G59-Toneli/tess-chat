@@ -31,7 +31,8 @@ export const ehRascunho = (x: unknown): x is SaidaRascunho =>
 
 const ROTULO: Record<EstadoRascunho, string> = { pendente: 'Aguardando você', enviado: 'Enviado', descartado: 'Descartado' }
 
-export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
+/** somenteLeitura: link público. Sem botões e sem API autenticada; o estado vem na própria part (api/app/shares.py). */
+export function RascunhoEmail({ saida, somenteLeitura = false }: { saida: SaidaRascunho; somenteLeitura?: boolean }) {
   // A parte gravada na Mensagem fica em "pendente". O estado real vem do servidor.
   const [estado, setEstado] = useState<EstadoRascunho>(saida.estado)
   const [dono, setDono] = useState(true)
@@ -39,6 +40,7 @@ export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
   const [erro, setErro] = useState<ErroEnvio | null>(null)
 
   useEffect(() => {
+    if (somenteLeitura) return
     let vivo = true
     lerRascunho(saida.draft_id)
       .then((r) => vivo && setEstado(r.estado))
@@ -46,7 +48,7 @@ export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
     return () => {
       vivo = false
     }
-  }, [saida.draft_id])
+  }, [saida.draft_id, somenteLeitura])
 
   async function decidir(qual: 'enviar' | 'descartar') {
     setAcao(qual)
@@ -76,7 +78,7 @@ export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
           <Badge variant={pendente ? 'outline' : 'secondary'} className="ml-auto font-normal">
             {estado === 'enviado' && <CheckCircle2Icon className="text-emerald-500" />}
             {estado === 'descartado' && <XCircleIcon />}
-            {ROTULO[estado]}
+            {somenteLeitura && pendente ? 'Pendente' : ROTULO[estado]}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -104,7 +106,7 @@ export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
           </div>
         )}
       </CardContent>
-      {pendente && dono && (
+      {pendente && dono && !somenteLeitura && (
         <CardFooter className="justify-end gap-2 px-4">
           <Button variant="outline" size="sm" disabled={acao !== null} onClick={() => void decidir('descartar')}>
             {acao === 'descartar' ? <Spinner /> : <Trash2Icon />} Descartar
