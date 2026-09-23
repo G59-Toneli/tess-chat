@@ -10,8 +10,11 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google import GoogleProvider
 
+import app.chat as chat_mod
 from app.chat import MODELO, modelo
 from app.config import settings
+from app.conversas import Attachment
+from app.db import SessionLocal
 from app.main import app
 from tests.test_auth import eventos
 from tests.test_chat import GRAVADA
@@ -158,3 +161,65 @@ async def test_request_ao_gemini_leva_media_resolution_no_pdf(client, usar_model
     com_arquivo = [p for p in partes if "inlineData" in p]
     assert com_arquivo[0]["inlineData"]["mime_type"] == "application/pdf"
     assert com_arquivo[0]["mediaResolution"] == {"level": "MEDIA_RESOLUTION_MEDIUM"}
+
+
+PDF_1MB = PDF + b"0" * (1024 * 1024)
+
+
+async def test_turno_seguinte_nao_carrega_o_peso_do_anexo(client, usar_modelo, monkeypatch):
+    """GoogleModel real, HTTP falso: mede o corpo que sai para o Gemini em cada turno."""
+    enviados: list[str] = []
+
+    def responder(req: httpx2.Request) -> httpx2.Response:
+        enviados.append(req.content.decode())
+        return httpx2.Response(200, content=GRAVADA.read_bytes(), headers={"content-type": "text/event-stream"})
+
+    estimativas: list[int] = []
+    reservar = chat_mod.reservar
+
+    async def espiar(s, uid, cid, nome, estimado):
+        estimativas.append(estimado)
+        return await reservar(s, uid, cid, nome, estimado)
+
+    monkeypatch.setattr(chat_mod, "reservar", espiar)
+    provider = GoogleProvider(api_key="teste", http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(responder)))
+    usar_modelo(GoogleModel(MODELO, provider=provider))
+    _, h = await usuario(client)
+    pdf = (await subir(client, h, "grande.pdf", PDF_1MB, "application/pdf")).json()
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("resuma", [parte(pdf)]), headers=h)
+    assert r.status_code == 200, r.text
+    r = await client.post(f"/api/chat/{cid}", json=corpo("e a conclusão?", []), headers=h)
+    assert r.status_code == 200, r.text
+
+    # Turno do anexo leva os bytes. Turno seguinte só a menção textual.
+    assert len(enviados[0]) > 1_000_000
+    assert len(enviados[1]) < 10_000
+    assert "inlineData" not in enviados[1]
+    assert "[anexo: grande.pdf]" in enviados[1]
+    assert estimativas[1] < 10_000
+
+
+async def test_recarregar_mostra_o_anexo_por_referencia(client, usar_modelo):
+    usar_modelo(FunctionModel(stream_function=lambda *_: _ok(), model_name=MODELO))
+    _, h = await usuario(client)
+    pdf = (await subir(client, h, "contrato.pdf", PDF, "application/pdf")).json()
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("resuma", [parte(pdf)]), headers=h)
+    assert r.status_code == 200, r.text
+
+    msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+    do_usuario = next(m for m in msgs if m["role"] == "user")
+    arquivos = [p for p in do_usuario["parts"] if p["type"] == "file"]
+    assert arquivos == [
+        {"type": "file", "url": pdf["url"], "mediaType": "application/pdf", "filename": "contrato.pdf"}
+    ]
+    async with SessionLocal() as s:
+        anexo = await s.get(Attachment, uuid.UUID(pdf["id"]))
+    assert anexo.message_id == do_usuario["id"]
+
+
+async def _ok():
+    yield "ok"

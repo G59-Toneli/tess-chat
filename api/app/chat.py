@@ -24,7 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
 
-from app.anexos import montar_anexos
+from app.anexos import ligar_a_mensagem, montar_anexos, partes_por_referencia, sem_bytes
 from app.audit import audit
 from app.compactacao import Compactacao, com_resumo, modelo_resumo, ponto_de_corte, should_compact, ultimo_resumo
 from app.auth import User, current_user
@@ -69,8 +69,8 @@ def modelo_reserva() -> Model | None:
 
 
 def _historico(linhas: list[Message]):
-    """Mensagens do banco (partes do AI SDK) para mensagens do Pydantic AI."""
-    ui = [UIMessage(id=str(m.id), role=m.role, parts=m.parts) for m in linhas]
+    """Mensagens do banco (partes do AI SDK) para mensagens do Pydantic AI. Anexo vira texto."""
+    ui = [UIMessage(id=str(m.id), role=m.role, parts=sem_bytes(m.parts)) for m in linhas]
     return VercelAIAdapter.load_messages(ui)
 
 
@@ -188,6 +188,7 @@ async def _persistir(
     turno: Turno,
     result: AgentRunResult[Any],
     antes: int,
+    nova: UIMessage,
     comp: Compactacao | None = None,
 ) -> None:
     latencia = int((time.perf_counter() - turno.t0) * 1000)
@@ -207,6 +208,8 @@ async def _persistir(
             Message(conversation_id=cid, role=m.role, parts=[p.model_dump(mode="json", by_alias=True) for p in m.parts])
             for m in ui
         ]
+        # Mensagem do usuário grava a referência do front, não o data URI que foi ao modelo.
+        linhas[0].parts = partes_por_referencia(nova)
         ultima = next(m for m in reversed(linhas) if m.role == "assistant")
         ultima.model = nome
         ultima.input_tokens = uso.input_tokens
@@ -215,11 +218,15 @@ async def _persistir(
         ultima.cache_read_tokens = uso.cache_read_tokens
         s.add_all(linhas)
         await s.flush()
+        anexos = await ligar_a_mensagem(s, uid, nova, linhas[0].id)
         conv = await s.get(Conversation, cid)
         conv.updated_at = func.now()
         custo = await acertar(s, uid, cid, ultima.id, nome, uso)
         await _auditar_tentativas(s, uid, cid, turno)
-        await audit(s, "message_sent", user_id=uid, conversation_id=cid, payload={"message_id": linhas[0].id})
+        await audit(
+            s, "message_sent", user_id=uid, conversation_id=cid,
+            payload={"message_id": linhas[0].id, "attachment_ids": anexos},
+        )
         await audit(
             s,
             "llm_call",
@@ -311,7 +318,8 @@ async def chat(
     novas = adapter.run_input.messages[-1:]
     if not novas or novas[0].role != "user":
         raise HTTPException(status_code=422, detail="A última mensagem precisa ser do usuário")
-    adapter.run_input.messages = novas
+    # O run recebe uma cópia: montar_anexos põe os bytes nela; `novas` guarda a referência.
+    adapter.run_input.messages = [novas[0].model_copy(deep=True)]
 
     q = select(Message).where(Message.conversation_id == cid).order_by(Message.created_at, Message.id)
     linhas = list((await session.scalars(q)).all())
@@ -321,7 +329,7 @@ async def chat(
     tools = await toolset_da_conversa(session, uid, cid, t)
     gate = await _rotear(session, jev, uid, cid, novas[0], cfg.roteador_limiar)
     # Depois da reserva e do Roteador: o base64 não entra na estimativa nem no Jev.
-    await montar_anexos(session, uid, novas[0])
+    await montar_anexos(session, uid, adapter.run_input.messages[0])
     await session.commit()
     await session.close()
 
@@ -360,6 +368,6 @@ async def chat(
             yield ev
 
     async def ao_fim(result: AgentRunResult[Any]) -> None:
-        await _persistir(cid, uid, turno, result, len(historico), comp)
+        await _persistir(cid, uid, turno, result, len(historico), novas[0], comp)
 
     return adapter.streaming_response(adapter.transform_stream(todos(), on_complete=ao_fim))
