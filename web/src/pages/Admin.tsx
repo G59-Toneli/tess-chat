@@ -1,0 +1,122 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router'
+import { ShieldAlertIcon } from 'lucide-react'
+import { EstadoCarregando, EstadoErro, EstadoVazio } from '@/components/estados'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useContextoApp } from '@/layout/AppLayout'
+import { painelCredito, usd, usuariosAdmin, type Saldo, type UsuarioAdmin } from '@/lib/painel'
+import { Resumo } from '@/pages/Creditos'
+
+/** Só admin: Cap global, gasto total e Usuários com gasto e Cap. */
+export function Admin() {
+  const { usuario } = useContextoApp()
+  if (usuario === null) return <div className="mx-auto max-w-6xl p-8"><EstadoCarregando /></div>
+  if (!usuario.is_superuser) return <AcessoRestrito />
+  return <PainelAdmin />
+}
+
+function PainelAdmin() {
+  const [dados, setDados] = useState<{ saldo: Saldo; usuarios: UsuarioAdmin[] } | null>(null)
+  const [erro, setErro] = useState(false)
+
+  const carregar = useCallback(async () => {
+    setErro(false)
+    setDados(null)
+    try {
+      const [painel, usuarios] = await Promise.all([painelCredito('global'), usuariosAdmin()])
+      setDados({ saldo: painel.saldo, usuarios })
+    } catch {
+      setErro(true)
+    }
+  }, [])
+
+  useEffect(() => void carregar(), [carregar])
+
+  return (
+    <div className="mx-auto max-w-6xl p-8">
+      <h1 className="text-2xl font-semibold">Administração</h1>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground">Cap global, gasto total e gasto de cada Usuário.</p>
+      {erro ? (
+        <EstadoErro mensagem="Não foi possível carregar os dados de administração." onTentarDeNovo={carregar} />
+      ) : dados === null ? (
+        <EstadoCarregando />
+      ) : (
+        <div className="flex flex-col gap-6">
+          <Resumo saldo={dados.saldo} global />
+          <Card>
+            <CardHeader>
+              <CardTitle>Usuários</CardTitle>
+              <CardDescription>{dados.usuarios.length} contas, do maior gasto para o menor.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {dados.usuarios.length === 0 ? (
+                <EstadoVazio titulo="Nenhum usuário" descricao="As contas cadastradas aparecem aqui." />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>E-mail</TableHead>
+                      <TableHead className="text-right">Gasto</TableHead>
+                      <TableHead className="text-right">Cap</TableHead>
+                      <TableHead className="text-right">Uso</TableHead>
+                      <TableHead className="w-0" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dados.usuarios.map((u) => (
+                      <TableRow key={u.id}>
+                        <TableCell className="max-w-80">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate">{u.email}</span>
+                            {u.is_superuser && <Badge variant="outline">admin</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{usd(u.gasto_micro_usd)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{usd(u.cap_micro_usd)}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {((u.gasto_micro_usd / Math.max(1, u.cap_micro_usd)) * 100).toLocaleString('pt-BR', {
+                            maximumFractionDigits: 1,
+                          })}
+                          %
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/auditoria?usuario=${u.id}`}>Ver eventos</Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AcessoRestrito() {
+  return (
+    <div className="mx-auto max-w-6xl p-8">
+      <h1 className="mb-6 text-2xl font-semibold">Administração</h1>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ShieldAlertIcon />
+          </EmptyMedia>
+          <EmptyTitle>Acesso restrito</EmptyTitle>
+          <EmptyDescription>Esta tela é só para a conta de administração.</EmptyDescription>
+        </EmptyHeader>
+        <Button variant="outline" asChild>
+          <Link to="/creditos">Ver meu crédito</Link>
+        </Button>
+      </Empty>
+    </div>
+  )
+}

@@ -61,3 +61,13 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 11 | Descrições das opções ficam no módulo (texto do spike). Tool sem descrição no módulo (MCP) usa a do registro. | Usar sempre a descrição do registro. | Texto validado no spike; golden set confere o mesmo texto. |
 | 11 | Conftest desliga o Jev em todos os testes (fixture autouse); `test_roteador` troca por resposta gravada. | Stub com resposta `nenhuma`. | Stub com uso real somaria débito do Jev e quebraria os asserts exatos de `test_credito`. |
 | 11 | Roteador roda depois da reserva do Cap: 402 não gasta Jev. Sem reserva própria para o Jev. | Reservar o Jev também. | ~19 µUSD por turno, desprezível perto da reserva do Gemini. |
+| 15 | Admin = `is_superuser` do FastAPI-Users. A conta demo recebe a flag no startup, também quando já existe. Rotas de admin usam `current_user(superuser=True)` (403). | Coluna ou papel novo. | A coluna já existe desde o 04; sem migração. |
+| 15 | Usuário comum em `/api/audit`: o filtro `user_id` é forçado para ele, o parâmetro é ignorado (não 403). | 403 quando pede outro usuário. | Mais simples; nunca vaza dado alheio. |
+| 15 | `/api/credits/global` continua aberto a qualquer logado; o painel global novo (`/global/painel`) é só admin. | Fechar `/global` também. | `test_credito` do 08 chama `/global` como usuário comum; só soma, sem dado de outro usuário. |
+| 15 | Gasto por dia agrupado no fuso IANA que o browser manda em `?tz=` (padrão UTC; inválido = 422). | Agrupar em UTC. | 22h em Brasília já é o dia seguinte em UTC; o UI-GUIA pede fuso do browser. |
+| 15 | Leitura dos painéis não emite Evento de auditoria. | Evento `audit_viewed`. | Cada abertura de tela poluiria a linha do tempo que o aceite mede. |
+| 15 | Ordem da auditoria: `ts` desc, `id` desc. | Só `ts`. | `now()` é o início da transação: eventos da mesma transação empatam em `ts`. |
+| 15 | Aceite do fluxo sem o passo de compactação. | Inserir um evento `compaction` falso no teste. | O 12 não estava commitado; evento falso não prova nada. O 12 estende o teste. |
+| 15 | Gráfico por modelo mostra os 5 que mais gastaram e junta o resto em "Outros". Série única, um tom (`--chart-2`), sem legenda. | Todas as barras. | Com os modelos de teste o eixo escondia rótulos. |
+| 15 | Screenshots por script `playwright-core` com `executablePath` do Brave, não pelo MCP. | Playwright MCP. | Nesta sessão o MCP abriu o Google Chrome (`userAgentData` = Google Chrome), que o UI-GUIA proíbe. |
+| 15 | Commit montado com `git update-index` só com os meus hunks, e `git commit` do index. | `git commit --only`. | App.tsx, main.py, package.json e package-lock.json tinham hunks não commitados de outros agentes (07b, roteador); `--only` levaria esses hunks junto. |

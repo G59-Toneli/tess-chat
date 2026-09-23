@@ -113,7 +113,7 @@ function LayoutAutenticado() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="truncate">{usuario?.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {itensMenu.map((i) => (
+              {itensMenu.filter((i) => i.to !== '/admin' || usuario?.is_superuser).map((i) => (
                 <DropdownMenuItem key={i.to} onSelect={() => navigate(i.to)}>
                   {i.rotulo}
                 </DropdownMenuItem>

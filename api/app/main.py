@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auditoria import router as auditoria_router
 from app.auth import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_users, garantir_conta_demo
 from app.chat import router as chat_router
 from app.conversas import router as conversas_router
@@ -34,6 +35,7 @@ app.include_router(chat_router)
 app.include_router(credito_router)
 app.include_router(tools_router)
 app.include_router(shares_router)
+app.include_router(auditoria_router)
 
 
 @app.get("/health")

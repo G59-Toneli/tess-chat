@@ -4,7 +4,7 @@ const CHAVE_TOKEN = 'token'
 
 export const CONTA_DEMO = { email: 'demo@toneli.dev.br', senha: 'demo12345' }
 
-export type Usuario = { id: string; email: string }
+export type Usuario = { id: string; email: string; is_superuser: boolean }
 export type Conversa = { id: string; title: string; created_at: string; updated_at: string }
 export type MensagemApi = {
   id: number
@@ -45,7 +45,7 @@ export class ErroApi extends Error {
   }
 }
 
-async function api<T>(caminho: string, init: RequestInit = {}): Promise<T> {
+export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T> {
   const r = await fetch(caminho, { ...init, headers: { ...authHeader(), ...init.headers } })
   if (r.status === 401 && lerToken()) sair()
   if (!r.ok) {
