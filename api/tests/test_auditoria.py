@@ -47,7 +47,8 @@ async def test_fluxo_aparece_em_ordem(client, usar_modelo, usar_rotas):
     corpo_audit = await auditoria(client, h, limit=200)
     # A API devolve do mais recente para o mais antigo.
     tipos = [e["event_type"] for e in reversed(corpo_audit["items"])]
-    esperado = ["login_ok", "conversation_created", "tool_call", "message_sent", "llm_call", "share_created"]
+    # ADR 0023: a pergunta é gravada no início do turno, antes das tools.
+    esperado = ["login_ok", "conversation_created", "message_sent", "tool_call", "llm_call", "share_created"]
     assert [t for t in tipos if t in esperado] == esperado
     assert corpo_audit["total"] == len(corpo_audit["items"])
     assert {e["user_id"] for e in corpo_audit["items"]} == {str(uid)}
