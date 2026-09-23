@@ -57,14 +57,14 @@ async def rascunho(client, h, usar_modelo, args=ARGS) -> tuple[str, str]:
 # ---------- Registro ----------
 
 
-async def test_gmail_send_nasce_desligada(client, google):
+async def test_gmail_send_nasce_ligada(client, google):
     _, h = await usuario(client)
     await conectar(client, h)
     cid = (await criar(client, h))["id"]
 
     tools = await tools_da_conversa(client, h, cid)
 
-    assert tools["gmail_send"] is False
+    assert tools["gmail_send"] is True
     assert tools["gmail_search"] is True
 
 

@@ -106,7 +106,7 @@ NATIVAS = {"web_search": web_search, "web_fetch": web_fetch}
 
 
 # REVISAR(human): ativa = ativa_global E toggle da Conversa. Sem linha em conversation_tools,
-# o toggle vale padrao_ligada (true, menos gmail_send: ação irreversível nasce desligada, ADR 0013).
+# o toggle vale padrao_ligada (true para todas; gmail_send também, desde a 0015: a trava é o clique em Enviar, ADR 0013).
 # ativa_global=false desliga a Tool em todas as Conversas.
 # Tool de origem 'google' só existe se o dono da Conversa tem Conector Google (ticket 18).
 # gmail_send exige também o escopo gmail.send no Conector: conexão antiga não ganha a Tool (ticket 25).
