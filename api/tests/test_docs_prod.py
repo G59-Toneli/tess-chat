@@ -12,7 +12,8 @@ from app.main import app
 async def main():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/openapi.json")
-        print("openapi", r.headers.get("content-type", "").startswith("application/json"))
+        # Conteúdo, não content-type: sem web/dist (CI) o 404 também é JSON.
+        print("openapi", '"paths"' in r.text)
         print("docs", "swagger-ui" in (await c.get("/docs")).text)
         print("redoc", "redoc" in (await c.get("/redoc")).text)
 
