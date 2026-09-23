@@ -1,4 +1,4 @@
-# Testes da api e build do web em push e PR. Deploy só em push na main, depois dos dois:
+# Testes da api e build do web em push e PR. Deploy em push ou disparo manual na main, depois dos dois:
 # ssh no VPS e roda deploy/deploy.sh (git pull + compose up --build).
 name: deploy
 on:
@@ -68,7 +68,7 @@ jobs:
 
   deploy:
     needs: [testes, web]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     concurrency:
       group: deploy
