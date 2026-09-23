@@ -10,10 +10,9 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
 
 from app.chat import MODELO
-from app.main import app
-from app.tools import schema_para_modelo, transporte, web_fetch
+from app.tools import schema_para_modelo, web_fetch
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
+from tests.test_chat import corpo
 from tests.test_conversas import criar, usuario
 
 FIX = Path(__file__).parent / "fixtures"
@@ -52,16 +51,6 @@ def dns_falso(monkeypatch):
         return [DNS.get(host, "93.184.216.34")]
 
     monkeypatch.setattr(rede, "resolver_ips", resolver)
-
-
-@pytest.fixture
-def usar_rotas():
-    def trocar(t):
-        app.dependency_overrides[transporte] = lambda: t
-        return t
-
-    yield trocar
-    app.dependency_overrides.pop(transporte, None)
 
 
 def retornos(msgs: list[ModelMessage]) -> list[ToolReturnPart]:

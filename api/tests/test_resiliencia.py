@@ -13,9 +13,9 @@ from app.credito import CreditLedger, PrecoModelo
 from app.db import SessionLocal
 from app.main import app
 from tests.test_auth import eventos
-from tests.test_chat import GRAVADA, corpo, gemini_falso, usar_modelo  # noqa: F401  (fixture)
+from tests.test_chat import GRAVADA, corpo, gemini_falso
 from tests.test_conversas import criar, usuario
-from tests.test_tools import Rotas, usar_rotas  # noqa: F401  (fixture)
+from tests.test_tools import Rotas
 
 
 @pytest.fixture

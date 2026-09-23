@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
 import httpx
-import pytest
 from pydantic_ai.messages import BinaryContent, ModelMessage, ModelRequest, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
 from sqlalchemy import text
@@ -20,7 +19,7 @@ from app.db import SessionLocal
 from app.main import app
 from app.tools import transporte
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
+from tests.test_chat import corpo
 from tests.test_conversas import criar, usuario
 
 GOOGLE_TOOLS = {"gmail_search", "gmail_read", "drive_search_read"}
@@ -127,17 +126,6 @@ class Google(httpx.MockTransport):
 
     def bearer(self, host_path: str) -> list[str]:
         return [r.headers.get("authorization", "") for r in self.vistas if host_path in str(r.url)]
-
-
-@pytest.fixture
-def google():
-    """O mesmo MockTransport nas rotas do Conector e nas Tools do chat."""
-    g = Google()
-    app.dependency_overrides[transporte_google] = lambda: g
-    app.dependency_overrides[transporte] = lambda: g
-    yield g
-    app.dependency_overrides.pop(transporte_google, None)
-    app.dependency_overrides.pop(transporte, None)
 
 
 async def autorizar(client, h) -> dict[str, list[str]]:

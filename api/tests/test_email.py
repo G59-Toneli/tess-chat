@@ -13,8 +13,8 @@ from app.conectores import transporte_google
 from app.main import app
 from app.tools import transporte
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
-from tests.test_conectores import LEITURA, Google, conectar, google, modelo_que_chama  # noqa: F401  (fixture)
+from tests.test_chat import corpo
+from tests.test_conectores import LEITURA, Google, conectar, modelo_que_chama
 from tests.test_conversas import criar, usuario
 
 ARGS = {"para": "ana@exemplo.com", "assunto": "Re: Fatura de setembro", "corpo": "Confirmo a reunião.", "thread_id": "t1"}
