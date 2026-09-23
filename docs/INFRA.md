@@ -14,7 +14,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 |---|---|
 | Código e compose | `/opt/tess-chat` (compose em `deploy/docker-compose.yml`, projeto `tess-chat`) |
 | Segredos | `/opt/tess-chat/.env` (modo 600, fora do git) |
-| Senha do Postgres | `/opt/tess-chat/.env.postgres`, só `POSTGRES_PASSWORD` (modo 600). O serviço `postgres` não lê o `.env` |
+| Senha do Postgres | `POSTGRES_PASSWORD` no `.env`. O serviço `postgres` recebe só ela, por `--env-file .env` no `up` |
 | App | `127.0.0.1:8010` |
 | Volumes | `tess-chat_pgdata`, `tess-chat_appdata` (anexos) |
 | Site nginx | `/etc/nginx/sites-available/tess-chat` + symlink em `sites-enabled` |
@@ -26,6 +26,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 
 ## Regras
 - Sempre `docker compose -f deploy/docker-compose.yml`. O compose da raiz é de dev e publica 5433 e 8765.
+- Em `up`, passe `--env-file .env` (o `deploy.sh` já passa). Sem ele, a senha do Postgres fica vazia; num volume novo, o banco não inicia.
 - Antes de buildar: `df -h /`. Acima de 90%, pare.
 - Limpeza: `docker image prune -f`. Nunca `-a`, nunca `docker builder prune`.
 - Não toque em serviço, container, site ou diretório que não esteja na tabela acima.
