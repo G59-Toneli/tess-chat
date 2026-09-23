@@ -14,8 +14,8 @@ from sqlalchemy import func, select, text
 from app.db import SessionLocal
 from app.tools import Tool
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
-from tests.test_conectores import conectar, google, modelo_que_chama, ultima_resposta  # noqa: F401  (fixture)
+from tests.test_chat import corpo
+from tests.test_conectores import conectar, modelo_que_chama, ultima_resposta
 from tests.test_conversas import criar, usuario
 
 SERVIDOR = Path(__file__).resolve().parents[2] / "deploy" / "mcp-demo" / "server.py"
@@ -26,27 +26,6 @@ def porta_livre() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
-
-
-@pytest.fixture(scope="module")
-def demo():
-    """Sobe o servidor demo com token e devolve a URL do /mcp."""
-    porta = porta_livre()
-    env = {**os.environ, "PORT": str(porta), "MCP_DEMO_TOKEN": TOKEN}
-    proc = subprocess.Popen([sys.executable, str(SERVIDOR)], env=env)
-    try:
-        for _ in range(100):
-            try:
-                socket.create_connection(("127.0.0.1", porta), timeout=0.2).close()
-                break
-            except OSError:
-                time.sleep(0.1)
-        else:
-            pytest.fail("servidor demo não subiu")
-        yield f"http://127.0.0.1:{porta}/mcp"
-    finally:
-        proc.terminate()
-        proc.wait(5)
 
 
 async def cadastrar(client, h, url: str, nome: str = "demo", autorizacao: str | None = TOKEN):

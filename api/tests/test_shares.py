@@ -12,7 +12,7 @@ from app.conversas import Attachment, Message
 from app.db import SessionLocal
 from tests.test_anexos import PNG, conteudo_do_usuario, subir
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401
+from tests.test_chat import corpo
 from tests.test_chat import textos as textos_modelo
 from tests.test_credito import linhas
 from tests.test_conversas import criar, usuario

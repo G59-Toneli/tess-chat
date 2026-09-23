@@ -9,15 +9,14 @@ from pydantic_ai.models.function import AgentInfo
 from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy
 
 from app.config import settings
-from app.main import app
-from app.roteador import Decisao, apply_gate, cliente_jev, decidir, opcoes
+from app.roteador import Decisao, apply_gate, decidir, opcoes
 from tests.test_anexos import PDF, parte, subir
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
+from tests.test_chat import corpo
 from tests.test_credito import linhas
-from tests.test_mcp import cadastrar, demo  # noqa: F401  (fixture)
+from tests.test_mcp import cadastrar
 from tests.test_conversas import criar, usuario
-from tests.test_tools import Rotas, modelo_que_busca, usar_rotas  # noqa: F401  (fixture)
+from tests.test_tools import Rotas, modelo_que_busca
 
 GOLDEN = json.loads((Path(__file__).parent / "fixtures" / "jev_golden.json").read_text(encoding="utf-8"))
 CASOS = GOLDEN["casos"]
@@ -38,15 +37,6 @@ def gravada(caso: dict, vistos: list[dict] | None = None):
         return httpx2.Response(caso["status"], json=caso["response"])
 
     return responder
-
-
-@pytest.fixture
-def usar_jev():
-    def trocar(responder):
-        app.dependency_overrides[cliente_jev] = lambda: jev_falso(responder)
-
-    yield trocar
-    app.dependency_overrides.pop(cliente_jev, None)
 
 
 # ---------- Golden set: os 10 casos do spike ----------

@@ -5,14 +5,12 @@ import uuid
 from pathlib import Path
 
 import httpx2
-import pytest
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google import GoogleProvider
 
-from app.chat import MODELO, modelo
-from app.main import app
+from app.chat import MODELO
 from tests.test_auth import eventos
 from tests.test_conversas import criar, usuario
 
@@ -23,17 +21,6 @@ def corpo(texto: str, historico: list[dict] | None = None) -> dict:
     """Body do useChat: histórico do front + a mensagem nova."""
     nova = {"id": uuid.uuid4().hex, "role": "user", "parts": [{"type": "text", "text": texto}]}
     return {"trigger": "submit-message", "id": "chat", "messages": [*(historico or []), nova]}
-
-
-@pytest.fixture
-def usar_modelo():
-    """Troca o modelo da rota. Limpa o override no fim."""
-
-    def trocar(m):
-        app.dependency_overrides[modelo] = lambda: m
-
-    yield trocar
-    app.dependency_overrides.pop(modelo, None)
 
 
 def gemini_falso(status: int, conteudo: bytes, tipo: str) -> GoogleModel:

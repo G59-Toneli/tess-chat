@@ -11,10 +11,10 @@ from app.config import settings
 from app.credito import Cap, CreditLedger, preco_vigente
 from app.db import SessionLocal
 from tests.test_auth import logar
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
+from tests.test_chat import corpo
 from tests.test_conversas import criar, usuario
 from tests.test_shares import compartilhar
-from tests.test_tools import Rotas, modelo_que_busca, usar_rotas  # noqa: F401  (fixture)
+from tests.test_tools import Rotas, modelo_que_busca
 
 
 async def demo(client) -> dict:

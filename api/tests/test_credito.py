@@ -12,7 +12,7 @@ from app.chat import MODELO
 from app.credito import Cap, CreditLedger, PrecoModelo, debit
 from app.db import SessionLocal
 from tests.test_auth import eventos
-from tests.test_chat import GRAVADA, _nunca, corpo, gemini_falso, usage_gravado, usar_modelo  # noqa: F401
+from tests.test_chat import GRAVADA, _nunca, corpo, gemini_falso, usage_gravado
 from tests.test_conversas import criar, usuario
 
 

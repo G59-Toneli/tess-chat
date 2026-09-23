@@ -1,8 +1,8 @@
 """Indicador da janela de contexto (ticket 32). Turnos com FunctionModel que reporta input por palavra."""
 
 from app.config import JANELAS_CONTEXTO, settings
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
-from tests.test_compactacao import LONGO, limiar, modelo_eco, resumidor  # noqa: F401  (fixture)
+from tests.test_chat import corpo
+from tests.test_compactacao import LONGO, modelo_eco
 from tests.test_conversas import criar, usuario
 
 LITE = "gemini-3.1-flash-lite"

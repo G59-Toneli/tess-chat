@@ -10,11 +10,10 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google import GoogleProvider
 
-from app.chat import MODELO, modelo
+from app.chat import MODELO
 from app.config import settings
 from app.conversas import Attachment
 from app.db import SessionLocal
-from app.main import app
 from tests.test_auth import eventos
 from tests.test_chat import GRAVADA
 from tests.test_conversas import criar, usuario
@@ -27,15 +26,6 @@ PDF = b"%PDF-1.4\n%fim\n"
 def pasta(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "attachments_dir", tmp_path)
     return tmp_path
-
-
-@pytest.fixture
-def usar_modelo():
-    def trocar(m):
-        app.dependency_overrides[modelo] = lambda: m
-
-    yield trocar
-    app.dependency_overrides.pop(modelo, None)
 
 
 async def subir(client, h, nome: str, dados: bytes, tipo: str):
