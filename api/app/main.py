@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +28,7 @@ from app.conectores import router as conectores_router
 from app.configuracao import cadastro_aberto, cadastro_permitido
 from app.configuracao import router as configuracao_router
 from app.conversas import router as conversas_router
+from app.credito import CapAtingido, PrecoAusente
 from app.credito import router as credito_router
 from app.db import get_session
 from app.estaticos import montar_estaticos
@@ -52,6 +54,19 @@ app = FastAPI(
     redoc_url="/redoc" if _docs else None,
     openapi_url="/openapi.json" if _docs else None,
 )
+
+
+# Erro de domínio do Crédito vira HTTP aqui, com o mesmo corpo do HTTPException.
+@app.exception_handler(CapAtingido)
+async def _cap_atingido(_req: Request, exc: CapAtingido) -> JSONResponse:
+    return JSONResponse({"detail": str(exc)}, status_code=402)
+
+
+@app.exception_handler(PrecoAusente)
+async def _preco_ausente(_req: Request, exc: PrecoAusente) -> JSONResponse:
+    return JSONResponse({"detail": str(exc)}, status_code=500)
+
+
 app.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"])
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),

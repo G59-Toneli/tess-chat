@@ -20,6 +20,16 @@ from app.db import Base, SessionLocal, get_session
 MILHAO = 1_000_000
 
 
+# Erros de domínio sem HTTP: preco_vigente também roda dentro do stream (acerto, Compactação),
+# onde não existe status para devolver. A borda HTTP traduz em main.py (402 e 500).
+class CapAtingido(Exception):
+    """Reserva passa do Cap. A mensagem é o `detail` do 402."""
+
+
+class PrecoAusente(Exception):
+    """Modelo sem linha na Tabela de Preço: erro de configuração. A mensagem é o `detail` do 500."""
+
+
 class PrecoModelo(Base):
     """Linha da Tabela de Preço. Micro-USD por 1M de tokens."""
 
@@ -89,7 +99,7 @@ async def preco_vigente(session: AsyncSession, model: str) -> PrecoModelo:
     )
     preco = await session.scalar(q)
     if preco is None:
-        raise HTTPException(status_code=500, detail=f"Modelo sem preço na Tabela de Preço: {model}")
+        raise PrecoAusente(f"Modelo sem preço na Tabela de Preço: {model}")
     return preco
 
 
@@ -116,7 +126,7 @@ async def _cap(session: AsyncSession, user_id: uuid.UUID | None) -> int:
 async def reservar(
     session: AsyncSession, user_id: uuid.UUID, conversation_id: uuid.UUID, model: str, input_estimado: int
 ) -> PrecoModelo:
-    """Garante que a chamada cabe nos Caps. Recusa com 402 e evento `cap_reached`."""
+    """Garante que a chamada cabe nos Caps. Recusa com CapAtingido e evento `cap_reached`."""
     preco = await preco_vigente(session, model)
     reserva = debit(RunUsage(input_tokens=input_estimado, output_tokens=settings.max_output_tokens), preco)
     for escopo, uid in (("usuario", user_id), ("global", None)):
@@ -133,7 +143,7 @@ async def reservar(
                     payload={"escopo": escopo, "gasto": gasto, "reserva": reserva, "cap": cap},
                 )
                 await s.commit()
-            raise HTTPException(status_code=402, detail=f"Cap de crédito atingido ({escopo}).")
+            raise CapAtingido(f"Cap de crédito atingido ({escopo}).")
     return preco
 
 
