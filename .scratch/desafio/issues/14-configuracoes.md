@@ -10,3 +10,5 @@
 **Aceite:**
 - [ ] Baixar o limiar de compactação na UI e ver a compactação disparar na próxima mensagem.
 - [ ] Trocar modelo para flash-lite e ver o modelo gravado na mensagem e no ledger.
+
+**Adendo (do 07b):** `PUT /api/tools/{nome}` (toggle global) deve exigir `current_superuser` do ticket 15. Uma linha.
