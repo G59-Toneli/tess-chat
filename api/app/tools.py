@@ -4,11 +4,11 @@ import asyncio
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 import trafilatura
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from pydantic_ai import FunctionToolset, RunContext
 from pydantic_ai.toolsets import AbstractToolset, WrapperToolset
@@ -21,6 +21,7 @@ from tavily import AsyncTavilyClient
 
 from app.audit import audit
 from app.config import settings
+from app.auth import User, current_superuser
 from app.conversas import Sessao, Usuario, conversa_do_usuario
 from app.db import Base, SessionLocal
 
@@ -189,6 +190,7 @@ class ToolConversaOut(BaseModel):
 
 
 router = APIRouter(tags=["tools"])
+Admin = Annotated[User, Depends(current_superuser)]
 
 
 @router.get("/api/tools", response_model=list[ToolOut])
@@ -198,9 +200,8 @@ async def catalogo(session: Sessao, _: Usuario) -> list[ToolOut]:
     return [ToolOut.model_validate(t, from_attributes=True) for t in tools]
 
 
-# REVISAR(human): qualquer Usuário logado alterna o global. O app ainda não tem papel de admin.
 @router.put("/api/tools/{nome}", response_model=ToolOut)
-async def alternar_global(nome: str, body: ToolGlobalIn, session: Sessao, user: Usuario) -> ToolOut:
+async def alternar_global(nome: str, body: ToolGlobalIn, session: Sessao, user: Admin) -> ToolOut:
     """Liga e desliga a Tool em todas as Conversas."""
     tool = await session.get(Tool, nome)
     if tool is None:

@@ -29,6 +29,7 @@ from app.audit import audit
 from app.compactacao import Compactacao, com_resumo, modelo_resumo, ponto_de_corte, should_compact, ultimo_resumo
 from app.auth import User, current_user
 from app.config import settings
+from app.configuracao import MODELO_PADRAO, Configuracao, configuracao_do_turno
 from app.conversas import Conversation, Message, conversa_do_usuario
 from app.credito import acertar, reservar
 from app.db import SessionLocal, get_session
@@ -36,13 +37,9 @@ from app.resiliencia import ERROS_PROVEDOR, Turno, cadeia, causa, resumo_erro
 from app.roteador import PRECO_JEV, Gate, apply_gate, cliente_jev, decidir, opcoes
 from app.tools import estado_da_conversa, toolset_da_conversa, transporte
 
-MODELO = "gemini-3.8-flash"
+MODELO = MODELO_PADRAO
 # Fallback do ADR 0012. Sem OPENAI_API_KEY no .env, a cadeia para aqui.
 MODELO_RESERVA = "gemini-3.7-flash"
-# Thinking explícito. O default do modelo deu ~7 s até o primeiro token no spike.
-AJUSTES = GoogleModelSettings(
-    google_thinking_config={"thinking_level": "low"}, max_tokens=settings.max_output_tokens
-)
 SDK = 7
 
 agent = Agent(retries=0)
@@ -54,9 +51,16 @@ def _gemini(nome: str = MODELO) -> GoogleModel:
     return GoogleModel(nome, provider=GoogleProvider(api_key=settings.gemini_paid_api_key))
 
 
-def modelo() -> Model:
-    """Modelo da rota. Os testes trocam via dependency_overrides."""
-    return _gemini()
+def modelo(cfg: Annotated[Configuracao, Depends(configuracao_do_turno)]) -> Model:
+    """Modelo da Configuração do turno. Os testes trocam via dependency_overrides."""
+    return _gemini(cfg.modelo)
+
+
+def ajustes(cfg: Configuracao) -> GoogleModelSettings:
+    """Thinking explícito, nível vindo da Configuração."""
+    return GoogleModelSettings(
+        google_thinking_config={"thinking_level": cfg.nivel_raciocinio}, max_tokens=settings.max_output_tokens
+    )
 
 
 def modelo_reserva() -> Model | None:
@@ -124,7 +128,12 @@ async def _limite_de_tools(
 
 
 async def _rotear(
-    session: AsyncSession, jev: AsyncTypeSafeClient | None, uid: uuid.UUID, cid: uuid.UUID, nova: UIMessage
+    session: AsyncSession,
+    jev: AsyncTypeSafeClient | None,
+    uid: uuid.UUID,
+    cid: uuid.UUID,
+    nova: UIMessage,
+    limiar: float,
 ) -> Gate:
     """Roteador antes do Gemini. Qualquer falha do Jev vira AUTO com evento router_fallback."""
     texto = "\n".join(p.text for p in nova.parts if isinstance(p, TextUIPart))
@@ -146,7 +155,7 @@ async def _rotear(
             payload={"erro": type(exc).__name__, "status": getattr(exc, "status", None), "msg": str(exc)[:500]},
         )
         return Gate(None)
-    escolha = apply_gate(d, settings.roteador_limiar)
+    escolha = apply_gate(d, limiar)
     uso = RunUsage(input_tokens=d.input_tokens, output_tokens=d.output_tokens)
     custo = await acertar(session, uid, cid, None, PRECO_JEV, uso)
     await audit(
@@ -163,7 +172,7 @@ async def _rotear(
             "tool": d.tool,
             "confidence": d.confidence,
             "distribution": d.distribution,
-            "limiar": settings.roteador_limiar,
+            "limiar": limiar,
             "forcada": escolha is not None,
             "modelo_real": d.modelo,
         },
@@ -238,7 +247,7 @@ async def _persistir(
 
 
 async def _preparar_historico(
-    session: AsyncSession, uid: uuid.UUID, cid: uuid.UUID, linhas: list[Message], mr: Model
+    session: AsyncSession, uid: uuid.UUID, cid: uuid.UUID, linhas: list[Message], mr: Model, cfg: Configuracao
 ) -> tuple[list[Any], Compactacao | None]:
     """Resumo vigente + Mensagens depois do corte. Monta a Compactação se o turno anterior passou do limiar."""
     resumo = await ultimo_resumo(session, cid)
@@ -248,7 +257,7 @@ async def _preparar_historico(
     anterior = next((l for l in reversed(efetivas) if l.role == "assistant"), None)
     uso = RunUsage(input_tokens=anterior.input_tokens or 0) if anterior else None
     corte = ponto_de_corte([l.role for l in efetivas], settings.compactacao_turnos_literais)
-    if corte is None or not should_compact(uso, settings):
+    if corte is None or not should_compact(uso, cfg):
         return historico, None
     comp = Compactacao(
         uid=uid,
@@ -290,6 +299,7 @@ async def chat(
     mr: Annotated[Model, Depends(modelo_resumo)],
     t: Annotated[httpx.AsyncBaseTransport | None, Depends(transporte)],
     jev: Annotated[AsyncTypeSafeClient | None, Depends(cliente_jev)],
+    cfg: Annotated[Configuracao, Depends(configuracao_do_turno)],
 ) -> Response:
     """Roda um turno da Conversa e devolve o stream no protocolo do AI SDK."""
     await conversa_do_usuario(session, user, cid)
@@ -306,10 +316,10 @@ async def chat(
     q = select(Message).where(Message.conversation_id == cid).order_by(Message.created_at, Message.id)
     linhas = list((await session.scalars(q)).all())
     uid, nome = user.id, m.model_name
-    historico, comp = await _preparar_historico(session, uid, cid, linhas, mr)
+    historico, comp = await _preparar_historico(session, uid, cid, linhas, mr, cfg)
     await reservar(session, uid, cid, nome, _estimar_input(linhas, novas))
     tools = await toolset_da_conversa(session, uid, cid, t)
-    gate = await _rotear(session, jev, uid, cid, novas[0])
+    gate = await _rotear(session, jev, uid, cid, novas[0], cfg.roteador_limiar)
     # Depois da reserva e do Roteador: o base64 não entra na estimativa nem no Jev.
     await montar_anexos(session, uid, novas[0])
     await session.commit()
@@ -322,7 +332,7 @@ async def chat(
     async def eventos() -> AsyncIterator[Any]:
         try:
             async for ev in adapter.run_stream_native(
-                message_history=historico, model=modelos, model_settings=AJUSTES, conversation_id=str(cid),
+                message_history=historico, model=modelos, model_settings=ajustes(cfg), conversation_id=str(cid),
                 toolsets=[tools], capabilities=[gate, *([comp.capability()] if comp else [])],
                 usage_limits=limites,
             ):

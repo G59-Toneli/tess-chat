@@ -210,10 +210,16 @@ async def test_web_fetch_ligada_no_chat_gera_tool_call(client, usar_modelo, usar
 
 
 async def test_toggle_global_desliga_em_toda_conversa_e_e_auditado(client):
-    uid, h = await usuario(client)
+    from tests.test_auditoria import demo
+
+    _, h = await usuario(client)
     cid = (await criar(client, h))["id"]
+    hd = await demo(client)
+    uid = (await client.get("/users/me", headers=hd)).json()["id"]
     try:
-        r = await client.put("/api/tools/web_fetch", json={"ativa_global": False}, headers=h)
+        # Toggle global é só do admin (ticket 14).
+        assert (await client.put("/api/tools/web_fetch", json={"ativa_global": False}, headers=h)).status_code == 403
+        r = await client.put("/api/tools/web_fetch", json={"ativa_global": False}, headers=hd)
         assert r.status_code == 200, r.text
         assert r.json()["ativa_global"] is False
         catalogo = {t["nome"]: t for t in (await client.get("/api/tools", headers=h)).json()}
@@ -221,13 +227,15 @@ async def test_toggle_global_desliga_em_toda_conversa_e_e_auditado(client):
         # Conversa sem toggle próprio herda o global.
         conv = (await client.get(f"/api/conversations/{cid}/tools", headers=h)).json()
         assert estado(conv)["web_fetch"] is False
-        [ev] = await eventos("tool_toggled_global", user_id=uid)
+        ev = max(await eventos("tool_toggled_global", user_id=uid), key=lambda e: e.id)
         assert ev.payload == {"tool": "web_fetch", "ativa_global": False}
     finally:
-        await client.put("/api/tools/web_fetch", json={"ativa_global": True}, headers=h)
+        await client.put("/api/tools/web_fetch", json={"ativa_global": True}, headers=hd)
 
 
 async def test_toggle_global_de_tool_inexistente_e_sem_login(client):
-    _, h = await usuario(client)
+    from tests.test_auditoria import demo
+
+    h = await demo(client)
     assert (await client.put("/api/tools/nao_existe", json={"ativa_global": True}, headers=h)).status_code == 404
     assert (await client.put("/api/tools/web_fetch", json={"ativa_global": True})).status_code == 401
