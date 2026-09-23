@@ -201,19 +201,22 @@ Funções que o agente implementou no lugar do Toneli. São as que mais caem em 
 |---|---|---|
 | `credito.py` | 3 | custo real em micro-USD, tamanho da reserva, dia do gasto no fuso do browser |
 | `compactacao.py` | 3 | gatilho pelo limiar, ponto de corte no início de turno, roda só no passo 1 |
-| `chat.py` | 4 | estimativa local do input, gravar a resposta no fim, 502 só antes do primeiro evento, `rodar_turno` fora da request |
+| `chat.py` | 7 | estimativa local do input, arquivo de tool fora do banco, gravar a resposta no fim (pergunta já gravada, ADR 0023), turno que compactou, 502 só antes do primeiro evento, stream aberto antes da Compactação, `rodar_turno` fora da request |
 | `turnos.py` | 1 | leitor do buffer: replay desde o chunk 0 e tail |
 | `roteador.py` | 1 | gate: força a Tool só com confiança acima do limiar |
 | `resiliencia.py` | 1 | o que é erro transitório |
-| `tools.py` | 2 | fallback Jina para trafilatura, Tool ativa = global E Conversa |
-| `shares.py` | 2 | 404 único, corte no maior id |
-| `conversas.py` | 2 | 404 para Conversa alheia, remoção física |
-| `anexos.py` | 2 | tipo pelos bytes, só anexo próprio vai ao modelo |
+| `tools.py` | 6 | fallback Jina para trafilatura, Tool ativa = global E Conversa, schema aberto e modo VALIDATED do Gemini, falha do servidor MCP, teto de tool calls |
+| `shares.py` | 5 | 404 único, corte no maior id, anexo pelo link, fork, estado do Rascunho na cópia |
+| `conversas.py` | 3 | 404 para Conversa alheia, remoção física, contexto usado da rosca |
+| `anexos.py` | 3 | tipo pelos bytes, só anexo próprio vai ao modelo, anexo anterior volta com bytes |
 | `auth.py` | 2 | `login_failed` por override, seed da conta demo |
 | `auditoria.py` | 1 | quem vê o quê |
 | `configuracao.py` | 1 | herança campo a campo |
 | `mcp.py` | 3 | nome da Tool com o id do servidor, barreira de SSRF, conectar antes de gravar |
-| `conectores.py` | 3 | refresh do token, primeiro arquivo legível do Drive, `state` do OAuth em JWT |
+| `mcp_oauth.py` | 5 | descoberta, só DCR, `resource` na troca e no refresh, refresh antes do turno, state JWT mais cookie do PKCE |
+| `conectores.py` | 9 | validade do token pela lib, retry só em GET, primeiro arquivo legível do Drive, Tool só cria Rascunho, `state` do OAuth em JWT, perfil do Gmail, cookie do PKCE, mapa de erro do Gmail, envio com trava de linha |
+| `limpeza_anexos.py` | 1 | varredura diária em vez de hook na exclusão |
+| `rede.py` | 1 | todo IP resolvido precisa ser público |
 
 ## Sugestões
 
