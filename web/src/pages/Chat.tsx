@@ -36,6 +36,7 @@ import {
   juntarTurnos,
   lerCorte,
   listarMensagens,
+  pararTurno,
   sair,
   textoErroAnexo,
   textoErroChat,
@@ -228,15 +229,25 @@ function ChatConversa({
     },
     [id],
   )
+  // Conversa que acabou de nascer em "/" não tem turno para retomar. O 204 da retomada
+  // poria o status em ready no meio do envio. Congelado: o envio apaga a entrada de pendentes.
+  const [retomar] = useState(() => !pendentes.has(id))
   const transport = useMemo(
-    // headers como função: lê o token na hora do envio.
-    () => new DefaultChatTransport({ api: `/api/chat/${id}`, headers: () => authHeader() }),
+    // headers como função: lê o token na hora do envio. A retomada iria para {api}/{id}/stream: aponta a rota certa.
+    () =>
+      new DefaultChatTransport({
+        api: `/api/chat/${id}`,
+        headers: () => authHeader(),
+        prepareReconnectToStreamRequest: ({ headers }) => ({ api: `/api/chat/${id}/stream`, headers }),
+      }),
     [id],
   )
   const { messages, sendMessage, status, stop, error, regenerate, clearError } = useChat({
     id,
     messages: inicial,
     transport,
+    // O turno segue no servidor sem o cliente (ADR 0023). Ao montar, retoma o stream dele se houver.
+    resume: retomar,
     onFinish: ({ message, messages, isError, isAbort }) => {
       void recarregarConversas()
       if (!isError && !isAbort) void buscarUso(message.id)
@@ -291,6 +302,12 @@ function ChatConversa({
   // Entre tools: o indicador vai no fim da última mensagem, abaixo do último card.
   const aguardando = textoTrabalhando(ultima, status)
 
+  // Parar cancela o turno no servidor; o stop() só larga o stream local.
+  async function parar() {
+    await pararTurno(id).catch(() => toast.error('Não foi possível parar a resposta no servidor.'))
+    void stop()
+  }
+
   async function enviar(texto: string, arquivos: FileUIPart[] = []) {
     if ((!texto.trim() && arquivos.length === 0) || status === 'submitted' || status === 'streaming') return
     const partes = await subirAnexos(arquivos)
@@ -300,7 +317,7 @@ function ChatConversa({
 
   return (
     <LayoutChat
-      entrada={<Entrada conversaId={id} status={status} onEnviar={enviar} onParar={stop} />}
+      entrada={<Entrada conversaId={id} status={status} onEnviar={enviar} onParar={parar} />}
     >
       {visiveis.length === 0 && !pensando && !cap ? (
         <TelaVazia onEscolher={enviar} />

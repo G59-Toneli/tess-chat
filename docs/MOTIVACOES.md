@@ -163,3 +163,13 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 | Decisão | Por quê | Fonte |
 |---|---|---|
 | **Roteador só força tool `nativa` ou `google`; tool `mcp` fica sugerida (`forcada=false`, `sugerida=true`) e o modelo escolhe livre** | O Jev não tem contexto para escolher entre tools genéricas de servidor externo (planner, busca de docs, feedback). Nos tickets 33 e 35 ele forçou `stripe_implementation_planner` (0,78 e 0,83) e o turno terminou sem ação. Forçar errado custa o turno inteiro. Alternativa descartada: tirar as tools MCP da entrada do Jev (perde o registro da decisão na Auditoria e na Tela do Roteador). | [ADR 0005](adr/0005-jev-como-roteador-pre-chamada.md) (emenda 23/09), `app/roteador.py` |
+
+## 7. Turno em background (ticket 55)
+
+| Decisão | Por quê | Fonte |
+|---|---|---|
+| **O turno roda numa `asyncio.Task` fora da request. A resposta HTTP só lê um buffer** | Trocar de tela ou dar F5 cancelava o run no `http.disconnect`. As tools MCP já tinham agido, e o turno sumia sem Mensagem e sem cobrança. | [ADR 0023](adr/0023-turno-em-background.md), `REVISAR(human)` em `rodar_turno` |
+| **Buffer em memória, sem Redis** | O deploy é um uvicorn só. Broker seria infra para um problema que ainda não existe. Com multi-worker, o buffer vai para Redis. | idem |
+| **Pergunta gravada no início** | Ao voltar para a tela, a pergunta aparece na hora, e o `/stream` retoma a resposta. Custo: turno que falha deixa a pergunta sem resposta. | idem |
+| **Parar pelo `CancellationToken`, não por `Task.cancel()`** | O token vira `RunCancelled`, e o `on_cancel` grava o parcial e cobra, pelo mesmo caminho do `ComTeto`. `Task.cancel()` vira `CancelledError` e perde o parcial. | idem |
+| **Replay desde o chunk 0 no `/stream`** | O `useChat` com `resume: true` monta a resposta do zero. Sem o `start`, ele não tem o message id. | `REVISAR(human)` em `TurnoAtivo.ler` |

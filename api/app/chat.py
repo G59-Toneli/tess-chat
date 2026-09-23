@@ -1,15 +1,17 @@
 """Chat com streaming: histórico do banco, Agent do Pydantic AI, protocolo do AI SDK (ADR 0001, 0003)."""
 
+import asyncio
+import logging
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from dataclasses import replace
 from functools import cache
 from typing import Annotated, Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 from pydantic_ai import Agent
 from pydantic_ai.agent import AgentRunResult
@@ -32,13 +34,14 @@ from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, TextUIPart, UIMessage
+from pydantic_ai.ui.vercel_ai._event_stream import VERCEL_AI_DSP_HEADERS
 from pydantic_ai.ui.vercel_ai.response_types import BaseChunk, DataChunk, TextDeltaChunk, TextEndChunk, TextStartChunk
 from pydantic_ai.usage import RunUsage
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
 
-from app import mcp
+from app import mcp, turnos
 from app.anexos import ligar_a_mensagem, montar_anexos, partes_do_historico, partes_por_referencia
 from app.audit import audit
 from app.compactacao import Compactacao, com_resumo, modelo_resumo, ponto_de_corte, should_compact, ultimo_resumo
@@ -58,6 +61,9 @@ MODELO_RESERVA = "gemini-3.7-flash"
 # Imagem no Gemini 3, media_resolution default (high). Fonte: ai.google.dev/gemini-api/docs/media-resolution.
 TOKENS_IMAGEM = 1120
 SDK = 7
+# Espera do POST /parar pelo parcial gravado. Passou disso, responde e o turno acaba sozinho.
+PARAR_TIMEOUT_S = 10.0
+log = logging.getLogger(__name__)
 
 # Tools MCP genéricas (Stripe) têm `parameters: object` sem propriedades: o nome dos campos só vem do *_api_details.
 INSTRUCOES = (
@@ -210,9 +216,10 @@ def _sem_arquivo_de_tool(msgs: list[ModelMessage]) -> list[ModelMessage]:
     ]
 
 
-# REVISAR(human): grava usuário e assistente juntos, só no fim do turno com sucesso.
-# Turno que falha não deixa mensagem órfã no histórico. Uso vai na mensagem do assistente.
-# Turno cortado (ticket 30) grava o mesmo par, com o aviso na Mensagem do assistente e o uso real.
+# REVISAR(human): grava a resposta do assistente no fim do turno. A pergunta já foi gravada no início
+# (ADR 0023): turno que falha deixa a pergunta sem resposta. Uso vai na mensagem do assistente.
+# Turno cortado (ticket 30) ou parado grava o que houve, com o aviso na Mensagem do assistente e o uso real.
+# Parado antes do 1º token não tem ModelResponse: grava só o aviso.
 async def _persistir(
     cid: uuid.UUID,
     uid: uuid.UUID,
@@ -220,7 +227,6 @@ async def _persistir(
     todas: list[ModelMessage],
     uso: RunUsage,
     antes: int,
-    nova: UIMessage,
     comp: Compactacao | None = None,
     interrupcao: dict[str, Any] | None = None,
 ) -> None:
@@ -230,8 +236,10 @@ async def _persistir(
     # new_messages() não traz a mensagem do front: o adapter a põe no message_history.
     # A Compactação encolhe o histórico do run: o índice das novas desloca junto.
     novas = todas[antes - (comp.removidos if comp else 0) :]
-    resposta = next(m for m in reversed(novas) if isinstance(m, ModelResponse))
+    resposta = next((m for m in reversed(novas) if isinstance(m, ModelResponse)), None)
     ui = VercelAIAdapter.dump_messages(_sem_arquivo_de_tool(novas), sdk_version=SDK)
+    # A 1ª é a pergunta, já no banco.
+    ui = ui[1:] if ui and ui[0].role == "user" else ui
     async with SessionLocal() as s:
         if comp:
             primeira = next((m for m in novas if isinstance(m, ModelResponse)), None)
@@ -240,9 +248,10 @@ async def _persistir(
             Message(conversation_id=cid, role=m.role, parts=[p.model_dump(mode="json", by_alias=True) for p in m.parts])
             for m in ui
         ]
-        # Mensagem do usuário grava a referência do front, não o data URI que foi ao modelo.
-        linhas[0].parts = partes_por_referencia(nova)
-        ultima = next(m for m in reversed(linhas) if m.role == "assistant")
+        ultima = next((m for m in reversed(linhas) if m.role == "assistant"), None)
+        if ultima is None:
+            ultima = Message(conversation_id=cid, role="assistant", parts=[])
+            linhas.append(ultima)
         ultima.model = nome
         ultima.input_tokens = uso.input_tokens
         ultima.output_tokens = uso.output_tokens  # já inclui thinking
@@ -252,15 +261,10 @@ async def _persistir(
             ultima.parts = [*ultima.parts, {"type": AVISO, "data": _aviso(interrupcao)}]
         s.add_all(linhas)
         await s.flush()
-        anexos = await ligar_a_mensagem(s, uid, nova, linhas[0].id)
         conv = await s.get(Conversation, cid)
         conv.updated_at = func.now()
         custo = await acertar(s, uid, cid, ultima.id, nome, uso)
         await _auditar_tentativas(s, uid, cid, turno)
-        await audit(
-            s, "message_sent", user_id=uid, conversation_id=cid,
-            payload={"message_id": linhas[0].id, "attachment_ids": anexos},
-        )
         # Turno cortado: o evento do corte leva o custo no lugar do llm_call (a Auditoria não soma duas vezes).
         await audit(
             s,
@@ -279,10 +283,10 @@ async def _persistir(
                 "message_id": ultima.id,
                 "modelo_pedido": turno.pedido,
                 "modelo_respondido": nome,
-                "modelo_real": resposta.model_name,
+                "modelo_real": resposta.model_name if resposta else None,
                 "tentativas": turno.tentativas,
                 "latencia_primeiro_token_ms": turno.primeiro_token_ms,
-                "motivo_termino": interrupcao["motivo"] if interrupcao else resposta.finish_reason,
+                "motivo_termino": interrupcao["motivo"] if interrupcao else resposta and resposta.finish_reason,
                 **(interrupcao or {}),
             },
         )
@@ -327,13 +331,21 @@ async def corte_atual(
     resumo = await ultimo_resumo(session, cid)
     if resumo is None:
         return {"ate_message_id": None, "turno_message_id": None}
-    # REVISAR(human): o Resumo é gravado durante o turno, antes das Mensagens dele. Então a 1ª
-    # Mensagem `user` criada depois do Resumo é a do turno que compactou.
-    q = (
+    # REVISAR(human): o Resumo é gravado durante o turno, antes da resposta dele. Então a 1ª
+    # Mensagem `assistant` criada depois do Resumo é a do turno que compactou, e a pergunta é a
+    # última `user` antes dela. Vale para os dois jeitos de gravar: pergunta junto com a resposta
+    # (antes do ticket 55) ou no início do turno (ADR 0023). Turno ainda sem resposta: a última pergunta.
+    resposta = (
         select(Message.id)
-        .where(Message.conversation_id == cid, Message.role == "user", Message.created_at > resumo.created_at)
+        .where(Message.conversation_id == cid, Message.role == "assistant", Message.created_at > resumo.created_at)
         .order_by(Message.created_at, Message.id)
         .limit(1)
+        .scalar_subquery()
+    )
+    q = select(func.max(Message.id)).where(
+        Message.conversation_id == cid,
+        Message.role == "user",
+        or_(resposta.is_(None), Message.id < resposta),
     )
     return {"ate_message_id": resumo.ate_message_id, "turno_message_id": await session.scalar(q)}
 
@@ -354,8 +366,70 @@ async def chat(
     jev: Annotated[AsyncTypeSafeClient | None, Depends(cliente_jev)],
     cfg: Annotated[Configuracao, Depends(configuracao_do_turno)],
 ) -> Response:
-    """Roda um turno da Conversa e devolve o stream no protocolo do AI SDK."""
+    """Inicia um turno da Conversa em background e devolve o stream dele no protocolo do AI SDK."""
     await conversa_do_usuario(session, user, cid)
+    ativo = turnos.reservar(cid)
+    try:
+        preparado = await _preparar_turno(cid, request, session, user, m, reserva, mr, t, jev, cfg, ativo)
+    except BaseException:
+        await turnos.encerrar(ativo)
+        raise
+    if isinstance(preparado, Response):
+        await turnos.encerrar(ativo)
+        return preparado
+    sse, pronto = preparado
+    ativo.task = asyncio.create_task(rodar_turno(ativo, sse, pronto))
+    if (falha := await pronto) is not None:
+        return falha
+    return _resposta(ativo)
+
+
+@router.get("/{cid}/stream")
+async def retomar(
+    cid: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(current_user)],
+) -> Response:
+    """Stream do turno ativo desde o início. Sem turno ativo: 204 (contrato do DefaultChatTransport)."""
+    await conversa_do_usuario(session, user, cid)
+    ativo = turnos.ATIVOS.get(cid)
+    return Response(status_code=204) if ativo is None else _resposta(ativo)
+
+
+@router.post("/{cid}/parar", status_code=204)
+async def parar(
+    cid: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(current_user)],
+) -> None:
+    """Botão Parar: cancela o run no servidor e espera o parcial ser gravado e cobrado."""
+    await conversa_do_usuario(session, user, cid)
+    ativo = turnos.ATIVOS.get(cid)
+    if ativo is None:
+        return
+    ativo.parar({"motivo": PARADO})
+    if ativo.task is not None:
+        await asyncio.wait({ativo.task}, timeout=PARAR_TIMEOUT_S)
+
+
+def _resposta(ativo: turnos.TurnoAtivo) -> StreamingResponse:
+    return StreamingResponse(ativo.ler(), headers=VERCEL_AI_DSP_HEADERS, media_type="text/event-stream")
+
+
+async def _preparar_turno(
+    cid: uuid.UUID,
+    request: Request,
+    session: AsyncSession,
+    user: User,
+    m: Model,
+    reserva: Model | None,
+    mr: Model,
+    t: httpx.AsyncBaseTransport | None,
+    jev: AsyncTypeSafeClient | None,
+    cfg: Configuracao,
+    ativo: turnos.TurnoAtivo,
+) -> Response | tuple[AsyncGenerator[str], asyncio.Future[Response | None]]:
+    """Tudo que precisa da request: valida, reserva, roteia, grava a pergunta. Devolve o stream que a task roda."""
     try:
         adapter = await VercelAIAdapter.from_request(request, agent=agent, sdk_version=SDK)
     except ValidationError as e:
@@ -369,6 +443,10 @@ async def chat(
 
     q = select(Message).where(Message.conversation_id == cid).order_by(Message.created_at, Message.id)
     linhas = list((await session.scalars(q)).all())
+    # "Tentar de novo" depois de falha: a pergunta já está no banco, sem resposta. Reusa em vez de duplicar.
+    refazer = adapter.run_input.trigger == "regenerate-message" and linhas and linhas[-1].role == "user"
+    if refazer:
+        linhas.pop()
     uid, nome = user.id, m.model_name
     historico, comp = await _preparar_historico(session, uid, cid, linhas, mr, cfg)
     await reservar(session, uid, cid, nome, _estimar_input(linhas, novas))
@@ -376,18 +454,22 @@ async def chat(
     gate = await _rotear(session, jev, uid, cid, novas[0], cfg.roteador_limiar)
     # Depois da reserva e do Roteador: o base64 não entra na estimativa nem no Jev.
     await montar_anexos(session, uid, adapter.run_input.messages[0])
+    if not refazer:
+        await _gravar_pergunta(session, uid, cid, novas[0])
     await session.commit()
     await session.close()
 
     turno = Turno(nome)
     modelos = cadeia(turno, [m, *([reserva] if reserva else [])])
     teto = ComTeto(tools, cfg.tool_calls_limite)
+    pronto: asyncio.Future[Response | None] = asyncio.get_running_loop().create_future()
 
     async def eventos() -> AsyncIterator[Any]:
         try:
             async for ev in adapter.run_stream_native(
                 message_history=historico, model=modelos, model_settings=ajustes(cfg), conversation_id=str(cid),
                 toolsets=[teto], capabilities=[gate, *([comp.capability()] if comp else [])],
+                cancellation_token=ativo.token,
             ):
                 if isinstance(ev, (PartStartEvent, PartDeltaEvent)):
                     turno.marcar_primeiro_token()
@@ -397,43 +479,88 @@ async def chat(
             raise
 
     nativos = eventos()
+
     # REVISAR(human): com Compactação o stream abre antes do 1º evento do modelo, para o
     # "Compactando histórico…" aparecer durante o Resumo. O preço: falha do provedor nesse
     # turno chega como erro no stream, não como 502. Sem Compactação, nada muda.
-    todos: AsyncIterator[Any] = nativos
-    if comp is None:
-        try:
-            primeiro = await anext(nativos)
-        except ERROS_PROVEDOR as exc:
-            exc = causa(exc)
-            status = f"HTTP {exc.status_code}" if isinstance(exc, ModelHTTPError) else type(exc).__name__
-            return JSONResponse({"detail": f"O provedor do modelo falhou ({status}). Tente de novo."}, status_code=502)
-
-        async def com_primeiro() -> AsyncIterator[Any]:
+    # Roda dentro da task: o 1º evento é esperado lá e o POST só espera `pronto`.
+    async def com_primeiro() -> AsyncIterator[Any]:
+        if comp is None:
+            try:
+                primeiro = await anext(nativos)
+            except ERROS_PROVEDOR as exc:
+                exc = causa(exc)
+                status = f"HTTP {exc.status_code}" if isinstance(exc, ModelHTTPError) else type(exc).__name__
+                detalhe = {"detail": f"O provedor do modelo falhou ({status}). Tente de novo."}
+                pronto.set_result(JSONResponse(detalhe, status_code=502))
+                return
+            finally:
+                # Outro erro abre o stream: o AI SDK recebe o chunk de erro.
+                if not pronto.done():
+                    pronto.set_result(None)
             yield primeiro
-            async for ev in nativos:
-                yield ev
-
-        todos = com_primeiro()
+        else:
+            pronto.set_result(None)
+        async for ev in nativos:
+            yield ev
 
     async def ao_fim(result: AgentRunResult[Any]) -> None:
-        await _persistir(cid, uid, turno, result.all_messages(), result.usage, len(historico), novas[0], comp)
+        await _persistir(cid, uid, turno, result.all_messages(), result.usage, len(historico), comp)
 
     async def ao_cancelar(cancelado: RunCancelled) -> AsyncIterator[BaseChunk]:
-        """Turno cortado pelo ComTeto: fecha a tool pendente, grava com aviso e cobra o uso real."""
-        if teto.corte.interrupcao is None:
+        """Turno cortado pelo ComTeto ou parado pelo Usuário: fecha a tool pendente, grava com aviso e cobra."""
+        interrupcao = teto.corte.interrupcao or ativo.interrupcao
+        if interrupcao is None:
             return
         todas, pendentes = _fechar_pendentes(cancelado.all_messages())
-        inter = {**teto.corte.interrupcao, "tool_call_ids": pendentes}
-        await _persistir(cid, uid, turno, todas, cancelado.usage, len(historico), novas[0], comp, inter)
+        inter = {**interrupcao, "tool_call_ids": pendentes}
+        await _persistir(cid, uid, turno, todas, cancelado.usage, len(historico), comp, inter)
         yield DataChunk(type=AVISO, data=_aviso(inter))
 
-    chunks = adapter.transform_stream(todos, on_complete=ao_fim, on_cancel=ao_cancelar)
+    chunks = adapter.transform_stream(com_primeiro(), on_complete=ao_fim, on_cancel=ao_cancelar)
     if comp is not None:
         chunks = _com_compactando(chunks)
     if tools.fora_do_ar:
         chunks = _com_aviso(chunks, _aviso_mcp(tools.fora_do_ar))
-    return adapter.streaming_response(chunks)
+    return adapter.encode_stream(chunks), pronto
+
+
+# REVISAR(human): o turno inteiro numa asyncio.Task própria, fora do task group da request.
+# O http.disconnect do Starlette mata só o leitor do buffer; o run segue, grava e cobra.
+# `pronto` libera o POST: None abre o stream; uma Response (502) volta no lugar dele e o
+# que vier depois é descartado. Falha antes de `pronto` vai para ele, senão o POST esperaria
+# para sempre. O `finally` tira a Conversa do registro depois do _persistir: sem isso, 409 eterno.
+async def rodar_turno(
+    ativo: turnos.TurnoAtivo, sse: AsyncGenerator[str], pronto: asyncio.Future[Response | None]
+) -> None:
+    try:
+        async for c in sse:
+            if pronto.done() and pronto.result() is not None:
+                break
+            await ativo.escrever(c)
+    except Exception as exc:
+        if not pronto.done():
+            pronto.set_exception(exc)
+        else:
+            log.exception("turno %s falhou", ativo.cid)
+    finally:
+        await sse.aclose()
+        if not pronto.done():
+            pronto.set_result(None)
+        await turnos.encerrar(ativo)
+
+
+async def _gravar_pergunta(s: AsyncSession, uid: uuid.UUID, cid: uuid.UUID, nova: UIMessage) -> None:
+    """Pergunta do Usuário no início do turno (ADR 0023). Referência do anexo, não o data URI."""
+    linha = Message(conversation_id=cid, role="user", parts=partes_por_referencia(nova))
+    s.add(linha)
+    await s.flush()
+    anexos = await ligar_a_mensagem(s, uid, nova, linha.id)
+    conv = await s.get(Conversation, cid)
+    conv.updated_at = func.now()
+    await audit(
+        s, "message_sent", user_id=uid, conversation_id=cid, payload={"message_id": linha.id, "attachment_ids": anexos}
+    )
 
 
 def _aviso_mcp(nomes: list[str]) -> str:
@@ -471,9 +598,12 @@ async def _com_compactando(chunks: AsyncIterator[BaseChunk]) -> AsyncIterator[Ba
 
 
 AVISO = "data-turno-interrompido"
+PARADO = "parado_pelo_usuario"
 
 
 def _evento(interrupcao: dict[str, Any]) -> str:
+    if interrupcao["motivo"] == PARADO:
+        return "turn_stopped"
     return "tool_limit_reached" if interrupcao["motivo"] == "tool_limit_reached" else "mcp_tool_failed"
 
 
@@ -483,7 +613,9 @@ def _aviso(i: dict[str, Any]) -> dict[str, Any]:
     Queda de servidor vai sem o texto do erro: pode ter URL interna. Erro da tool vai com o texto:
     é a resposta do servidor, que o modelo e o card já viram.
     """
-    if i["motivo"] == "tool_limit_reached":
+    if i["motivo"] == PARADO:
+        texto = "Resposta interrompida por você."
+    elif i["motivo"] == "tool_limit_reached":
         texto = f"Turno interrompido: limite de {i['limite']} chamadas de tool."
     elif i["motivo"] == "tool_falhou":
         texto = f"A tool {i['tool']} falhou: {i['msg']}"
