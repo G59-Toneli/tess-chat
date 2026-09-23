@@ -13,3 +13,5 @@
 - [ ] Fluxo completo funciona no link público, em janela anônima.
 - [ ] Push na main atualiza o VPS sem intervenção.
 - [ ] Reiniciar o VPS mantém dados.
+
+**Contexto do VPS (23/09, noite):** conta OCI nova falhou. Deploy temporário no VPS compartilhado, que já roda outro projeto. Chaves SSH chegam dia 24 de manhã. Antes de qualquer alteração: inventariar o que roda (`docker ps`, `ss -tlnp`, proxy existente em 80/443). Nunca parar nem alterar serviço existente. Se houver proxy, adicionar o host `chat.toneli.dev.br` nele. Se não houver, subir o Caddy nosso. Tudo do nosso lado em um único `docker compose` em `/opt/tess-chat`, removível com `down -v`.
