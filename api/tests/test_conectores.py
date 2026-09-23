@@ -27,7 +27,10 @@ LEITURA = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis
 COM_ENVIO = f"{LEITURA} https://www.googleapis.com/auth/gmail.send"
 ARQUIVOS = [
     {"id": "d1", "name": "Plano Q4", "mimeType": "application/vnd.google-apps.document"},
-    {"id": "d2", "name": "foto.png", "mimeType": "image/png"},
+    {
+        "id": "d2", "name": "foto.png", "mimeType": "image/png",
+        "createdTime": "2026-09-20T12:00:00.000Z", "modifiedTime": "2026-09-23T13:05:00.000Z",
+    },
 ]
 PDF = b"%PDF-1.4 guia autorizada 123"
 GUIA = {"id": "p1", "name": "guia.pdf", "mimeType": "application/pdf", "size": str(len(PDF))}
@@ -381,6 +384,29 @@ async def test_drive_search_read_le_o_arquivo(client, google, usar_modelo):
     assert "foto.png" in resposta  # os outros achados vão como lista
     export = next(r for r in google.vistas if r.url.path == "/drive/v3/files/d1/export")
     assert export.url.params["mimeType"] == "text/plain"
+    busca = next(r for r in google.vistas if r.url.path == "/drive/v3/files")
+    assert "orderBy" not in busca.url.params  # a Drive API recusa orderBy com fullText
+    assert "criado 20/09/2026 09:00" in resposta and "modificado 23/09/2026 10:05" in resposta
+
+
+async def test_drive_query_vazia_lista_recentes_com_datas(client, google, usar_modelo):
+    vistos: list[AgentInfo] = []
+    usar_modelo(modelo_que_chama("drive_search_read", {"query": " "}, vistos))
+    _, h = await usuario(client)
+    await conectar(client, h)
+    cid = (await criar(client, h))["id"]
+
+    await client.post(f"/api/chat/{cid}", json=corpo("quais os últimos arquivos do meu Drive?"), headers=h)
+
+    [busca] = [r for r in google.vistas if r.url.path.startswith("/drive/v3/files")]
+    assert busca.url.params["orderBy"] == "modifiedTime desc"
+    assert busca.url.params["q"] == "trashed = false"
+    assert "createdTime" in busca.url.params["fields"]
+    resposta = await ultima_resposta(client, h, cid)
+    assert "Plano Q4" in resposta and "foto.png" in resposta
+    assert "criado 20/09/2026 09:00" in resposta and "modificado 23/09/2026 10:05" in resposta
+    [drive] = [t for t in vistos[0].function_tools if t.name == "drive_search_read"]
+    assert "vazia" in drive.description
 
 
 def arquivos_vistos(msgs: list[ModelMessage]) -> list[BinaryContent]:

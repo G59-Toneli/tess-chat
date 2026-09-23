@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from typing import Annotated, Any
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 import httpx
 from cryptography.fernet import Fernet
@@ -50,6 +51,18 @@ PDF = "application/pdf"
 TETO_PDF = 10 * 1024 * 1024
 # O que o histórico guarda no lugar dos bytes, como `[anexo: nome]` do anexo.
 MARCADOR_PDF = "[arquivo do Drive: {nome}]"
+CAMPOS_DRIVE = "files(id,name,mimeType,createdTime,modifiedTime,size)"
+RECENTES = 10
+FUSO = ZoneInfo("America/Sao_Paulo")
+# Descrição que o modelo vê. Sobrepõe a do registro (migração 0012) sem migração nova (ticket 39).
+DESCRICOES = {
+    "drive_search_read": (
+        "Busca arquivos no Google Drive do usuário pelo nome ou conteúdo e devolve o texto do arquivo mais "
+        "relevante (Docs, Sheets, Slides, texto ou PDF), mais a lista dos outros achados com data de criação "
+        "e de modificação. Com query vazia, lista os 10 arquivos modificados mais recentemente, com as datas, "
+        "sem ler conteúdo: use para 'últimos arquivos', 'recentes', 'de hoje'."
+    ),
+}
 TIMEOUT = httpx.Timeout(30.0)
 EXPIROU = (
     "A conexão com o Google expirou e não pôde ser renovada. "
@@ -267,6 +280,22 @@ def _legivel(mime: str) -> bool:
     return mime in EXPORTAVEIS or mime.startswith("text/") or mime == "application/json"
 
 
+def _data(iso: str | None) -> str | None:
+    """RFC 3339 do Drive em data curta no fuso de Brasília."""
+    if not iso:
+        return None
+    return datetime.fromisoformat(iso).astimezone(FUSO).strftime("%d/%m/%Y %H:%M")
+
+
+def _achado(a: dict[str, Any]) -> str:
+    """Linha de um arquivo: com as datas o modelo responde 'adicionado' ou 'modificado' pela certa (ticket 39)."""
+    partes = [a["mimeType"], f"id {a['id']}"]
+    for rotulo, campo in (("criado", "createdTime"), ("modificado", "modifiedTime")):
+        if d := _data(a.get(campo)):
+            partes.append(f"{rotulo} {d}")
+    return f"- {a['name']} ({', '.join(partes)})"
+
+
 async def _ler_pdf(http: httpx.AsyncClient, alvo: dict[str, Any], outros: str) -> str | ToolReturn:
     """PDF do Drive como arquivo para o modelo. Acima do teto, só o texto explicando."""
     cabeca = f"Arquivo: {alvo['name']} (id {alvo['id']})"
@@ -286,15 +315,26 @@ async def _ler_pdf(http: httpx.AsyncClient, alvo: dict[str, Any], outros: str) -
 # Sem nenhum, baixa o primeiro PDF e devolve como arquivo, pelo mesmo caminho do PDF anexado (ADR 0015):
 # guia e boleto costumam ser escaneados, e texto extraído no servidor viria vazio. PDF acima de
 # TETO_PDF não baixa: volta como texto. Os bytes vão só neste turno; o histórico guarda o marcador.
+# Query vazia só lista os RECENTES por modifiedTime, sem ler (ticket 39): é o único caminho que ordena.
 async def drive_search_read(
     uid: uuid.UUID, query: str, t: httpx.AsyncBaseTransport | None = None
 ) -> str | ToolReturn:
     """Busca no Drive por nome ou conteúdo e devolve o texto (ou o PDF) do arquivo mais relevante."""
 
+    async def listar_recentes(http: httpx.AsyncClient) -> str:
+        params = {"q": "trashed = false", "orderBy": "modifiedTime desc", "pageSize": RECENTES, "fields": CAMPOS_DRIVE}
+        r = await http.get(DRIVE, params=params)
+        r.raise_for_status()
+        arquivos = r.json().get("files", [])
+        if not arquivos:
+            return "Nenhum arquivo no Drive."
+        return "Arquivos do Drive, do modificado mais recentemente ao mais antigo:\n" + "\n".join(map(_achado, arquivos))
+
     async def buscar_e_ler(http: httpx.AsyncClient) -> str | ToolReturn:
         termo = query.replace("\\", "\\\\").replace("'", "\\'")
+        # Sem orderBy: a Drive API recusa ordenação junto com fullText. Vem na ordem de relevância.
         q = f"(name contains '{termo}' or fullText contains '{termo}') and trashed = false"
-        r = await http.get(DRIVE, params={"q": q, "pageSize": 5, "fields": "files(id,name,mimeType,modifiedTime,size)"})
+        r = await http.get(DRIVE, params={"q": q, "pageSize": 5, "fields": CAMPOS_DRIVE})
         r.raise_for_status()
         arquivos = r.json().get("files", [])
         if not arquivos:
@@ -302,7 +342,7 @@ async def drive_search_read(
         alvo = next((a for a in arquivos if _legivel(a["mimeType"])), None)
         if alvo is None:
             alvo = next((a for a in arquivos if a["mimeType"] == PDF), None)
-        outros = "\n".join(f"- {a['name']} ({a['mimeType']}, id {a['id']})" for a in arquivos if a is not alvo)
+        outros = "\n".join(_achado(a) for a in arquivos if a is not alvo)
         if alvo is None:
             return f"Nenhum arquivo em formato de texto. Achados:\n{outros}"
         if alvo["mimeType"] == PDF:
@@ -315,7 +355,7 @@ async def drive_search_read(
         texto = f"Arquivo: {alvo['name']} (id {alvo['id']})\n\n{c.text}"
         return f"{texto[: LIMITE_CHARS - 2000]}\n\nOutros achados:\n{outros}" if outros else texto
 
-    return await _chamar(uid, t, "drive_search_read", buscar_e_ler)
+    return await _chamar(uid, t, "drive_search_read", buscar_e_ler if query.strip() else listar_recentes)
 
 
 AGUARDANDO = (
