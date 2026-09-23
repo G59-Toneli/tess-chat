@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type ChatStatus, type FileUIPart, type UIMessage } from 'ai'
 import { toast } from 'sonner'
-import { MessageSquareIcon, WalletIcon } from 'lucide-react'
+import { MessageSquareIcon, OctagonPauseIcon, WalletIcon } from 'lucide-react'
 import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
 import { AnexoNaMensagem, AnexosDoPrompt, BotaoAnexar, previews } from '@/components/Anexos'
 import { SeletorTools } from '@/components/SeletorTools'
@@ -409,6 +409,8 @@ function LinhaMensagem({
   const usuario = mensagem.role === 'user'
   const tools = partesDeTool(mensagem)
   const primeiraTool = tools[0]
+  const corte = interrupcaoDa(mensagem)
+  const interrompidas = new Set(corte?.tool_call_ids ?? [])
   const rodando = toolRodando(mensagem) ? tools.find((p) => p.state !== 'output-available') : undefined
   // Só decisão que forçou a Tool. Abaixo do limiar quem decidiu foi o Gemini.
   const decisao = uso?.decisao?.forcada ? uso.decisao : undefined
@@ -431,11 +433,16 @@ function LinhaMensagem({
             return (
               <div key={i} className="space-y-1.5">
                 {decisao && parte === primeiraTool && <LinhaRoteador decisao={decisao} />}
-                <BlocoTool parte={parte} duracaoMs={duracoes?.get(parte.toolCallId)} />
+                <BlocoTool
+                  parte={parte}
+                  duracaoMs={duracoes?.get(parte.toolCallId)}
+                  interrompida={interrompidas.has(parte.toolCallId)}
+                />
               </div>
             )
           })}
-          {rodando && <Buscando nome={nomeDaTool(rodando)} />}
+          {rodando && !corte && <Buscando nome={nomeDaTool(rodando)} />}
+          {corte && <AvisoTurnoInterrompido corte={corte} />}
         </MessageContent>
         {(quando || uso) && (
           <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1', usuario && 'justify-end')}>
@@ -448,6 +455,34 @@ function LinhaMensagem({
           </div>
         )}
       </Message>
+    </div>
+  )
+}
+
+// Part que a API grava quando corta o turno (ticket 30): teto de tools ou servidor MCP que caiu.
+type Interrupcao = { texto: string; motivo: string; tool_call_ids?: string[] }
+
+function interrupcaoDa(m: UIMessage): Interrupcao | undefined {
+  const p = m.parts.find((x) => x.type === 'data-turno-interrompido')
+  return p && 'data' in p ? (p.data as Interrupcao) : undefined
+}
+
+function AvisoTurnoInterrompido({ corte }: { corte: Interrupcao }) {
+  return (
+    <div role="status" className="flex items-start gap-3 rounded-lg border bg-muted/40 p-3">
+      <OctagonPauseIcon className="mt-0.5 size-4 shrink-0 text-amber-500" />
+      <p className="text-sm">
+        {corte.texto}
+        {corte.motivo === 'tool_limit_reached' && (
+          <>
+            {' '}Você pode aumentar o limite em{' '}
+            <Link to="/config" className="font-medium underline underline-offset-4">
+              Configuração
+            </Link>
+            .
+          </>
+        )}
+      </p>
     </div>
   )
 }

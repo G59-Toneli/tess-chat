@@ -43,6 +43,7 @@ async def test_conversa_sobrepoe_usuario_que_sobrepoe_default(client):
         "nivel_raciocinio": "low",
         "compactacao_limiar": settings.compactacao_limiar,
         "roteador_limiar": settings.roteador_limiar,
+        "tool_calls_limite": settings.tool_calls_limit,
     }
 
     await put(client, "/api/settings", h, modelo=LITE, compactacao_limiar=5_000)
@@ -80,7 +81,8 @@ async def test_valores_invalidos_e_conversa_de_outro(client):
     _, h2 = await usuario(client)
     cid = (await criar(client, h))["id"]
 
-    for campos in ({"modelo": "gpt-9"}, {"roteador_limiar": 1.5}, {"compactacao_limiar": 0}, {"nivel_raciocinio": "max"}):
+    for campos in ({"modelo": "gpt-9"}, {"roteador_limiar": 1.5}, {"compactacao_limiar": 0}, {"nivel_raciocinio": "max"},
+                   {"tool_calls_limite": 0}):
         assert (await client.put("/api/settings", json=campos, headers=h)).status_code == 422, campos
     assert (await client.get(f"/api/conversations/{cid}/settings", headers=h2)).status_code == 404
     assert (await client.put(f"/api/conversations/{cid}/settings", json={}, headers=h2)).status_code == 404
@@ -172,3 +174,23 @@ async def test_cap_por_usuario_so_admin(client):
         {"cap_micro_usd": {"de": settings.cap_usuario_micro_usd, "para": 500_000}},
         {"cap_micro_usd": {"de": 500_000, "para": 700_000}},
     ]
+
+
+async def test_teto_de_tools_da_conversa_sobrepoe_o_do_usuario(client, usar_modelo, usar_rotas):
+    from tests.test_resiliencia import modelo_que_busca_sempre
+
+    usar_rotas(Rotas())
+    m, pedidos = modelo_que_busca_sempre()
+    usar_modelo(m)
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    await put(client, "/api/settings", h, tool_calls_limite=7)
+    conv = await put(client, f"/api/conversations/{cid}/settings", h, tool_calls_limite=2)
+    assert conv["herdada"]["tool_calls_limite"] == 7
+    assert conv["efetiva"]["tool_calls_limite"] == 2
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("pesquise"), headers=h)
+
+    assert r.status_code == 200, r.text
+    # Teto 2: a 3ª chamada é cortada.
+    assert len(pedidos) == 3

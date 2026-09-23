@@ -7,8 +7,10 @@ from dataclasses import dataclass, field
 from typing import Annotated, Any
 
 import httpx
+import httpx2
 import trafilatura
 from fastapi import APIRouter, Depends, HTTPException
+from mcp.types import CONNECTION_CLOSED, REQUEST_TIMEOUT
 from pydantic import BaseModel, Field
 from pydantic_ai import FunctionToolset, RunContext
 from pydantic_ai.toolsets import AbstractToolset, CombinedToolset, WrapperToolset
@@ -25,7 +27,7 @@ from app.config import settings
 from app.auth import User, current_superuser
 from app.conversas import Conversation, Sessao, Usuario, conversa_do_usuario
 from app.db import Base, SessionLocal
-from app.resiliencia import resumo_erro
+from app.resiliencia import TIMEOUTS, resumo_erro
 
 # Teto do texto que volta ao modelo por chamada (~6k tokens, INFERIDO).
 LIMITE_CHARS = 20_000
@@ -148,6 +150,7 @@ class Auditada(WrapperToolset[Any]):
     cid: uuid.UUID
     origens: dict[str, str]
     fora_do_ar: list[str] = field(default_factory=list)  # nomes dos Servidores MCP que a sonda tirou do turno
+    servidores: dict[str, str] = field(default_factory=dict)  # tool MCP -> nome do Servidor MCP
 
     async def call_tool(
         self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
@@ -203,7 +206,78 @@ async def toolset_da_conversa(
             payload={"servidor": str(srv.id), "nome": srv.nome, **resumo_erro(erro)},
         )
     todos = CombinedToolset([ts, *(mcp.toolset(s, por_servidor[s.id]) for s in vivos)])
-    return Auditada(todos, uid, cid, {tool.nome: tool.origem for tool in ativas}, fora)
+    nomes = {s.id: s.nome for s in vivos}
+    servidores = {t: nomes[sid] for sid, grupo in por_servidor.items() if sid in nomes for t in grupo}
+    return Auditada(todos, uid, cid, {tool.nome: tool.origem for tool in ativas}, fora, servidores)
+
+
+# REVISAR(human): falha do servidor MCP, não da tool. O MCPToolset embrulha o MCPError do SDK
+# num ModelRetry; o código dele diz se foi timeout (REQUEST_TIMEOUT) ou conexão (CONNECTION_CLOSED).
+# Erro que a tool devolve (ToolError, MCPError de outro código) não corta: segue ao modelo.
+def _falha_mcp(exc: BaseException) -> str | None:
+    e: BaseException | None = exc
+    while e is not None:
+        codigo = getattr(getattr(e, "error", None), "code", None)
+        if codigo == REQUEST_TIMEOUT or isinstance(e, TIMEOUTS):
+            return "mcp_timeout"
+        if codigo == CONNECTION_CLOSED or isinstance(e, (httpx.TransportError, httpx2.TransportError)):
+            return "mcp_fora_do_ar"
+        e = e.__cause__ or e.__context__
+    return None
+
+
+@dataclass
+class Corte:
+    chamadas: int = 0
+    interrupcao: dict[str, Any] | None = None
+
+
+@dataclass
+class ComTeto(WrapperToolset[Any]):
+    """Corta o turno por fora do modelo: teto de chamadas ou tool MCP que caiu (ticket 30).
+
+    Cancela o run em vez de levantar erro. O Pydantic AI fecha a tool pendente como interrompida
+    e entrega mensagens e uso ao `on_cancel` do chat, que persiste e cobra o turno.
+    """
+
+    wrapped: Auditada
+    limite: int
+    # O Pydantic AI copia o toolset a cada passo (dataclasses.replace): o estado mora num objeto compartilhado.
+    corte: Corte = field(default_factory=Corte)
+
+    async def _cortar(self, ctx: RunContext[Any], interrupcao: dict[str, Any]) -> None:
+        self.corte.interrupcao = interrupcao
+        ctx.cancel()
+        await asyncio.sleep(0)  # o cancelamento chega aqui; a tool não roda
+        raise RuntimeError("turno cancelado")  # defesa: não deve ser alcançado
+
+    async def __aexit__(self, *args: Any) -> bool | None:
+        try:
+            return await super().__aexit__(*args)
+        except Exception:
+            # Servidor MCP que caiu falha de novo ao fechar a sessão. Esse erro trocaria o
+            # cancelamento por erro genérico no stream; o corte já está registrado.
+            if self.corte.interrupcao is None or self.corte.interrupcao["motivo"] == "tool_limit_reached":
+                raise
+            return None
+
+    # REVISAR(human): o que corta o turno. A (limite+1)ª chamada não roda; o teto conta chamadas,
+    # não requests, porque é o que o Usuário vê como cards. Tool MCP cujo servidor caiu ou estourou
+    # o timeout também corta: repetir no mesmo turno só gastaria mais requests.
+    async def call_tool(
+        self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
+    ) -> Any:
+        self.corte.chamadas += 1
+        if self.corte.chamadas > self.limite:
+            await self._cortar(ctx, {"motivo": "tool_limit_reached", "limite": self.limite})
+        try:
+            return await super().call_tool(name, tool_args, ctx, tool)
+        except Exception as exc:
+            motivo = _falha_mcp(exc) if self.wrapped.origens.get(name) == "mcp" else None
+            if motivo is None:
+                raise
+            servidor = self.wrapped.servidores.get(name)
+            await self._cortar(ctx, {"motivo": motivo, "servidor": servidor, "tool": name, **resumo_erro(exc)})
 
 
 def _ligar(nome: str, t: httpx.AsyncBaseTransport | None):

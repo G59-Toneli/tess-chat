@@ -1,9 +1,11 @@
 import { useRef } from 'react'
 import { isStaticToolUIPart, type ToolUIPart, type UIMessage } from 'ai'
-import { CpuIcon, GlobeIcon, RouteIcon } from 'lucide-react'
+import { ChevronDownIcon, CpuIcon, GlobeIcon, OctagonPauseIcon, RouteIcon, WrenchIcon } from 'lucide-react'
 import { Shimmer } from '@/components/ai-elements/shimmer'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai-elements/sources'
-import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@/components/ai-elements/tool'
+import { getStatusBadge, Tool, ToolContent, ToolInput, ToolOutput } from '@/components/ai-elements/tool'
+import { Badge } from '@/components/ui/badge'
+import { CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ehRascunho, RascunhoEmail } from '@/components/RascunhoEmail'
 import { fontesDaBusca, type DecisaoRoteador, type Uso } from '@/lib/tools'
 
@@ -32,6 +34,17 @@ export function useDuracoes(mensagens: UIMessage[]): Map<string, number> {
   return duracao.current
 }
 
+// Tool MCP vem como <slug do servidor>_<4 hex>_<tool> (api/app/mcp.py, prefixo()).
+const PREFIXO_MCP = /^([a-z][a-z0-9_]*?)_([0-9a-f]{4})_(.+)$/
+
+/** Separa o servidor MCP do nome da tool. Tool nativa volta sem servidor. */
+export function partesDoNome(nome: string): { servidor?: string; tool: string } {
+  const m = PREFIXO_MCP.exec(nome)
+  if (!m) return { tool: nome }
+  const servidor = m[1].replace(/_/g, ' ')
+  return { servidor: servidor.charAt(0).toUpperCase() + servidor.slice(1), tool: m[3] }
+}
+
 function segundos(ms: number) {
   return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1).replace('.', ',')} s`
 }
@@ -45,8 +58,17 @@ export function LinhaRoteador({ decisao }: { decisao: DecisaoRoteador }) {
   )
 }
 
-export function BlocoTool({ parte, duracaoMs }: { parte: ToolUIPart; duracaoMs?: number }) {
+export function BlocoTool({
+  parte,
+  duracaoMs,
+  interrompida = false,
+}: {
+  parte: ToolUIPart
+  duracaoMs?: number
+  interrompida?: boolean
+}) {
   const nome = nomeDaTool(parte)
+  const { servidor, tool } = partesDoNome(nome)
   // gmail_send vira cartão com Enviar/Descartar. Erro da tool (texto) segue no bloco comum.
   if (nome === 'gmail_send' && parte.state === 'output-available' && ehRascunho(parte.output))
     return <RascunhoEmail saida={parte.output} />
@@ -57,17 +79,28 @@ export function BlocoTool({ parte, duracaoMs }: { parte: ToolUIPart; duracaoMs?:
   return (
     <div className="space-y-2">
       <Tool className="mb-0">
-        <div className="relative">
-          <ToolHeader type={parte.type} state={parte.state} title={nome} />
-          {duracaoMs !== undefined && (
-            <span className="pointer-events-none absolute top-1/2 right-10 -translate-y-1/2 text-xs text-muted-foreground tabular-nums">
-              {segundos(duracaoMs)}
-            </span>
+        {/* Header próprio: o nome encolhe com reticências; servidor, latência, estado e seta nunca se sobrepõem. */}
+        <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 p-3">
+          <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
+          {servidor && (
+            <Badge variant="outline" className="max-w-32 truncate">
+              {servidor}
+            </Badge>
           )}
-        </div>
+          <span className="min-w-0 truncate text-left text-sm font-medium" title={nome}>
+            {tool}
+          </span>
+          <span className="ml-auto flex shrink-0 items-center gap-2">
+            {duracaoMs !== undefined && !interrompida && (
+              <span className="text-xs text-muted-foreground tabular-nums">{segundos(duracaoMs)}</span>
+            )}
+            {interrompida ? <BadgeInterrompida /> : getStatusBadge(parte.state)}
+            <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+          </span>
+        </CollapsibleTrigger>
         <ToolContent>
           <ToolInput input={parte.input} />
-          <ToolOutput output={saida} errorText={parte.errorText} />
+          {!interrompida && <ToolOutput output={saida} errorText={parte.errorText} />}
         </ToolContent>
       </Tool>
       {fontes.length > 0 && (
@@ -84,6 +117,15 @@ export function BlocoTool({ parte, duracaoMs }: { parte: ToolUIPart; duracaoMs?:
         </Sources>
       )}
     </div>
+  )
+}
+
+function BadgeInterrompida() {
+  return (
+    <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
+      <OctagonPauseIcon className="size-4 text-amber-500" />
+      Interrompida
+    </Badge>
   )
 }
 

@@ -1,7 +1,7 @@
 # 30 — Teto de tool calls: visível no chat, configurável, e card da tool sem sobreposição
 
 **Type:** task (AFK)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ticket 06b (teto), ticket 14 (Configuração), `docs/LACUNAS.md` (turno cortado não é cobrado), `api/app/chat.py`, `api/app/configuracao.py`, `web/src/components/BlocoTool.tsx`. Caso real do Toneli em 23/09 11:40 com o MCP do Stripe.
 
@@ -14,7 +14,14 @@
 4. **Card da tool.** Latência e badge de estado em elementos separados, sem sobreposição, em qualquer largura. Nome longo de tool MCP (`stripe_5f8e_stripe_api_search`) trunca com reticências e mostra inteiro no title; o prefixo do servidor pode virar um badge pequeno com o nome do servidor ("Stripe").
 
 **Aceite:**
-- [ ] Teste: turno com FunctionModel que pede 6 tools e teto 5 → evento `tool_limit_reached`, Mensagem do assistente persistida com o aviso, ledger acertado com o uso real.
-- [ ] Teste: `tool_calls_limite` por conversa sobrepõe o do usuário.
-- [ ] Screenshot dark `30-turno-interrompido.png` (card "Interrompida" + aviso) e `30-card-tool.png` (badge e latência lado a lado com nome longo).
-- [ ] `tsc`, `npm run build`, `uv run pytest tests/test_chat.py tests/test_configuracao.py tests/test_resiliencia.py tests/test_mcp.py` verdes.
+- [x] Teste: turno com FunctionModel que pede 6 tools e teto 5 → evento `tool_limit_reached`, Mensagem do assistente persistida com o aviso, ledger acertado com o uso real.
+- [x] Teste: `tool_calls_limite` por conversa sobrepõe o do usuário.
+- [x] Screenshot dark `30-turno-interrompido.png` (card "Interrompida" + aviso) e `30-card-tool.png` (badge e latência lado a lado com nome longo).
+- [x] `tsc`, `npm run build`, `uv run pytest tests/test_chat.py tests/test_configuracao.py tests/test_resiliencia.py tests/test_mcp.py` verdes.
+
+## Answer
+- `ComTeto` (api/app/tools.py) conta as chamadas e, no teto ou em falha de servidor MCP (conexão fechada, timeout), cancela o run com `ctx.cancel()`. O `on_cancel` do chat fecha a tool pendente como interrompida, grava a Mensagem com a part `data-turno-interrompido`, acerta o Ledger com o uso real e emite `tool_limit_reached` ou `mcp_tool_failed` com custo. `UsageLimits` saiu.
+- `tool_calls_limite` na Configuração (migração 0018, 1 a 50), default do `.env` 10. Campo em `/config`, seção Limiares.
+- Card da tool com header próprio: badge do servidor MCP, nome com `title` e reticências, latência e estado num grupo que não encolhe. "Interrompida" e aviso com link para Configuração, ao vivo e depois de recarregar.
+- Ressalvas: timeout MCP de 15 s sem teste (mesmo caminho do servidor caído). Screenshots com a API nova na 8001 e modelo/tools Stripe falsos que repetem a auditoria de 14:40, porque o `.env` atual não tem `CONNECTORS_KEY`.
+- REVISAR(human): `_falha_mcp` e `ComTeto.call_tool` (tools.py), `_persistir` (chat.py).

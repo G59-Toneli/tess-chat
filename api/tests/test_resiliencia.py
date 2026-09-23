@@ -124,27 +124,61 @@ async def test_llm_call_traz_latencia_do_primeiro_token_e_total(client, usar_mod
     assert call.payload["motivo_termino"] == "stop"
 
 
-async def test_teto_de_tool_calls_corta_o_turno(client, usar_modelo, usar_rotas, monkeypatch):
-    from app.config import settings
-
-    usar_rotas(Rotas())
-    monkeypatch.setattr(settings, "tool_calls_limit", 2)
-    n = 0
+def modelo_que_busca_sempre() -> tuple[FunctionModel, list[int]]:
+    """Pede uma web_search nova a cada request, sem nunca responder texto."""
+    pedidos: list[int] = []
 
     async def stream(_msgs: list[ModelMessage], _info: AgentInfo):
-        nonlocal n
-        n += 1
+        pedidos.append(1)
+        n = len(pedidos)
         yield {0: DeltaToolCall(name="web_search", json_args=json.dumps({"query": f"q{n}"}), tool_call_id=f"c{n}")}
 
-    usar_modelo(FunctionModel(stream_function=stream, model_name=MODELO))
+    return FunctionModel(stream_function=stream, model_name=MODELO), pedidos
 
-    uid, _h, _cid, r = await turno(client)
 
-    assert r.status_code == 200
-    assert '"type":"error"' in r.text.replace(" ", "")
+def chunks(texto: str) -> list[dict]:
+    return [json.loads(l[6:]) for l in texto.splitlines() if l.startswith("data: {")]
+
+
+async def test_teto_de_tool_calls_corta_o_turno_e_cobra_o_uso_real(client, usar_modelo, usar_rotas):
+    rotas = Rotas()
+    usar_rotas(rotas)
+    m, pedidos = modelo_que_busca_sempre()
+    usar_modelo(m)
+    uid, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    r = await client.put(f"/api/conversations/{cid}/settings", json={"tool_calls_limite": 5}, headers=h)
+    assert r.status_code == 200, r.text
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("pesquise"), headers=h)
+
+    assert r.status_code == 200, r.text
+    tipos = [c["type"] for c in chunks(r.text)]
+    assert "error" not in tipos
+    [aviso] = [c for c in chunks(r.text) if c["type"] == "data-turno-interrompido"]
+    assert aviso["data"]["motivo"] == "tool_limit_reached"
+    assert aviso["data"]["limite"] == 5
+    assert aviso["data"]["tool_call_ids"] == ["c6"]
+    # A 6ª chamada foi pedida e cortada: a Tavily só viu 5 buscas.
+    assert len(pedidos) == 6
+    assert len([v for v in rotas.vistas if v.url.host == "api.tavily.com"]) == 5
+
+    # A Mensagem do assistente fica com o aviso e com o card fechado (não volta como "Rodando").
+    msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+    partes = [p for m in msgs if m["role"] == "assistant" for p in m["parts"]]
+    assert [p["data"]["motivo"] for p in partes if p["type"] == "data-turno-interrompido"] == ["tool_limit_reached"]
+    tools = [p for p in partes if p["type"] == "tool-web_search"]
+    assert len(tools) == 6
+    assert all(p["state"] == "output-available" for p in tools)
+
     [ev] = await eventos("tool_limit_reached", user_id=uid)
-    assert ev.payload["limite"] == 2
-    assert n == 3
+    assert ev.payload["limite"] == 5
+    assert ev.payload["requests"] == 6
+    async with SessionLocal() as s:
+        [linha] = (await s.scalars(select(CreditLedger).where(CreditLedger.user_id == uid))).all()
+    assert linha.input_tokens > 0 and linha.cost_micro_usd > 0
+    assert (linha.input_tokens, linha.cost_micro_usd) == (ev.input_tokens, ev.cost_micro_usd)
+    assert linha.message_id == msgs[-1]["id"]
 
 
 async def test_os_dois_modelos_esgotam_vira_502(client, usar_modelo, usar_reserva):

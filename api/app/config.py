@@ -34,8 +34,9 @@ class Settings(BaseSettings):
     compactacao_turnos_literais: int = 2
     # Anexos (ticket 09). Fora do git (`data/` no .gitignore).
     attachments_dir: Path = Path(__file__).resolve().parents[2] / "data" / "attachments"
-    # Teto de tool calls por turno (ticket 06b). Vai para a Configuração no ticket 14.
-    tool_calls_limit: int = 5
+    # Teto de tool calls por turno (ticket 06b). Default; a Configuração sobrepõe (ticket 30).
+    # 10: um MCP genérico gasta 3 chamadas por ação (search, details, write).
+    tool_calls_limit: int = 10
     # Conector Google (ticket 18, ADR 0010). O redirect do OAuth sai de public_base_url.
     google_client_id: str | None = None
     google_client_secret: str | None = None

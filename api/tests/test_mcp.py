@@ -299,3 +299,37 @@ async def test_host_que_nao_resolve_da_422(client):
     r = await cadastrar(client, h, "https://nao-existe.invalid/mcp")
 
     assert r.status_code == 422
+
+
+async def test_servidor_cai_no_meio_do_turno_e_o_turno_termina_com_aviso(client, demo_derrubavel, usar_modelo):
+    from pydantic_ai.models.function import DeltaToolCall, FunctionModel
+
+    from app.chat import MODELO
+    from tests.test_resiliencia import chunks
+
+    url, derrubar = demo_derrubavel
+    uid, h = await usuario(client)
+    srv = (await cadastrar(client, h, url, nome="Caidor")).json()
+    somar = next(t["nome"] for t in srv["tools"] if t["nome"].endswith("_somar"))
+
+    async def stream(_msgs, _info):
+        # A sonda do turno já passou: o servidor cai entre ela e a chamada da tool.
+        derrubar()
+        yield {0: DeltaToolCall(name=somar, json_args='{"a": 2, "b": 3}', tool_call_id="c1")}
+
+    usar_modelo(FunctionModel(stream_function=stream, model_name=MODELO))
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("quanto é 2 + 3?"), headers=h)
+
+    assert r.status_code == 200, r.text
+    assert "error" not in [c["type"] for c in chunks(r.text)]
+    [aviso] = [c for c in chunks(r.text) if c["type"] == "data-turno-interrompido"]
+    assert aviso["data"]["motivo"] == "mcp_fora_do_ar"
+    assert aviso["data"]["servidor"] == "Caidor"
+    assert aviso["data"]["tool_call_ids"] == ["c1"]
+    msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+    assert any(p["type"] == "data-turno-interrompido" for p in msgs[-1]["parts"])
+    [ev] = await eventos("mcp_tool_failed", user_id=uid)
+    assert ev.payload["servidor"] == "Caidor" and ev.payload["tool"] == somar
+    assert ev.cost_micro_usd > 0

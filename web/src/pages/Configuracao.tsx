@@ -35,6 +35,7 @@ function paraForm(v: Valores): Form {
     nivel_raciocinio: v.nivel_raciocinio ?? HERDAR,
     compactacao_limiar: v.compactacao_limiar?.toString() ?? '',
     roteador_limiar: v.roteador_limiar?.toString().replace('.', ',') ?? '',
+    tool_calls_limite: v.tool_calls_limite?.toString() ?? '',
   }
 }
 
@@ -45,6 +46,7 @@ function paraValores(f: Form): Valores {
     nivel_raciocinio: f.nivel_raciocinio === HERDAR ? null : f.nivel_raciocinio,
     compactacao_limiar: num(f.compactacao_limiar),
     roteador_limiar: num(f.roteador_limiar),
+    tool_calls_limite: num(f.tool_calls_limite),
   }
 }
 
@@ -196,7 +198,9 @@ export function Configuracao() {
           <Card>
             <CardHeader>
               <CardTitle>Limiares</CardTitle>
-              <CardDescription>Quando a compactação dispara e quando o Roteador força uma tool.</CardDescription>
+              <CardDescription>
+                Quando a compactação dispara, quando o Roteador força uma tool e quantas tools cabem num turno.
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
               <Campo
@@ -227,6 +231,21 @@ export function Configuracao() {
                   placeholder={`Herdar ${origem}: ${decimal(dados.herdada.roteador_limiar)}`}
                   value={form.roteador_limiar}
                   onChange={(e) => setForm({ ...form, roteador_limiar: e.target.value.replace(/[^\d.,]/g, '') })}
+                />
+              </Campo>
+              <Campo
+                id="tool-calls"
+                rotulo="Chamadas de tool por turno"
+                efetivo={fmtNumero.format(dados.efetiva.tool_calls_limite)}
+                proprio={dados.valores.tool_calls_limite !== null}
+                ajuda="Quantas chamadas de tool um turno pode fazer. MCPs genéricos gastam 3 por ação. De 1 a 50."
+              >
+                <Input
+                  id="tool-calls"
+                  inputMode="numeric"
+                  placeholder={`Herdar ${origem}: ${fmtNumero.format(dados.herdada.tool_calls_limite)}`}
+                  value={form.tool_calls_limite}
+                  onChange={(e) => setForm({ ...form, tool_calls_limite: e.target.value.replace(/\D/g, '') })}
                 />
               </Campo>
             </CardContent>

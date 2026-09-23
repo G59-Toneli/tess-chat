@@ -6,6 +6,7 @@ export type Configuracao = {
   nivel_raciocinio: string
   compactacao_limiar: number
   roteador_limiar: number
+  tool_calls_limite: number
 }
 export type Valores = { [K in keyof Configuracao]: Configuracao[K] | null }
 export type RespostaConfig = { valores: Valores; herdada: Configuracao; efetiva: Configuracao }
