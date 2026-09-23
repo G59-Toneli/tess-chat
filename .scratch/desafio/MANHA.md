@@ -53,11 +53,11 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
   1. Deploy key: GitHub > tess-chat > Settings > Deploy keys > Add. Título `vps`, read-only (sem "Allow write access"). Chave:
      `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIr2/U27AR9teYvHBLsIPw6wBiduSi/P30+uCAvPCaUi tess-chat-deploy@vps`
   2. No VPS, ligue o git: bloco "Ligar o git no VPS" de `docs/INFRA.md`. Sem isso o CI roda mas não puxa código novo.
-  3. Secrets do Actions (Settings > Secrets and variables > Actions): `VPS_HOST=<ip-do-vps>`, `VPS_USER=ubuntu`, `VPS_SSH_KEY`.
-  4. `VPS_SSH_KEY`, escolha: (a) conteúdo de `<chave>`, a chave do trabalho, com sudo na produção; ou (b) recomendado: par só do CI, `ssh-keygen -t ed25519 -f tess-ci -N ""`, pública no fim de `~/.ssh/authorized_keys` do VPS, privada no secret. O agente não mexeu no `authorized_keys` do VPS compartilhado.
+  3. Secrets do Actions (Settings > Secrets and variables > Actions): `VPS_HOST=<omitido>`, `VPS_USER=<omitido>`, `VPS_SSH_KEY`.
+  4. `VPS_SSH_KEY`, escolha: (a) conteúdo de `<omitido>`, a chave do trabalho, com sudo na produção; ou (b) recomendado: par só do CI, `ssh-keygen -t ed25519 -f tess-ci -N ""`, pública no fim de `~/.ssh/authorized_keys` do VPS, privada no secret. O agente não mexeu no `authorized_keys` do VPS compartilhado.
   5. Google Console > Credenciais > client OAuth > URIs de redirecionamento: adicione `https://chat.toneli.dev.br/api/connectors/google/callback`.
   6. Teste o CI: push na main (ou Actions > deploy > Run workflow) e confira `git -C /opt/tess-chat rev-parse HEAD`.
-  7. TLS: o registro A `chat.toneli.dev.br` ainda não existia (NXDOMAIN no registro.br). Crie o registro A para `<ip-do-vps>`. Quando `dig +short chat.toneli.dev.br @8.8.8.8` devolver o IP, rode no VPS `sudo certbot --nginx -d chat.toneli.dev.br --non-interactive --agree-tos --redirect` e teste em janela anônima.
+  7. TLS: o registro A `chat.toneli.dev.br` ainda não existia (NXDOMAIN no registro.br). Crie o registro A para `<omitido>`. Quando `dig +short chat.toneli.dev.br @8.8.8.8` devolver o IP, rode no VPS `sudo certbot --nginx -d chat.toneli.dev.br --non-interactive --agree-tos --redirect` e teste em janela anônima.
   8. Aceite "reiniciar o VPS mantém dados" NÃO foi testado com reboot: o VPS é produção do trabalho. Testado `down` + `up` sem `-v` (dados mantidos) e restart policy `unless-stopped` com docker `enabled`. Reboot real é decisão sua. **Adiado pelo Toneli em 23/09.**
 
 - [x] **Produção: conectar Google e cadastrar o Stripe em https://chat.toneli.dev.br** (conectores e servidores MCP são por ambiente). Antes disso, no Google Console, confirmar que o redirect `https://chat.toneli.dev.br/api/connectors/google/callback` está cadastrado (o ticket 18 diz que sim).
