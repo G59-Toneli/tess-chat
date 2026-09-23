@@ -8,12 +8,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ChevronDownIcon } from 'lucide-react'
+import { useContextoApp } from '@/layout/AppLayout'
 import { alternarGlobal, listarCatalogo, type ToolCatalogo } from '@/lib/tools'
 
 /** /tools: catálogo de Tools nativas e MCP, com liga/desliga global e schema. */
 export function Tools() {
   const [tools, setTools] = useState<ToolCatalogo[] | null>(null)
   const [erro, setErro] = useState(false)
+  // PUT /api/tools/{nome} exige superuser (14): não-admin só vê o estado.
+  const admin = useContextoApp().usuario?.is_superuser ?? false
 
   const carregar = useCallback(async () => {
     setErro(false)
@@ -62,7 +65,7 @@ export function Tools() {
                 <div className="min-w-0 space-y-1.5">
                   <CardTitle className="flex items-center gap-2 font-mono text-base">
                     {t.nome}
-                    <Badge variant="secondary">{t.origem === 'mcp' ? 'MCP' : 'nativa'}</Badge>
+                    <Badge variant="secondary">{t.origem === 'mcp' ? 'MCP' : t.origem}</Badge>
                   </CardTitle>
                   <CardDescription>{t.descricao}</CardDescription>
                 </div>
@@ -73,6 +76,7 @@ export function Tools() {
                   <Switch
                     id={`global-${t.nome}`}
                     checked={t.ativa_global}
+                    disabled={!admin}
                     onCheckedChange={(v) => void alternar(t.nome, v)}
                   />
                 </div>
