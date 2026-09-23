@@ -5,11 +5,18 @@ export type ToolCatalogo = {
   nome: string
   origem: string
   descricao: string
+  descricao_usuario: string // texto da tela; descricao é o que o modelo recebe
   schema: Record<string, unknown>
   ativa_global: boolean
 }
 /** `servidor`: nome do Servidor MCP, só em origem mcp. */
-export type ToolConversa = { nome: string; origem: string; descricao: string; ativa: boolean; servidor?: string | null }
+export type ToolConversa = {
+  nome: string
+  origem: string
+  descricao_usuario: string
+  ativa: boolean
+  servidor?: string | null
+}
 export type DecisaoRoteador = { ts: string; tool: string; confidence: number; forcada: boolean }
 /** A API já devolve estes campos em /messages; o tipo base do 07 não os declara. */
 export type MensagemComUso = MensagemApi & {

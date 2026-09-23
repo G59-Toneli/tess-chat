@@ -78,6 +78,8 @@ async def test_cadastro_lista_tools_e_guarda_header_cifrado(client, demo):
     assert len(registradas) == 2
     assert any(n.endswith("_somar") for n in registradas)
     assert any(n.endswith("_hora_atual") for n in registradas)
+    for t in srv["tools"]:
+        assert t["descricao_usuario"] == t["descricao"][:140]
     assert srv["tem_auth"] is True and "autorizacao" not in srv
     lista = (await client.get("/api/mcp-servers", headers=h)).json()
     assert [s["id"] for s in lista] == [srv["id"]]

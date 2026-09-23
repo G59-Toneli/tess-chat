@@ -38,7 +38,8 @@ class Tool(Base):
 
     nome: Mapped[str] = mapped_column(Text, primary_key=True)
     origem: Mapped[str] = mapped_column(Text)  # nativa | mcp
-    descricao: Mapped[str] = mapped_column(Text)
+    descricao: Mapped[str] = mapped_column(Text)  # o que o modelo recebe
+    descricao_usuario: Mapped[str] = mapped_column(Text)  # o que a tela mostra (ticket 28)
     schema: Mapped[dict[str, Any]] = mapped_column(JSONB)
     ativa_global: Mapped[bool] = mapped_column(Boolean)
     padrao_ligada: Mapped[bool] = mapped_column(Boolean, default=True)  # estado sem toggle na Conversa
@@ -225,6 +226,7 @@ class ToolOut(BaseModel):
     nome: str
     origem: str
     descricao: str
+    descricao_usuario: str
     schema_: dict[str, Any] = Field(validation_alias="schema", serialization_alias="schema")
     ativa_global: bool
 
@@ -237,6 +239,7 @@ class ToolConversaOut(BaseModel):
     nome: str
     origem: str
     descricao: str
+    descricao_usuario: str
     ativa: bool
     servidor: str | None = None  # nome do Servidor MCP, só em origem mcp
 
@@ -273,7 +276,12 @@ async def _lista(session: AsyncSession, cid: uuid.UUID) -> list[ToolConversaOut]
     servidores = dict((await session.execute(q)).tuples().all()) if ids else {}
     return [
         ToolConversaOut(
-            nome=t.nome, origem=t.origem, descricao=t.descricao, ativa=a, servidor=servidores.get(t.mcp_server_id)
+            nome=t.nome,
+            origem=t.origem,
+            descricao=t.descricao,
+            descricao_usuario=t.descricao_usuario,
+            ativa=a,
+            servidor=servidores.get(t.mcp_server_id),
         )
         for t, a in estado
     ]

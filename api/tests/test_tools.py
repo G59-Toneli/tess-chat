@@ -91,6 +91,21 @@ async def test_catalogo_lista_as_nativas(client):
     assert (await client.get("/api/tools")).status_code == 401
 
 
+async def test_catalogo_devolve_descricao_para_o_usuario(client):
+    """Tela mostra descricao_usuario, sem instrução ao modelo. O modelo segue com descricao."""
+    _, h = await usuario(client)
+    por_nome = {t["nome"]: t for t in (await client.get("/api/tools", headers=h)).json()}
+
+    envio = por_nome["gmail_send"]
+    assert envio["descricao_usuario"]
+    assert "usuário" not in envio["descricao_usuario"] and "NÃO" not in envio["descricao_usuario"]
+    assert "NÃO envia" in envio["descricao"]
+    assert all(t["descricao_usuario"] for t in por_nome.values())
+    cid = (await criar(client, h))["id"]
+    na_conversa = {t["nome"]: t for t in (await client.get(f"/api/conversations/{cid}/tools", headers=h)).json()}
+    assert na_conversa["web_search"]["descricao_usuario"] == por_nome["web_search"]["descricao_usuario"]
+
+
 async def test_toggle_por_conversa_e_auditado(client):
     uid, h = await usuario(client)
     c1 = (await criar(client, h))["id"]

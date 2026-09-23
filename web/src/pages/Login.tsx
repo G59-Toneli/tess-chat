@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { cadastrar, CONTA_DEMO, entrar, lerToken, textoErroAuth } from '@/lib/api'
 
-/** Login e cadastro no mesmo card. Conta demo preenche as credenciais. */
+/** Login e cadastro no mesmo card. Conta demo entra direto. */
 export function Login() {
   const navigate = useNavigate()
   const [modo, setModo] = useState<'entrar' | 'cadastrar'>('entrar')
@@ -22,12 +22,11 @@ export function Login() {
 
   const cadastro = modo === 'cadastrar'
 
-  async function enviar(e: FormEvent) {
-    e.preventDefault()
+  async function autenticar(acao: () => Promise<unknown>) {
     setErro(null)
     setEnviando(true)
     try {
-      await (cadastro ? cadastrar : entrar)(email, senha)
+      await acao()
       navigate('/', { replace: true })
     } catch (err) {
       setErro(textoErroAuth(err))
@@ -36,11 +35,14 @@ export function Login() {
     }
   }
 
+  function enviar(e: FormEvent) {
+    e.preventDefault()
+    void autenticar(() => (cadastro ? cadastrar : entrar)(email, senha))
+  }
+
+  // Um clique: entra com a conta demo e vai para o chat (ticket 28).
   function usarDemo() {
-    setModo('entrar')
-    setEmail(CONTA_DEMO.email)
-    setSenha(CONTA_DEMO.senha)
-    setErro(null)
+    void autenticar(() => entrar(CONTA_DEMO.email, CONTA_DEMO.senha))
   }
 
   return (
@@ -89,7 +91,7 @@ export function Login() {
               {enviando && <Spinner />} {cadastro ? 'Criar conta' : 'Entrar'}
             </Button>
             {!cadastro && (
-              <Button type="button" variant="outline" className="w-full" onClick={usarDemo}>
+              <Button type="button" variant="outline" className="w-full" onClick={usarDemo} disabled={enviando}>
                 <UserRoundIcon /> Entrar com conta demo
               </Button>
             )}

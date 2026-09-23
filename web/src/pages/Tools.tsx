@@ -69,7 +69,7 @@ export function Tools() {
                     {t.nome}
                     <Badge variant="secondary">{t.origem === 'mcp' ? 'MCP' : t.origem}</Badge>
                   </CardTitle>
-                  <CardDescription>{t.descricao}</CardDescription>
+                  <CardDescription>{t.descricao_usuario}</CardDescription>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <Label htmlFor={`global-${t.nome}`} className="text-sm text-muted-foreground">
