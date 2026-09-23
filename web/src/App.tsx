@@ -5,6 +5,7 @@ import { Auditoria } from '@/pages/Auditoria'
 import { Chat } from '@/pages/Chat'
 import { Compartilhados } from '@/pages/Compartilhados'
 import { Compartilhamento } from '@/pages/Compartilhamento'
+import { Conectores } from '@/pages/Conectores'
 import { Configuracao } from '@/pages/Configuracao'
 import { Creditos } from '@/pages/Creditos'
 import { Login } from '@/pages/Login'
@@ -24,7 +25,7 @@ export default function App() {
         <Route path="/creditos" element={<Creditos />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/mcp" element={<Placeholder titulo="Servidores MCP" />} />
-        <Route path="/conectores" element={<Placeholder titulo="Conectores" />} />
+        <Route path="/conectores" element={<Conectores />} />
         <Route path="/compartilhados" element={<Compartilhados />} />
         <Route path="/perfil" element={<Placeholder titulo="Perfil" />} />
         <Route path="/admin" element={<Admin />} />

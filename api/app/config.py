@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     attachments_dir: Path = Path(__file__).resolve().parents[2] / "data" / "attachments"
     # Teto de tool calls por turno (ticket 06b). Vai para a Configuração no ticket 14.
     tool_calls_limit: int = 5
+    # Conector Google (ticket 18, ADR 0010). O redirect do OAuth sai de public_base_url.
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    public_base_url: str = "http://localhost:8000"
+    # Chave Fernet dos tokens dos Conectores. Sem ela, conectar responde 503.
+    connectors_key: str | None = None
 
 
 settings = Settings()

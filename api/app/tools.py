@@ -13,16 +13,17 @@ from pydantic import BaseModel, Field
 from pydantic_ai import FunctionToolset, RunContext
 from pydantic_ai.toolsets import AbstractToolset, WrapperToolset
 from pydantic_ai.toolsets.abstract import ToolsetTool
-from sqlalchemy import Boolean, ForeignKey, Text, select
+from sqlalchemy import Boolean, ForeignKey, Text, exists, or_, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from tavily import AsyncTavilyClient
 
+from app import conectores
 from app.audit import audit
 from app.config import settings
 from app.auth import User, current_superuser
-from app.conversas import Sessao, Usuario, conversa_do_usuario
+from app.conversas import Conversation, Sessao, Usuario, conversa_do_usuario
 from app.db import Base, SessionLocal
 
 # Teto do texto que volta ao modelo por chamada (~6k tokens, INFERIDO).
@@ -103,14 +104,21 @@ NATIVAS = {"web_search": web_search, "web_fetch": web_fetch}
 
 # REVISAR(human): ativa = ativa_global E toggle da Conversa. Sem linha em conversation_tools,
 # o toggle herda ativa_global. ativa_global=false desliga a Tool em todas as Conversas.
+# Tool de origem 'google' só existe se o dono da Conversa tem Conector Google (ticket 18).
 async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tuple[Tool, bool]]:
     """Cada Tool do registro com o estado efetivo na Conversa."""
+    tem_conector = exists().where(
+        conectores.Connector.user_id == Conversation.user_id,
+        conectores.Connector.provedor == conectores.PROVEDOR,
+        Conversation.id == cid,
+    )
     q = (
         select(Tool, ConversationTool.ativa)
         .outerjoin(
             ConversationTool,
             (ConversationTool.tool_nome == Tool.nome) & (ConversationTool.conversation_id == cid),
         )
+        .where(or_(Tool.origem != conectores.PROVEDOR, tem_conector))
         .order_by(Tool.nome)
     )
     return [(t, t.ativa_global and (a if a is not None else True)) for t, a in (await session.execute(q)).all()]
@@ -149,6 +157,8 @@ async def toolset_da_conversa(
     for tool, ativa in await estado_da_conversa(session, cid):
         if ativa and tool.nome in NATIVAS:
             ts.add_function(_ligar(tool.nome, t), name=tool.nome, description=tool.descricao)
+        elif ativa and tool.nome in conectores.TOOLS:
+            ts.add_function(conectores.ligar(tool.nome, uid, t), name=tool.nome, description=tool.descricao)
     return Auditada(ts, uid, cid)
 
 
