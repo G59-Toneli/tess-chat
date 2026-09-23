@@ -9,6 +9,7 @@ Chat com tools, vision, PDF, MCP, compactação, cap de crédito e auditoria. De
 - `docs/UI-GUIA.md`: obrigatório para qualquer mudança em `web/`.
 - `.scratch/desafio/map.md`: destino, decisões, névoa. `issues/`: tickets. `LEDGER.md`: histórico de execução. `HANDOFF.md`: estado do orquestrador.
 - `docs/DECISOES-AUTONOMAS.md`: decisões que agentes tomaram sozinhos. `REVISAR(human)` no código marca funções que o Toneli precisa estudar.
+- `docs/ESTRUTURA.md`: árvore comentada e onde mora cada conceito. `docs/MOTIVACOES.md`: por que cada escolha e qual alternativa caiu.
 
 ## Regras fixas
 - Toneli precisa defender cada decisão em entrevista. Explique o porquê, não só o quê.
