@@ -9,6 +9,7 @@ from alembic import context
 
 import app.audit  # noqa: F401  registra os modelos no metadata
 import app.auth  # noqa: F401
+import app.conversas  # noqa: F401
 from app.config import settings
 from app.db import Base
 

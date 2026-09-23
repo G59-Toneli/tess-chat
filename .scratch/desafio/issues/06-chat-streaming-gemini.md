@@ -1,7 +1,7 @@
 # 06 — Chat com streaming via Pydantic AI + Gemini, persistindo tudo
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 05
 **Refs:** ADR 0001, 0003. Resultado do spike (hipóteses 2, 4, 5).
 
