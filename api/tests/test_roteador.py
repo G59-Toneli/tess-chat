@@ -11,6 +11,7 @@ from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy
 from app.config import settings
 from app.main import app
 from app.roteador import apply_gate, cliente_jev, decidir, opcoes
+from tests.test_anexos import PDF, parte, subir
 from tests.test_auth import eventos
 from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
 from tests.test_credito import linhas
@@ -131,7 +132,8 @@ async def test_caso_ambiguo_fica_auto(client, usar_modelo, usar_rotas, usar_jev)
     assert ev.payload["confidence"] < settings.roteador_limiar
 
 
-async def test_anexo_vai_no_state(client, usar_modelo, usar_rotas, usar_jev):
+async def test_anexo_vai_no_state(client, usar_modelo, usar_rotas, usar_jev, tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "attachments_dir", tmp_path)
     caso = por_texto("Me faz um resumo desse contrato que eu te mandei.")
     pedidos: list[dict] = []
     usar_jev(gravada(caso, pedidos))
@@ -139,10 +141,10 @@ async def test_anexo_vai_no_state(client, usar_modelo, usar_rotas, usar_jev):
     usar_modelo(modelo_que_busca([], chamar="nada"))
     _, h = await usuario(client)
     cid = (await criar(client, h))["id"]
+    # Anexo vai por referência (09b): sobe antes, manda a URL de /api/attachments.
+    anexo = (await subir(client, h, "contrato.pdf", PDF, "application/pdf")).json()
     body = corpo(caso["texto"])
-    body["messages"][-1]["parts"].append(
-        {"type": "file", "mediaType": "application/pdf", "filename": "contrato.pdf", "url": "data:application/pdf;base64,JVBERi0="}
-    )
+    body["messages"][-1]["parts"].append(parte(anexo))
 
     r = await client.post(f"/api/chat/{cid}", json=body, headers=h)
     assert r.status_code == 200, r.text
