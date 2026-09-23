@@ -1,22 +1,25 @@
 """Compartilhamento: link público somente-leitura cortado na última Mensagem (ADR 0008)."""
 
 import secrets
+import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Text, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.anexos import EXTENSAO, URL_ANEXO
 from app.audit import audit
 from app.auth import User, current_user
 from app.conectores import EmailDraft
-from app.conversas import Conversation, Message, conversa_do_usuario
+from app.config import settings
+from app.conversas import Attachment, Conversation, Message, conversa_do_usuario
 from app.db import Base, get_session
 
 NOINDEX = {"X-Robots-Tag": "noindex"}
@@ -148,8 +151,41 @@ async def publico(share_id: str, session: Sessao, response: Response) -> SharePu
         # Só a parte antes do @: o link é público, o e-mail inteiro não.
         shared_by=dono.email.split("@")[0],
         created_at=share.created_at,
-        messages=await _com_estado_dos_rascunhos(session, conv.id, msgs),
+        messages=[_anexos_pelo_link(m, share.id) for m in await _com_estado_dos_rascunhos(session, conv.id, msgs)],
     )
+
+
+def _anexos_pelo_link(m: MensagemPublica, share_id: str) -> MensagemPublica:
+    """Arquivo aponta para a rota pública do link: o visitante não tem Bearer."""
+
+    def parte(p: dict[str, Any]) -> dict[str, Any]:
+        c = URL_ANEXO.match(p.get("url", "")) if p.get("type") == "file" else None
+        return {**p, "url": f"/api/s/{share_id}/attachments/{c[1]}"} if c else p
+
+    return m.model_copy(update={"parts": [parte(p) for p in m.parts]})
+
+
+# REVISAR(human): o anexo só sai pelo link se está ligado a uma Mensagem da Conversa do share até o corte.
+# O join por message_id é a checagem de posse: Attachment não tem conversation_id. Anexo de outra
+# Conversa, posterior ao corte, solto (sem Mensagem), arquivo sumido e link revogado dão o mesmo 404.
+@router.get("/api/s/{share_id}/attachments/{aid}", include_in_schema=False)
+async def anexo_publico(share_id: str, aid: uuid.UUID, session: Sessao) -> FileResponse:
+    """Sem auth. Imagem ou PDF de uma Mensagem visível no link."""
+    share, _, _ = await _share_ativo(session, share_id)
+    anexo = None
+    if share.last_message_id is not None:
+        anexo = await session.scalar(
+            select(Attachment)
+            .join(Message, Message.id == Attachment.message_id)
+            .where(
+                Attachment.id == aid,
+                Message.conversation_id == share.conversation_id,
+                Message.id <= share.last_message_id,
+            )
+        )
+    if anexo is None or not Path(anexo.path).is_file():
+        raise HTTPException(status_code=404, detail="Link não encontrado", headers=NOINDEX)
+    return FileResponse(anexo.path, media_type=anexo.mime_type, filename=anexo.filename, headers=NOINDEX)
 
 
 async def _ate_o_corte(session: AsyncSession, share: Share) -> list[Message]:
@@ -169,7 +205,8 @@ class ForkOut(BaseModel):
 
 # REVISAR(human): fork, não escrita na Conversa do dono (ADR 0020). A cópia é do Usuário logado e
 # só leva o que não depende da conta do dono: Rascunho vira só leitura com o estado real do momento,
-# anexo vira texto sem bytes, resultado de tool fica como histórico. Não chama modelo, então não cobra.
+# resultado de tool fica como histórico. Anexo vira arquivo novo do visitante (ADR 0021): o modelo da
+# cópia vê a imagem pelo ADR 0016. Não chama modelo, então não cobra.
 @router.post("/api/s/{share_id}/fork", status_code=201, response_model=ForkOut)
 async def fork(share_id: str, session: Sessao, user: Usuario) -> ForkOut:
     """Nova Conversa do Usuário logado com cópia das Mensagens até o corte do link."""
@@ -178,20 +215,65 @@ async def fork(share_id: str, session: Sessao, user: Usuario) -> ForkOut:
     nova = Conversation(user_id=user.id, title=f"{conv.title} (cópia)")
     session.add(nova)
     await session.flush()
-    session.add_all(
-        Message(conversation_id=nova.id, role=m.role, parts=[_parte_da_copia(p) for p in m.parts]) for m in msgs
-    )
+    anexos = await _anexos_das_mensagens(session, [m.id for m in msgs])
+    copiados: list[str] = []
+    for m in msgs:
+        copias: list[Attachment] = []
+        parts = [_parte_da_copia(p, anexos.get((m.id, _anexo_id(p))), user.id, copias) for p in m.parts]
+        msg = Message(conversation_id=nova.id, role=m.role, parts=parts)
+        session.add(msg)
+        if copias:
+            await session.flush()
+            for a in copias:
+                a.message_id = msg.id
+            session.add_all(copias)
+            copiados += [str(a.id) for a in copias]
     await audit(
         session, "share_forked", user_id=user.id, conversation_id=nova.id,
-        payload={"share_id": share.id, "conversa_origem": str(conv.id), "conversa_nova": str(nova.id)},
+        payload={
+            "share_id": share.id, "conversa_origem": str(conv.id), "conversa_nova": str(nova.id),
+            "anexos_copiados": copiados,
+        },
     )
     await session.commit()
     return ForkOut(conversation_id=nova.id)
 
 
-def _parte_da_copia(p: dict[str, Any]) -> dict[str, Any]:
-    """Anexo sem bytes vira texto; Rascunho ganha `copia` e o front não mostra Enviar."""
+async def _anexos_das_mensagens(session: AsyncSession, ids: list[int]) -> dict[tuple[int, str], Attachment]:
+    """Anexos ligados às Mensagens, por (message_id, id). A part só casa com o anexo da própria Mensagem."""
+    if not ids:
+        return {}
+    q = select(Attachment).where(Attachment.message_id.in_(ids))
+    return {(a.message_id, str(a.id)): a for a in await session.scalars(q)}
+
+
+def _anexo_id(p: dict[str, Any]) -> str | None:
+    c = URL_ANEXO.match(p.get("url", "")) if p.get("type") == "file" else None
+    return c[1] if c else None
+
+
+def _copiar_anexo(original: Attachment, uid: uuid.UUID) -> Attachment:
+    """Arquivo novo em disco, do visitante. Revogar o link ou apagar o original não afeta a cópia."""
+    novo = uuid.uuid4()
+    pasta = Path(settings.attachments_dir)
+    pasta.mkdir(parents=True, exist_ok=True)
+    caminho = pasta / f"{novo}{EXTENSAO[original.mime_type]}"
+    shutil.copyfile(original.path, caminho)
+    return Attachment(
+        id=novo, user_id=uid, filename=original.filename, mime_type=original.mime_type,
+        size_bytes=original.size_bytes, path=str(caminho),
+    )
+
+
+def _parte_da_copia(
+    p: dict[str, Any], anexo: Attachment | None, uid: uuid.UUID, copias: list[Attachment]
+) -> dict[str, Any]:
+    """Anexo vira cópia do visitante; sem registro ou sem arquivo, texto. Rascunho ganha `copia`."""
     if p.get("type") == "file":
+        if anexo is not None and Path(anexo.path).is_file():
+            copia = _copiar_anexo(anexo, uid)
+            copias.append(copia)
+            return {**p, "url": f"/api/attachments/{copia.id}"}
         return {"type": "text", "text": f"[anexo: {p.get('filename') or p.get('mediaType')}]"}
     if _draft_id(p):
         return {**p, "output": {**p["output"], "copia": True}}

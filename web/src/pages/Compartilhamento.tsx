@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import type { UIMessage } from 'ai'
 import { LinkIcon, MessageSquarePlusIcon } from 'lucide-react'
+import { AnexoNaMensagem } from '@/components/Anexos'
 import { BlocoTool, partesDeTool } from '@/components/BlocoTool'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
@@ -80,7 +81,7 @@ function LinkIndisponivel() {
 }
 
 function ConversaPublica({ share, shareId }: { share: SharePublico; shareId: string }) {
-  // Mesmas partes do Chat: texto e cards de tool (com o Rascunho só leitura). Anexo e compactação ficam fora.
+  // Mesmas partes do Chat: texto, anexo (pela rota pública do link) e cards de tool (Rascunho só leitura). Compactação fica fora.
   const visiveis = juntarTurnos(share.messages).filter((m) => m.parts.some(desenhavel))
   return (
     <>
@@ -142,7 +143,8 @@ function BotaoContinuar({ shareId }: { shareId: string }) {
   )
 }
 
-const desenhavel = (p: UIMessage['parts'][number]) => (p.type === 'text' && p.text.length > 0) || p.type.startsWith('tool-')
+const desenhavel = (p: UIMessage['parts'][number]) =>
+  (p.type === 'text' && p.text.length > 0) || p.type === 'file' || p.type.startsWith('tool-')
 
 function LinhaPublica({ mensagem, autor }: { mensagem: UIMessage; autor: string }) {
   const usuario = mensagem.role === 'user'
@@ -160,6 +162,7 @@ function LinhaPublica({ mensagem, autor }: { mensagem: UIMessage; autor: string 
         <MessageContent>
           {mensagem.parts.map((p, i) => {
             if (p.type === 'text') return p.text ? <MessageResponse key={i}>{p.text}</MessageResponse> : null
+            if (p.type === 'file') return <AnexoNaMensagem key={i} parte={p} />
             const parte = tools.find((t) => t === p)
             // Wrapper como no Chat: o Card tem overflow-hidden e, filho direto do flex, encolhia e cortava o corpo.
             return parte ? (
