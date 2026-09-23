@@ -1,0 +1,26 @@
+import { Route, Routes } from 'react-router'
+import { AppLayout } from '@/layout/AppLayout'
+import { Chat } from '@/pages/Chat'
+import { Compartilhamento } from '@/pages/Compartilhamento'
+import { Login } from '@/pages/Login'
+import { Placeholder } from '@/pages/Placeholder'
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/s/:shareId" element={<Compartilhamento />} />
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Chat />} />
+        <Route path="/c/:id" element={<Chat />} />
+        <Route path="/config" element={<Placeholder titulo="Configuração" />} />
+        <Route path="/auditoria" element={<Placeholder titulo="Auditoria" />} />
+        <Route path="/creditos" element={<Placeholder titulo="Créditos" />} />
+        <Route path="/tools" element={<Placeholder titulo="Tools" />} />
+        <Route path="/mcp" element={<Placeholder titulo="Servidores MCP" />} />
+        <Route path="/conectores" element={<Placeholder titulo="Conectores" />} />
+        <Route path="*" element={<Placeholder titulo="Página não encontrada" />} />
+      </Route>
+    </Routes>
+  )
+}
