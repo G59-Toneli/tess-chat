@@ -10,11 +10,21 @@ App de chat deployado em link público, com os 10 requisitos obrigatórios funci
 ## Notes
 
 - Glossário: `CONTEXT.md`. Decisões: `docs/adr/`. Pesquisa: `research/`.
-- Toneli precisa entender cada decisão. Agente autônomo não decide arquitetura: encontrou decisão nova, grava `BLOCKED` no ledger e para.
+- Toneli precisa entender cada decisão. Decisão não coberta por ADR: o agente escolhe a opção mais simples que atende o aceite, registra em `docs/DECISOES-AUTONOMAS.md` e segue.
 - Subagentes sempre em Opus 5.5.
 - Skills por ticket: `mattpocock-skills:tdd` na implementação. `typesafe:typesafe-ai` no ticket 11. `mattpocock-skills:wizard` nas tarefas HITL de infra.
-- Três funções são **HITL** (Toneli escreve): débito de crédito (08), gate de confiança do Roteador (11), gatilho de compactação (12). O agente deixa `TODO(human)` e para.
-- Execução autônoma: loop externo de `claude -p --model opus`, um ticket por invocação, testes como gate fora do Claude, commit por ticket. Rate limit do plano Max = esperar e repetir, não falhar. Ver `docs/WORKFLOW.md`.
+- As três funções que seriam do Toneli (débito de crédito em 08, gate de confiança do Roteador em 11, gatilho de compactação em 12) foram implementadas pelo agente e marcadas `REVISAR(human)`. Toneli estuda depois.
+- Execução: sessão orquestradora do Claude Code dispara um agente executor por ticket (tool `Agent`), commit `feat(NN)` por ticket com `git commit --only`, orquestrador confere e dá push. Suíte completa em lote no fim do bloco. Ver `docs/WORKFLOW.md`.
+
+## Estado dos tickets
+
+Fonte: status em `issues/` e `LEDGER.md`. Atualizado em 23/09.
+
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07, 07a, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 20, 22.
+- **Prontos para agente:** 17 (MCP) e 18 (Google). Liberados em 23/09 para rodar em localhost; o deploy só troca a URL.
+- **Bloqueados em Toneli:** 02 e 16. Precisam das chaves SSH do VPS e do registro A `chat.toneli.dev.br` (ver `MANHA.md`).
+- **Suíte em lote (21):** dependências 09b e 20 resolvidas. O ticket ainda está `blocked`; liberar é do orquestrador.
+- **Bloqueado por ticket:** 19 (README, vídeo e guia, espera 17 e 18).
 
 ## Decisions so far
 
