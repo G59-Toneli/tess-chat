@@ -1,6 +1,6 @@
 # ADR 0020 — Continuar conversa compartilhada por fork
 
-**Status:** aceito, 2026-09-23. Complementa o ADR 0008.
+**Status:** aceito, 2026-09-23. Complementa o ADR 0008. Anexo no fork mudado pelo ADR 0021.
 
 ## Contexto
 O link público (ADR 0008) é só leitura. Decisão do Toneli em 23/09: quem abre o link pode continuar a conversa.

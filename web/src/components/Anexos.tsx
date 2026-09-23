@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { FileUIPart } from 'ai'
 import { FileTextIcon, PaperclipIcon, XIcon } from 'lucide-react'
+import { Dialog as DialogPrimitive } from 'radix-ui'
 import { PromptInputButton, PromptInputHeader, usePromptInputAttachments } from '@/components/ai-elements/prompt-input'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogClose, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { authHeader } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -59,8 +62,9 @@ function ChipPdf({ nome, className }: { nome?: string; className?: string }) {
 }
 
 // Imagem da API precisa do header Bearer: <img src> não manda. Baixa como blob.
+// Rota do link público (/api/s/...) não pede login: vai direto no src.
 function useSrc(url: string | null): string | undefined {
-  const direto = url && (url.startsWith('data:') ? url : previews.get(url))
+  const direto = url && (url.startsWith('data:') || url.startsWith('/api/s/') ? url : previews.get(url))
   const [baixada, setBaixada] = useState<string>()
   useEffect(() => {
     if (!url || direto) return
@@ -81,14 +85,50 @@ function useSrc(url: string | null): string | undefined {
   return direto || baixada
 }
 
-/** Anexo dentro da Mensagem: miniatura da imagem ou chip do PDF. */
+/** Anexo dentro da Mensagem: miniatura da imagem (clique amplia) ou chip do PDF. */
 export function AnexoNaMensagem({ parte }: { parte: FileUIPart }) {
   const pdf = ehPdf(parte.mediaType)
   const src = useSrc(pdf ? null : parte.url)
   if (pdf) return <ChipPdf nome={parte.filename} className="bg-background" />
+  const nome = parte.filename ?? 'Imagem anexada'
   return src ? (
-    <img src={src} alt={parte.filename ?? 'Imagem anexada'} className="max-h-64 max-w-full rounded-lg border object-contain" />
+    <Lightbox src={src} nome={nome}>
+      <img src={src} alt={nome} className="max-h-64 max-w-full rounded-lg border object-contain" />
+    </Lightbox>
   ) : (
     <div className="size-32 animate-pulse rounded-lg border bg-muted" aria-label="Carregando imagem" />
+  )
+}
+
+/** Imagem grande num overlay. Esc, clique fora e o botão fecham (Radix Dialog). */
+function Lightbox({ src, nome, children }: { src: string; nome: string; children: ReactNode }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Ampliar ${nome}`}
+          className="block w-fit max-w-full cursor-zoom-in rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          {children}
+        </button>
+      </DialogTrigger>
+      <DialogPortal>
+        <DialogOverlay className="bg-black/80 motion-reduce:animate-none" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 motion-reduce:animate-none"
+        >
+          <DialogTitle className="sr-only">{nome}</DialogTitle>
+          <img src={src} alt={nome} className="max-h-[90dvh] max-w-[90vw] rounded-lg object-contain shadow-2xl" />
+          {/* Dentro do Content: fora dele o Radix deixa o botão inerte. */}
+          <DialogClose asChild>
+            <Button variant="secondary" size="icon" aria-label="Fechar imagem" className="absolute top-2 right-2 rounded-full">
+              <XIcon />
+            </Button>
+          </DialogClose>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
   )
 }

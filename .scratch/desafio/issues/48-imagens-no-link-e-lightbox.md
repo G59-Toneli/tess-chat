@@ -1,7 +1,7 @@
 # 48 — Imagens no link público e no fork, e imagem clicável que expande
 
 **Type:** task (api/ e web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ADR 0008, ADR 0016 (imagem do histórico volta com bytes), ADR 0020 (fork), tickets 09/09b (anexos), 45, 46. `docs/UI-GUIA.md`. Pedido do Toneli em 23/09.
 
@@ -18,8 +18,15 @@
 - Lightbox: clicar na imagem (chat logado, link público, conversa copiada) abre a imagem grande num overlay (componente `Dialog` do shadcn), fecha com Esc, clique fora e botão. Respeitar `prefers-reduced-motion`. Mesmo componente nos três lugares.
 
 **Aceite:**
-- [ ] Teste: endpoint público devolve a imagem de share ativo; 404 para revogado, anexo de outra Conversa, anexo depois do corte, id inexistente.
-- [ ] Teste: fork copia o anexo como Attachment do visitante, e o 1º turno na cópia recebe a imagem como `BinaryContent` (FunctionModel).
-- [ ] Teste: visitante não baixa pelo endpoint autenticado o anexo do dono (continua 404).
-- [ ] Screenshots dark no Brave: `48-link-imagem.png` (imagem no link) e `48-lightbox.png` (overlay aberto).
-- [ ] ADR escrito. `tsc`/`npm run build` limpos. Sem chamada real a Gemini, Tavily ou Jev.
+- [x] Teste: endpoint público devolve a imagem de share ativo; 404 para revogado, anexo de outra Conversa, anexo depois do corte, id inexistente.
+- [x] Teste: fork copia o anexo como Attachment do visitante, e o 1º turno na cópia recebe a imagem como `BinaryContent` (FunctionModel).
+- [x] Teste: visitante não baixa pelo endpoint autenticado o anexo do dono (continua 404).
+- [x] Screenshots dark no Brave: `48-link-imagem.png` (imagem no link) e `48-lightbox.png` (overlay aberto).
+- [x] ADR escrito. `tsc`/`npm run build` limpos. Sem chamada real a Gemini, Tavily ou Jev.
+
+## Answer
+- Rota pública `GET /api/s/{share_id}/attachments/{aid}` em `shares.py`: serve só anexo ligado a Mensagem da Conversa do share até o corte, share ativo; todo o resto é o mesmo 404 com noindex. `GET /api/s/{id}` reescreve a URL do arquivo para essa rota.
+- Fork copia cada anexo para um Attachment novo do visitante (arquivo novo em disco); o 1º turno na cópia recebe `BinaryContent` (teste com FunctionModel). Revogar corta o link e mantém a cópia. `share_forked` ganha `anexos_copiados`.
+- Front: `AnexoNaMensagem` ganhou lightbox (Radix Dialog: Esc, clique fora, botão, `motion-reduce`), usado no chat, na cópia e no link. ADR 0021; 0020 anotado.
+- Ressalvas: sem cota de disco por Usuário (cada fork duplica o arquivo); PDF no link aparece como chip, sem link de abrir, igual ao chat.
+- REVISAR(human): `anexo_publico` e o fork em `api/app/shares.py`.
