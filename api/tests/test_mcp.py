@@ -207,3 +207,91 @@ async def test_remover_apaga_servidor_e_tools(client, demo):
     assert (await client.get("/api/mcp-servers", headers=h)).json() == []
     [ev] = await eventos("mcp_server_removed", user_id=uid)
     assert ev.payload["nome"] == "demo"
+
+
+# ---------- Resiliência e SSRF (ticket 23) ----------
+
+
+@pytest.fixture
+def demo_derrubavel():
+    """Servidor demo próprio do teste, para derrubar sem afetar o `demo` do módulo."""
+    porta = porta_livre()
+    env = {**os.environ, "PORT": str(porta), "MCP_DEMO_TOKEN": TOKEN}
+    proc = subprocess.Popen([sys.executable, str(SERVIDOR)], env=env)
+    for _ in range(100):
+        try:
+            socket.create_connection(("127.0.0.1", porta), timeout=0.2).close()
+            break
+        except OSError:
+            time.sleep(0.1)
+    else:
+        proc.kill()
+        pytest.fail("servidor demo não subiu")
+
+    def derrubar():
+        proc.terminate()
+        proc.wait(5)
+
+    yield f"http://127.0.0.1:{porta}/mcp", derrubar
+    if proc.poll() is None:
+        derrubar()
+
+
+async def test_servidor_caido_nao_derruba_o_turno(client, demo_derrubavel, usar_modelo):
+    url, derrubar = demo_derrubavel
+    uid, h = await usuario(client)
+    srv = (await cadastrar(client, h, url, nome="Caidor")).json()
+    somar = next(t["nome"] for t in srv["tools"] if t["nome"].endswith("_somar"))
+    vistos = []
+    usar_modelo(modelo_que_chama(somar, {"a": 2, "b": 3}, vistos))
+    cid = (await criar(client, h))["id"]
+    derrubar()
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("quanto é 2 + 3?"), headers=h)
+
+    assert r.status_code == 200, r.text
+    assert await ultima_resposta(client, h, cid) == "Sem tool."
+    assert not [t for t in vistos[0].function_tools if t.name.endswith("_somar")]
+    assert "Caidor" in r.text and "fora do ar" in r.text
+    [ev] = await eventos("mcp_server_unreachable", user_id=uid)
+    assert ev.payload["servidor"] == srv["id"] and ev.payload["nome"] == "Caidor"
+
+
+@pytest.mark.parametrize("url", ["http://169.254.169.254/", "http://10.0.0.1/"])
+async def test_url_interna_da_422_legivel(client, url):
+    uid, h = await usuario(client)
+    antes = await contagens(uid)
+
+    r = await cadastrar(client, h, url)
+
+    assert r.status_code == 422
+    assert isinstance(r.json()["detail"], str) and "URL" in r.json()["detail"]
+    assert await contagens(uid) == antes
+
+
+@pytest.mark.parametrize("url", ["https://10.0.0.1/mcp", "https://169.254.169.254/", "https://[::1]/mcp", "https://localhost/mcp"])
+async def test_https_para_endereco_interno_da_422(client, url):
+    _, h = await usuario(client)
+
+    r = await cadastrar(client, h, url)
+
+    assert r.status_code == 422 and "interno" in r.json()["detail"]
+
+
+async def test_fora_de_dev_http_do_demo_e_recusado(client, demo, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "env", "prod")
+    _, h = await usuario(client)
+
+    r = await cadastrar(client, h, demo)
+
+    assert r.status_code == 422 and "https" in r.json()["detail"]
+
+
+async def test_host_que_nao_resolve_da_422(client):
+    _, h = await usuario(client)
+
+    r = await cadastrar(client, h, "https://nao-existe.invalid/mcp")
+
+    assert r.status_code == 422

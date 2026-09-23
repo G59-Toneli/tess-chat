@@ -19,6 +19,7 @@ from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, TextUIPart, UIMessage
+from pydantic_ai.ui.vercel_ai.response_types import BaseChunk, TextDeltaChunk, TextEndChunk, TextStartChunk
 from pydantic_ai.usage import RunUsage, UsageLimits
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -370,4 +371,23 @@ async def chat(
     async def ao_fim(result: AgentRunResult[Any]) -> None:
         await _persistir(cid, uid, turno, result, len(historico), novas[0], comp)
 
-    return adapter.streaming_response(adapter.transform_stream(todos(), on_complete=ao_fim))
+    chunks = adapter.transform_stream(todos(), on_complete=ao_fim)
+    if tools.fora_do_ar:
+        chunks = _com_aviso(chunks, _aviso_mcp(tools.fora_do_ar))
+    return adapter.streaming_response(chunks)
+
+
+def _aviso_mcp(nomes: list[str]) -> str:
+    return f"_Servidor MCP fora do ar: {', '.join(nomes)}. Segui sem as tools dele._\n\n"
+
+
+async def _com_aviso(chunks: AsyncIterator[BaseChunk], texto: str) -> AsyncIterator[BaseChunk]:
+    """Aviso curto logo depois do start do stream (ticket 23). Só na tela: não vai para o histórico."""
+    primeiro = True
+    async for c in chunks:
+        yield c
+        if primeiro:
+            primeiro = False
+            yield TextStartChunk(id="aviso-mcp")
+            yield TextDeltaChunk(id="aviso-mcp", delta=texto)
+            yield TextEndChunk(id="aviso-mcp")

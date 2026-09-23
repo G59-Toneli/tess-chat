@@ -3,7 +3,7 @@
 import asyncio
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Any
 
 import httpx
@@ -25,6 +25,7 @@ from app.config import settings
 from app.auth import User, current_superuser
 from app.conversas import Conversation, Sessao, Usuario, conversa_do_usuario
 from app.db import Base, SessionLocal
+from app.resiliencia import resumo_erro
 
 # Teto do texto que volta ao modelo por chamada (~6k tokens, INFERIDO).
 LIMITE_CHARS = 20_000
@@ -139,6 +140,7 @@ class Auditada(WrapperToolset[Any]):
     uid: uuid.UUID
     cid: uuid.UUID
     origens: dict[str, str]
+    fora_do_ar: list[str] = field(default_factory=list)  # nomes dos Servidores MCP que a sonda tirou do turno
 
     async def call_tool(
         self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
@@ -178,8 +180,23 @@ async def toolset_da_conversa(
         elif tool.mcp_server_id is not None:
             por_servidor.setdefault(tool.mcp_server_id, set()).add(tool.nome)
     servidores = (await session.scalars(select(mcp.McpServer).where(mcp.McpServer.id.in_(por_servidor)))).all()
-    todos = CombinedToolset([ts, *(mcp.toolset(s, por_servidor[s.id]) for s in servidores)])
-    return Auditada(todos, uid, cid, {tool.nome: tool.origem for tool in ativas})
+    # Servidor fora do ar sai do turno em vez de derrubá-lo (ticket 23). Sondas em paralelo.
+    erros = await asyncio.gather(*(mcp.alcancavel(s) for s in servidores))
+    vivos, fora = [], []
+    for srv, erro in zip(servidores, erros, strict=True):
+        if erro is None:
+            vivos.append(srv)
+            continue
+        fora.append(srv.nome)
+        await audit(
+            session,
+            "mcp_server_unreachable",
+            user_id=uid,
+            conversation_id=cid,
+            payload={"servidor": str(srv.id), "nome": srv.nome, **resumo_erro(erro)},
+        )
+    todos = CombinedToolset([ts, *(mcp.toolset(s, por_servidor[s.id]) for s in vivos)])
+    return Auditada(todos, uid, cid, {tool.nome: tool.origem for tool in ativas}, fora)
 
 
 def _ligar(nome: str, t: httpx.AsyncBaseTransport | None):
