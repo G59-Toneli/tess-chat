@@ -102,6 +102,9 @@ export const renomearConversa = (id: string, title: string) =>
 export const apagarConversa = (id: string) => api<void>(`/api/conversations/${id}`, { method: 'DELETE' })
 export const listarMensagens = (id: string) => api<MensagemApi[]>(`/api/conversations/${id}/messages`)
 
+/** Botão Parar: a API cancela o turno e grava o parcial antes de responder (ADR 0023). */
+export const pararTurno = (conversaId: string) => api<void>(`/api/chat/${conversaId}/parar`, { method: 'POST' })
+
 /** Id (do banco) da pergunta do turno que fez o Resumo vigente, ou null sem Resumo. */
 export function lerCorte(conversaId: string): Promise<number | null> {
   return fetch(`/api/chat/${conversaId}/compactacao`, { headers: authHeader() })

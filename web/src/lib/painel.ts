@@ -91,6 +91,7 @@ export const ROTULO_EVENTO: Record<string, string> = {
   tool_call: 'Chamada de tool',
   tool_limit_reached: 'Turno cortado (teto de tools)',
   mcp_tool_failed: 'Turno cortado (MCP falhou)',
+  turn_stopped: 'Turno parado pelo usuário',
   tool_toggled: 'Tool ligada/desligada',
   router_decision: 'Roteador',
   router_fallback: 'Roteador (fallback)',

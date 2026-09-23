@@ -130,8 +130,9 @@ async def test_erro_do_provedor_vira_502_e_llm_error(client, usar_modelo):
     [ev] = await eventos("llm_error", user_id=uid)
     assert str(ev.conversation_id) == cid
     assert ev.model == MODELO
-    # Turno que falhou não entra no histórico.
-    assert (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json() == []
+    # A pergunta é gravada no início do turno (ADR 0023): fica sem resposta.
+    msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+    assert [m["role"] for m in msgs] == ["user"]
 
 
 async def test_conversa_de_outro_usuario_404(client, usar_modelo):

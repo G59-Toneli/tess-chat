@@ -91,7 +91,8 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | `db.py` | engine e sessão async, conecta como `tess_app` |
 | `auth.py` | FastAPI-Users: cadastro, login JWT, conta demo, `login_failed` |
 | `conversas.py` | Conversas, Mensagens, Anexos (tabelas e CRUD); dono só vê o que é dele |
-| `chat.py` | o turno: histórico do banco, Compactação, reserva, Roteador, Tools, stream, persistência |
+| `chat.py` | o turno: histórico do banco, Compactação, reserva, Roteador, Tools, stream, persistência. Rotas `/stream` (retomada) e `/parar` (ticket 55) |
+| `turnos.py` | turno em background: registro por Conversa (409), buffer SSE com replay e tail, `CancellationToken` do Parar. ADR 0023 |
 | `credito.py` | Tabela de Preço, Ledger, Cap, reserva e acerto, painéis de Crédito |
 | `tools.py` | registro de Tools, toggle por Conversa, `web_search` e `web_fetch`, wrapper de auditoria. Monta o toolset do turno com as Tools do Google (só com Conector) e as MCP do dono |
 | `mcp.py` | Servidor MCP por Usuário: tabela `mcp_servers`, cadastro que conecta antes de gravar, barreira de SSRF, sonda antes do turno. Tickets 17 e 23 |
@@ -157,7 +158,7 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 |---|---|---|---|---|
 | Usuário | `auth.py` | `users` | `pages/Login.tsx` | 0002 (auth no Python) |
 | Conversa | `conversas.py` | `conversations` | `layout/AppLayout.tsx`, `pages/Chat.tsx` | — |
-| Mensagem | `conversas.py` (tabela), `chat.py` (grava no fim do turno) | `messages` | `pages/Chat.tsx` | 0001 |
+| Mensagem | `conversas.py` (tabela), `chat.py` (pergunta no início, resposta no fim do turno) | `messages` | `pages/Chat.tsx` | 0001 |
 | Anexo | `anexos.py`, tabela em `conversas.py` | `attachments` + arquivo em `data/` | `components/Anexos.tsx` | — |
 | Tool | `tools.py` (origem `nativa`, `google` ou `mcp`) | `tools`, `conversation_tools` | `pages/Tools.tsx`, `components/SeletorTools.tsx`, `components/BlocoTool.tsx` | 0009 |
 | Servidor MCP | `mcp.py`; toolset montado em `tools.py`, sonda em `chat.py` | `mcp_servers`, `tools` com `origem = 'mcp'` | `pages/Mcp.tsx`, `components/SeletorTools.tsx` | 0009 |
@@ -183,7 +184,8 @@ Funções que o agente implementou no lugar do Toneli. São as que mais caem em 
 |---|---|---|
 | `credito.py` | 3 | custo real em micro-USD, tamanho da reserva, dia do gasto no fuso do browser |
 | `compactacao.py` | 3 | gatilho pelo limiar, ponto de corte no início de turno, roda só no passo 1 |
-| `chat.py` | 3 | estimativa local do input, gravar usuário e assistente juntos, 502 só antes do primeiro evento |
+| `chat.py` | 4 | estimativa local do input, gravar a resposta no fim, 502 só antes do primeiro evento, `rodar_turno` fora da request |
+| `turnos.py` | 1 | leitor do buffer: replay desde o chunk 0 e tail |
 | `roteador.py` | 1 | gate: força a Tool só com confiança acima do limiar |
 | `resiliencia.py` | 1 | o que é erro transitório |
 | `tools.py` | 2 | fallback Jina para trafilatura, Tool ativa = global E Conversa |
