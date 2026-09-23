@@ -171,6 +171,36 @@ def desembrulhar_json(valor: Any) -> Any:
     return valor
 
 
+def _livre(s: Any) -> bool:
+    """Objeto sem properties, ou lista desses objetos."""
+    if not isinstance(s, dict):
+        return False
+    if s.get("type") == "object":
+        return not s.get("properties")
+    return s.get("type") == "array" and _livre(s.get("items"))
+
+
+# REVISAR(human): o Gemini roda em modo VALIDATED e impõe o schema declarado. Objeto sem properties
+# vira objeto vazio: o modelo manda null ou inventa chaves (Stripe, ticket 35). Esse campo passa a ser
+# string com JSON; o call_tool da Auditada desembrulha antes de chamar o servidor. Objeto com
+# properties só é percorrido. O registro guarda o schema original; só a definição do turno muda.
+def schema_para_modelo(schema: dict[str, Any]) -> dict[str, Any]:
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        return schema
+    novas: dict[str, Any] = {}
+    for nome, p in props.items():
+        if _livre(p):
+            sufixo = "JSON serializado do objeto" if p["type"] == "object" else "JSON serializado da lista"
+            desc = p.get("description")
+            novas[nome] = {"type": "string", "description": f"{desc} — {sufixo}" if desc else sufixo}
+        elif isinstance(p, dict) and p.get("type") == "object":
+            novas[nome] = schema_para_modelo(p)
+        else:
+            novas[nome] = p
+    return {**schema, "properties": novas}
+
+
 # O ToolManager valida os args antes do toolset e, na 2ª falha, levanta erro que escapa do ComTeto.
 # Ele passa a aceitar tudo; a validação real roda no call_tool da Auditada (ticket 33).
 ACEITA_TUDO = SchemaValidator(core_schema.any_schema())
@@ -196,7 +226,12 @@ class Auditada(WrapperToolset[Any]):
     async def get_tools(self, ctx: RunContext[Any]) -> dict[str, ToolsetTool[Any]]:
         tools = await super().get_tools(ctx)
         self.validadores.update({nome: t.args_validator for nome, t in tools.items()})
-        return {nome: replace(t, args_validator=ACEITA_TUDO) for nome, t in tools.items()}
+        return {nome: replace(t, args_validator=ACEITA_TUDO, tool_def=self._definicao(nome, t)) for nome, t in tools.items()}
+
+    def _definicao(self, nome: str, t: ToolsetTool[Any]) -> Any:
+        if self.origens.get(nome) != "mcp":
+            return t.tool_def
+        return replace(t.tool_def, parameters_json_schema=schema_para_modelo(t.tool_def.parameters_json_schema))
 
     async def call_tool(
         self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
