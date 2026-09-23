@@ -32,3 +32,5 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
   11. Google: `/conectores`, conectar, "qual meu último e-mail sobre X". Depende da validação do ticket 18 acima.
   Antes de gravar: `docker compose up -d --wait`, `cd api && uv run alembic upgrade head`, `cd web && npm run build`, `cd api && uv run uvicorn app.main:app --port 8000`. Se o deploy (16) sair antes, grave no link público.
 - [ ] Ler `docs/ENTREVISTA.md`: 3 perguntas e resposta curta por ADR, mais o workflow com IA. As perguntas marcadas **Lacuna** são as mais prováveis de apertar.
+
+- [ ] **Decidir o fallback OpenAI (ADR 0012).** O ticket 19 achou que o ADR descreve um fallback para OpenAI que não existe no código: nada lê `OPENAI_API_KEY`. Ou implementa (ticket novo) ou escreve um ADR revisando o 0012. Está listado no README como limite conhecido.
