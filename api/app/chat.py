@@ -139,7 +139,9 @@ async def _rotear(
     """Roteador antes do Gemini. Qualquer falha do Jev vira AUTO com evento router_fallback."""
     texto = "\n".join(p.text for p in nova.parts if isinstance(p, TextUIPart))
     anexos = [p.filename or p.media_type for p in nova.parts if isinstance(p, FileUIPart)]
-    ativas = [(t.nome, t.descricao) for t, a in await estado_da_conversa(session, cid) if a]
+    registro = [t for t, a in await estado_da_conversa(session, cid) if a]
+    ativas = [(t.nome, t.descricao) for t in registro]
+    origens = {t.nome: t.origem for t in registro}
     t0 = time.perf_counter()
     try:
         if jev is None:
@@ -156,7 +158,8 @@ async def _rotear(
             payload={"erro": type(exc).__name__, "status": getattr(exc, "status", None), "msg": str(exc)[:500]},
         )
         return Gate(None)
-    escolha = apply_gate(d, limiar)
+    escolha = apply_gate(d, limiar, origens.get(d.tool))
+    sugerida = escolha is None and apply_gate(d, limiar) is not None
     uso = RunUsage(input_tokens=d.input_tokens, output_tokens=d.output_tokens)
     custo = await acertar(session, uid, cid, None, PRECO_JEV, uso)
     await audit(
@@ -175,6 +178,7 @@ async def _rotear(
             "distribution": d.distribution,
             "limiar": limiar,
             "forcada": escolha is not None,
+            "sugerida": sugerida,
             "modelo_real": d.modelo,
         },
     )

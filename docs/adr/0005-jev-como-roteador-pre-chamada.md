@@ -13,3 +13,10 @@ Antes de chamar o Gemini, o Roteador pergunta ao Jev: precisa de Tool? Qual, ent
 - Jev nunca gera texto nem vê Anexos. Recebe só o texto do turno e a lista de Tools.
 - Smoke test em português com ~10 casos reais é pré-requisito (ticket 11).
 - Fraco contra injeção no `state`: o Roteador só decide tool, nunca permissão.
+
+## Emenda 23/09 — tool de origem MCP não é forçada
+O Roteador só **força** tool de origem `nativa` ou `google`. Para tool de origem `mcp`, grava `router_decision` com `forcada=false` (e `sugerida=true` quando passou do limiar), e o modelo escolhe livre (`tool_choice=auto`). A linha do Roteador no chat mostra "sugeriu" em vez de "escolheu".
+
+**Motivo:** o Jev não tem contexto para escolher entre tools genéricas de um servidor externo, que não foram desenhadas para roteamento (`implementation_planner`, `search_documentation`, `send_feedback`). Nos tickets 33 e 35 ele forçou o planner do Stripe para "gera o pagamento", e o turno terminou sem ação. Forçar errado custa o turno inteiro.
+
+**Alternativa descartada:** excluir as tools MCP da entrada do Jev. Perde o registro da decisão para a Auditoria e a Tela do Roteador.

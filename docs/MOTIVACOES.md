@@ -157,3 +157,9 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 | **Sonda antes do turno** (conecta e lista, 3 s, em paralelo) | Servidor caído sai do turno com evento `mcp_server_unreachable`, em vez de derrubar a Conversa. Custo: um handshake a mais por servidor por turno. | idem |
 | **Aviso no stream como parte de texto `aviso-mcp`** | Determinístico, sem chamada ao Gemini e sem mudança em `web/`. | idem |
 | **Ressalva: checagem de SSRF só no cadastro** | DNS rebinding depois do cadastro não está coberto. Fixar o IP pediria transporte HTTP próprio no cliente MCP. | idem |
+
+### Roteador e tools MCP (ticket 36)
+
+| Decisão | Por quê | Fonte |
+|---|---|---|
+| **Roteador só força tool `nativa` ou `google`; tool `mcp` fica sugerida (`forcada=false`, `sugerida=true`) e o modelo escolhe livre** | O Jev não tem contexto para escolher entre tools genéricas de servidor externo (planner, busca de docs, feedback). Nos tickets 33 e 35 ele forçou `stripe_implementation_planner` (0,78 e 0,83) e o turno terminou sem ação. Forçar errado custa o turno inteiro. Alternativa descartada: tirar as tools MCP da entrada do Jev (perde o registro da decisão na Auditoria e na Tela do Roteador). | [ADR 0005](adr/0005-jev-como-roteador-pre-chamada.md) (emenda 23/09), `app/roteador.py` |
