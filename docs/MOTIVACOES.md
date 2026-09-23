@@ -1,0 +1,118 @@
+# Motivações
+
+Por que cada escolha, e qual alternativa caiu. Onde um ADR já decide, este doc resume em 2 linhas e linka. O que não tem fonte no código, nos ADRs ou em `research/` vai marcado **INFERIDO**.
+
+Onde o código diverge de um ADR, a divergência está em `docs/LACUNAS.md`. Este doc não repete.
+
+Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
+
+## 1. Stack
+
+| Escolha | Por quê | Alternativa descartada | Fonte |
+|---|---|---|---|
+| **Python** | Toneli defende Python na entrevista. A lógica avaliada está no backend. | TypeScript com o template Vercel Chatbot. | [ADR 0001](adr/0001-backend-python-pydantic-ai.md), `research/01` §3 |
+| **Python 3.14** | Versão mais nova estável no momento. | 3.12 ou 3.13. | **INFERIDO**. Nenhum doc registra o motivo. |
+| **uv** | Um lock (`uv.lock`), `uv sync --frozen` no Dockerfile, instala rápido. | pip + requirements, Poetry. | **INFERIDO**. Nenhum doc registra o motivo; o uso está no `Dockerfile` e no `AGENT-PROMPT.md`. |
+| **FastAPI** | Async, casa com o streaming e com o FastAPI-Users para auth. Dependências (`Depends`) servem de ponto de troca nos testes. | — | [ADR 0001](adr/0001-backend-python-pydantic-ai.md), [ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md) |
+| **Pydantic AI** | Traz de fábrica: troca de provedor, tool calling tipado, cliente MCP, `RunUsage`, hook de histórico para a Compactação, adapter do protocolo do AI SDK. Framework fino: cada peça é explicável. | LangGraph (API larga, menos tipada). Fork do LibreChat (Node + Mongo, soa "instalou app pronto"). | [ADR 0001](adr/0001-backend-python-pydantic-ai.md) |
+| **Postgres** | `jsonb` para o payload da auditoria. Papéis e `REVOKE` por tabela: o papel `tess_app` não pode fazer UPDATE nem DELETE em `audit_events`, `credit_ledger` e `price_table`. Isso torna "somente-inserção" uma garantia do banco, não do código. | SQLite: não tem papéis nem `REVOKE`. | [ADR 0007](adr/0007-auditoria-append-only.md), `docker/postgres-init/01-roles.sql`, migrações 0001 e 0005. SQLite como alternativa: **INFERIDO**. |
+| **Alembic** | Migração versionada; cada migração também dá os `GRANT`/`REVOKE` da tabela que cria. Dois papéis: `tess_owner` migra, `tess_app` roda. | `create_all` do SQLAlchemy no startup. | Uso: `01-roles.sql` ("permissões por tabela vêm das migrações"). Alternativa: **INFERIDO**. |
+| **React + Vite + shadcn + AI Elements** | Front é detalhe na vaga. Vite buildado é servido pelo FastAPI: um container, um deploy. `useChat` fala o protocolo que o adapter do Pydantic AI emite. | Next.js em container separado. shadcn puro com parser de stream manual. | [ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md) |
+| **Gemini (`gemini-3.8-flash`, tier pago)** | 1M de contexto, tool calling paralelo, PDF e imagem nativos, thinking configurável, barato. Free tier usa o conteúdo para treino. Resumo usa `gemini-3.1-flash-lite`. | Gemini Pro (~3x o preço sem ganho visível). Free tier. | [ADR 0003](adr/0003-modelo-gemini-flash-pago.md) |
+| **Tavily** (`web_search`) | Tool nossa, passa pelo registro, tem toggle e Evento de auditoria. Free tier de 1.000 créditos/mês sem cartão. | Busca embutida do Gemini (fora do registro, sem toggle nem evento). Serper, Exa, Brave (Brave pede cartão). | [ADR 0009](adr/0009-registro-unico-de-tools-e-mcp-client.md), `research/01` §4.2. Tavily sobre Serper: **INFERIDO**. |
+| **Jina Reader + trafilatura** (`web_fetch`) | Jina devolve a página já limpa para LLM. Se falhar, GET direto + trafilatura, lib local e leve. Texto cortado em 20.000 caracteres. | URL context do Gemini (fora do registro). Crawl4AI (exige Chromium no VPS). Firecrawl (cota por página). | [ADR 0009](adr/0009-registro-unico-de-tools-e-mcp-client.md), `research/01` §4.1, `app/tools.py` |
+| **Jev (TypeSafe)** | Roteador barato (US$ 0,042 por 1M) e rápido (70 a 500 ms) que devolve escolha tipada com probabilidade. Forçar a Tool com confiança alta deixa o Gemini previsível. | Deixar só o Gemini escolher (`AUTO`) em todo turno. | [ADR 0005](adr/0005-jev-como-roteador-pre-chamada.md) |
+
+## 2. Estilo arquitetural
+
+**Nome preciso: monólito modular, fatiado por conceito do domínio.** Não é arquitetura em camadas. Não é hexagonal.
+
+**O que é:**
+- **Monólito:** um processo, um deploy, um banco. A API FastAPI também serve o front buildado ([ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md)).
+- **Modular por conceito:** cada arquivo de `api/app/` corresponde a um termo do `CONTEXT.md` (`credito.py`, `roteador.py`, `compactacao.py`, `shares.py`...). Cada um tem seu `APIRouter`, e `main.py` só registra os routers. O front espelha isso: uma tela por conceito em `web/src/pages/`.
+- **Orquestração num ponto só:** `chat.py` compõe o turno chamando os módulos na ordem: histórico do banco, Compactação, reserva de Crédito, Tools da Conversa, Roteador, Anexos, modelo com retry e fallback, persistência e acerto.
+
+**O que não é:**
+- **Não é camadas** (controller, service, repository em pastas separadas). Dentro de um módulo convivem o modelo SQLAlchemy, as regras e a rota HTTP.
+- **Não é hexagonal.** Não há portas nem adaptadores formais. Tipos do Pydantic AI aparecem nas regras do domínio: `debit()` em `credito.py` recebe `RunUsage` direto.
+
+**Onde fica a fronteira entre API, domínio e infra:**
+- **API (HTTP):** funções decoradas no `APIRouter` de cada módulo. Validam entrada, resolvem Usuário e sessão por `Depends`.
+- **Domínio:** funções puras, sem I/O, dentro do mesmo módulo. Exemplos: `debit()` (custo em micro-USD), `apply_gate()` (gate do Roteador), `should_compact()` e `ponto_de_corte()` (Compactação), `transitorio()` (retry). São as funções marcadas `REVISAR(human)` e as que os testes de mutação atacam.
+- **Infra:** `db.py` (engine e sessão), `config.py` (`.env`), e os clientes externos injetados por `Depends`: `modelo()`, `modelo_reserva()`, `modelo_resumo()`, `transporte()` (HTTP das Tools), `cliente_jev()`. Os testes trocam essas dependências por `FunctionModel` ou `httpx.MockTransport` com resposta gravada.
+
+**Por que este estilo:** prazo de ~2 dias e um dev que precisa defender cada peça ([ADR 0001](adr/0001-backend-python-pydantic-ai.md)). Um arquivo por conceito deixa "onde mora X" com uma resposta só. Camadas triplicariam o número de arquivos sem segundo consumidor que justifique a abstração. **INFERIDO**: o raciocínio sobre camadas não está escrito em nenhum ADR; a estrutura é a observada no código.
+
+**Custo conhecido:** `chat.py` concentra o fluxo. Dois agentes não podem editá-lo ao mesmo tempo (`HANDOFF.md`, "gargalo").
+
+## 3. Padrões
+
+| Padrão | Resumo | Onde |
+|---|---|---|
+| **Registro único de Tools** | Toda Tool, nativa ou MCP, passa por um registro: ativável por Conversa e auditada por chamada. A auditoria é um wrapper (`Auditada`) em volta do toolset, então cada Tool nova é auditada sem código extra. | [ADR 0009](adr/0009-registro-unico-de-tools-e-mcp-client.md), `app/tools.py` |
+| **Ledger de Crédito** | Micro-USD inteiro, calculado do uso real do provedor vezes a Tabela de Preço vigente. Reserva antes da chamada, acerto depois. Saldo é a soma do Ledger. | [ADR 0004](adr/0004-credito-em-micro-dolar-do-uso-real.md), `app/credito.py`. Reserva estimada localmente: ver `LACUNAS.md`. |
+| **Roteador com gate** | Jev decide a Tool antes do Gemini. Confiança no limiar ou acima força a Tool; abaixo, o Gemini decide. O Roteador escolhe Tool, nunca permissão. | [ADR 0005](adr/0005-jev-como-roteador-pre-chamada.md), `app/roteador.py` |
+| **Compactação por Resumo** | Acima do limiar da Configuração, turnos antigos viram Resumo do flash-lite dentro do mesmo turno. Originais continuam no banco. Par tool-call e resultado nunca é separado. | [ADR 0006](adr/0006-compactacao-por-resumo-com-limiar-configuravel.md), `app/compactacao.py` |
+| **Auditoria por evento** | Tabela `audit_events` somente-inserção, garantida por `REVOKE`. Ledger e auditoria são tabelas distintas: uma é dinheiro, a outra é história. A tela de auditoria é o painel de observabilidade do agente. | [ADR 0007](adr/0007-auditoria-append-only.md), [ADR 0012](adr/0012-resiliencia-retry-e-fallback-de-modelo.md), `app/audit.py` |
+| **Retry e fallback de modelo** | Até 3 tentativas com backoff em erro transitório. Depois troca de modelo. O modelo que respondeu vai para a Mensagem e o Ledger. Retry é um wrapper (`ComRetry`) em volta de cada modelo da cadeia. | [ADR 0012](adr/0012-resiliencia-retry-e-fallback-de-modelo.md), `app/resiliencia.py` |
+| **Compartilhamento por corte** | Link guarda o id da última Mensagem; a leitura filtra até ele. Sem cópia. Revogado e inexistente dão o mesmo 404. | [ADR 0008](adr/0008-compartilhamento-por-corte.md), `app/shares.py` |
+| **Histórico só do banco** | Do body do `useChat` o servidor usa só a última mensagem. O resto vem do Postgres. | `DECISOES-AUTONOMAS.md` (06). Motivo: o front pode mandar histórico adulterado. |
+
+**Wrapper como padrão repetido:** auditoria de Tool (`Auditada`) e retry de modelo (`ComRetry`) usam o mesmo formato: embrulhar o objeto do Pydantic AI em vez de mexer em cada Tool ou em cada chamada. Uma regra transversal fica num ponto só.
+
+## 4. Infraestrutura
+
+**Escolha:** VPS na OCI, Docker Compose com `caddy`, `app` e `postgres`, HTTPS automático do Caddy, domínio próprio `chat.toneli.dev.br`. Resumo do [ADR 0011](adr/0011-deploy-compose-caddy-duckdns-oci.md).
+
+**Descartados no ADR 0011:**
+- Cloudflare Quick Tunnel: não passa SSE, mata o streaming.
+- ngrok: URL efêmera e tela intermediária.
+- Coolify e Dokploy: 2 GB de RAM e horas de setup.
+- DuckDNS: era o plano sem domínio; o domínio chegou em 23/09.
+
+**Por que não serverless:** **INFERIDO**. Nenhum doc compara. Argumentos a partir do código:
+- O chat é stream longo (SSE) com várias chamadas ao modelo por turno. Função serverless tem timeout e cobra por duração.
+- Os Anexos ficam no disco do servidor, com metadados no Postgres (`map.md`, grilling 23/09). Serverless não tem disco persistente.
+- Um container já serve front e API ([ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md)). Separar em funções volta a dobrar a superfície a defender.
+
+**Por que não Kubernetes:** **INFERIDO**. Um app, um banco, um avaliador, uma semana no ar. Compose descreve os três serviços num arquivo. K8s traz control plane, ingress e manifests sem nenhum requisito que peça escala ou alta disponibilidade.
+
+**Estado:** o deploy é o ticket 16, bloqueado em acesso SSH ao VPS (`MANHA.md`). Ainda não há `deploy/`, Caddyfile nem `.github/` no repo.
+
+## 5. Fluxo de trabalho com IA
+
+**Resumo:** o Toneli decide (ADRs, glossário, tickets). Agentes executam um ticket cada. Toda decisão tomada sem ele fica registrada para ele estudar depois.
+
+### As peças
+
+| Peça | Papel | Onde |
+|---|---|---|
+| **Pesquisa** | Levantamento com fontes antes de decidir. Cada ADR cita a sua. | `research/01..04` |
+| **Spike** | Queimar os riscos de integração antes do código real: 9 hipóteses, todas passaram. Ajustes propagados aos tickets. | `spike/RESULTADO.md`, ticket 01 |
+| **ADRs** | Toda decisão de arquitetura, com opções e porquê. Agente não contraria ADR sem escrever outro. | `docs/adr/` |
+| **Glossário** | Um termo por conceito, usado no código, nos tickets e na conversa. | `CONTEXT.md` |
+| **Tickets** | Fatia vertical com contexto, o que construir, aceite testável e `Blocked by`. Fecham com `## Answer`. | `.scratch/desafio/issues/` |
+| **Mapa** | Destino, marco, decisões, o que ainda é névoa, fora de escopo. | `.scratch/desafio/map.md` |
+| **Prompt-padrão** | O mesmo roteiro para todo agente executor: o que ler, TDD, como commitar sem engolir arquivo alheio. | `docs/AGENT-PROMPT.md` |
+| **Orquestrador + executores** | Uma sessão do Claude Code escolhe o próximo ticket livre e dispara um agente Opus por ticket, às vezes em paralelo. Confere o commit, dá push, encerra o agente. | `.scratch/desafio/HANDOFF.md` |
+| **LEDGER** | Uma linha por execução: início, fim, resultado com contagem de testes e de chamadas reais, commit. | `.scratch/desafio/LEDGER.md` |
+| **DECISOES-AUTONOMAS** | Decisão fora de ADR: o agente escolhe a opção mais simples que atende o aceite e registra ticket, decisão, alternativa e porquê. Não para. | `docs/DECISOES-AUTONOMAS.md` |
+| **`REVISAR(human)`** | Comentário acima de cada função que o Toneli ia escrever. O agente implementa; ele estuda depois. | `grep -rn "REVISAR(human)" api/` |
+| **LACUNAS** | Onde o código diverge do ADR ou ficou aresta. Vira "limites conhecidos" no README. | `docs/LACUNAS.md` |
+| **Golden set** | Casos com resposta conhecida, gravados uma vez e reusados sem custo: 10 frases do Roteador, 9 certas, a 10ª ambígua cai abaixo do limiar. | `api/tests/fixtures/jev_golden.json`, ticket 11 |
+| **Verificação visual** | Ticket de front fecha com screenshot no Brave, dark, 1440x900. O orquestrador olha a tela; o Toneli não revisa tela. | `docs/UI-GUIA.md`, `.scratch/desafio/screens/` |
+
+### Por que assim
+
+- **Toneli precisa defender cada decisão** (`CLAUDE.md`). Por isso arquitetura só entra por ADR, e decisão de agente fica escrita com a alternativa descartada.
+- **Nada bloqueia a noite.** No plano original, três funções eram escritas pelo Toneli e o agente parava em `BLOCKED` diante de decisão nova (`map.md`). Desde 23/09 o agente implementa, marca `REVISAR(human)` e registra em `DECISOES-AUTONOMAS.md` (`WORKFLOW.md`, commit `bd7ddf6`). Troca: velocidade agora, estudo depois.
+- **Custo contado.** Chamadas reais a Gemini, Tavily e Jev têm teto por ticket e aparecem no LEDGER. Testes usam resposta gravada ou modelo de teste. Suíte completa e golden set rodam em lote no fim do bloco.
+- **Teste como prova.** TDD por ticket, testes de integração contra o Postgres real, e teste de mutação nas regras críticas (o LEDGER registra "mutação pega").
+
+### Plano versus prática
+
+- **Plano** (`research/04`, `WORKFLOW.md`): loop externo em script chamando `claude -p` um ticket por vez, com a suíte de testes como gate fora do Claude.
+- **Prática** (`HANDOFF.md`, `LEDGER.md`): uma sessão orquestradora do Claude Code disparando agentes executores em paralelo no mesmo working tree. O agente roda os testes do próprio ticket; o orquestrador confere e faz push.
+- **Por que mudou:** **INFERIDO**. Nenhum doc registra. Hipótese: paralelismo entre tickets independentes e o orquestrador conseguindo corrigir rumo entre tickets.
+- **Custo da prática:** stage compartilhado. Um commit engoliu arquivos de outro ticket (`2c738a6`). Regra nova: commit só com `git commit --only` dos próprios arquivos, e `chat.py` com um agente por vez.
+- `WORKFLOW.md` e `map.md` ainda descrevem o plano. Ver Sugestões em `ESTRUTURA.md`.
