@@ -49,7 +49,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 | Padrão | Resumo | Onde |
 |---|---|---|
-| **Registro único de Tools** | Toda Tool, nativa ou MCP, passa por um registro: ativável por Conversa e auditada por chamada. A auditoria é um wrapper (`Auditada`) em volta do toolset, então cada Tool nova é auditada sem código extra. | [ADR 0009](adr/0009-registro-unico-de-tools-e-mcp-client.md), `app/tools.py` |
+| **Registro único de Tools** | Toda Tool, nativa ou MCP, passa por um registro: ativável por Conversa e auditada por chamada. A auditoria é um wrapper (`Auditada`) em volta do toolset, então cada Tool nova é auditada sem código extra. As Tools do Google (18) e as MCP (17) entram no mesmo registro e no mesmo wrapper. | [ADR 0009](adr/0009-registro-unico-de-tools-e-mcp-client.md), `app/tools.py` |
 | **Ledger de Crédito** | Micro-USD inteiro, calculado do uso real do provedor vezes a Tabela de Preço vigente. Reserva antes da chamada, acerto depois. Saldo é a soma do Ledger. | [ADR 0004](adr/0004-credito-em-micro-dolar-do-uso-real.md), `app/credito.py`. Reserva estimada localmente: ver `LACUNAS.md`. |
 | **Roteador com gate** | Jev decide a Tool antes do Gemini. Confiança no limiar ou acima força a Tool; abaixo, o Gemini decide. O Roteador escolhe Tool, nunca permissão. | [ADR 0005](adr/0005-jev-como-roteador-pre-chamada.md), `app/roteador.py` |
 | **Compactação por Resumo** | Acima do limiar da Configuração, turnos antigos viram Resumo do flash-lite dentro do mesmo turno. Originais continuam no banco. Par tool-call e resultado nunca é separado. | [ADR 0006](adr/0006-compactacao-por-resumo-com-limiar-configuravel.md), `app/compactacao.py` |
@@ -77,7 +77,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 **Por que não Kubernetes:** **INFERIDO**. Um app, um banco, um avaliador, uma semana no ar. Compose descreve os três serviços num arquivo. K8s traz control plane, ingress e manifests sem nenhum requisito que peça escala ou alta disponibilidade.
 
-**Estado:** o deploy é o ticket 16, bloqueado em acesso SSH ao VPS (`MANHA.md`). Ainda não há `deploy/`, Caddyfile nem `.github/` no repo.
+**Estado:** o deploy é o ticket 16, bloqueado em acesso SSH ao VPS (`MANHA.md`). `deploy/` só tem `mcp-demo/` (ticket 17). Ainda não há Caddyfile nem `.github/` no repo.
 
 ## 5. Fluxo de trabalho com IA
 
@@ -115,4 +115,45 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 - **Prática** (`HANDOFF.md`, `LEDGER.md`): uma sessão orquestradora do Claude Code disparando agentes executores em paralelo no mesmo working tree. O agente roda os testes do próprio ticket; o orquestrador confere e faz push.
 - **Por que mudou:** **INFERIDO**. Nenhum doc registra. Hipótese: paralelismo entre tickets independentes e o orquestrador conseguindo corrigir rumo entre tickets.
 - **Custo da prática:** stage compartilhado. Um commit engoliu arquivos de outro ticket (`2c738a6`). Regra nova: commit só com `git commit --only` dos próprios arquivos, e `chat.py` com um agente por vez.
-- `WORKFLOW.md` e `map.md` ainda descrevem o plano. Ver Sugestões em `ESTRUTURA.md`.
+- `WORKFLOW.md` e `map.md` passaram a contar a prática no ticket 22.
+
+## 6. MCP e Conectores (tickets 17, 18 e 23)
+
+Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico-de-tools-e-mcp-client.md) e [0010](adr/0010-conector-google-oauth-direto.md) continuam valendo. A linha completa, com a alternativa descartada, está em `DECISOES-AUTONOMAS.md`, no ticket indicado.
+
+### Conector Google (ticket 18)
+
+| Decisão | Por quê | Fonte |
+|---|---|---|
+| **`httpx` direto nas REST do Google**, não `google-api-python-client` | A lib do Google é síncrona (httplib2) e não passa pelo `transporte()` injetável. Com `httpx`, o teste usa `httpx.MockTransport` igual às outras Tools. O ADR 0010 fica igual: muda a biblioteca, não a decisão. | `DECISOES-AUTONOMAS.md` (18) |
+| **Tokens cifrados com Fernet**, chave `CONNECTORS_KEY` no `.env` | Token do Google em claro no banco vaza com um dump. Fernet é padrão e a chave fica fora do banco. Custo: trocar a chave obriga o usuário a reconectar. | idem |
+| **Origem `google` no registro de Tools** | O filtro "só aparece com Conector" sai de uma coluna, sem lista de nomes no código. O glossário ainda diz só `nativa` ou `mcp`. | idem, migração 0012 |
+| **Filtro de Conector em `estado_da_conversa`** | Um ponto só cobre o toolset do turno, a lista de Tools da Conversa e as opções do Roteador. Zero edição em `chat.py`. | idem |
+| **`state` do OAuth é JWT assinado** (Usuário, 10 min) | O callback chega por GET do browser, sem o Bearer do front. O JWT identifica o dono e barra CSRF sem tabela de states. | idem, `REVISAR(human)` em `conectores.py` |
+| **Redirect final para `{PUBLIC_BASE_URL}/conectores`** | Em produção API e front têm a mesma origem ([ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md)). Uma variável basta. | idem |
+| **`drive_search_read` lê só o primeiro arquivo legível**; PDF do Drive fica fora | O aceite pede "resume o arquivo Y"; um Doc cobre a demo. PDF pediria extrator novo. | idem |
+| **Refresh 60 s antes de vencer**; falha vira texto para o modelo | O modelo repassa "reconecte em Conectores" e o turno não quebra. Refresh e falha geram Evento de auditoria. | idem |
+
+### Cliente MCP (ticket 17)
+
+| Decisão | Por quê | Fonte |
+|---|---|---|
+| **Nome da Tool MCP = `<slug>_<4 hex do id>_<tool>`**, com `tools.mcp_server_id` | `tools.nome` é PK global. Dois Usuários com o mesmo servidor colidiriam. O hex do id resolve sem mexer na PK nem em `chat.py`. | `DECISOES-AUTONOMAS.md` (17) |
+| **App grava em `tools` só com RLS `origem = 'mcp'`** | O cadastro precisa escrever no registro único (ADR 0009). A RLS deixa nativas e Google fora do alcance da app. | idem, migração 0013 |
+| **Header de auth colado inteiro, cifrado com o Fernet do 18** | GitHub e o demo só pedem Bearer. Reusa a cifra que já existe. A API nunca devolve o header, só `tem_auth`. | idem |
+| **Cadastro conecta e lista antes de gravar** | Erro legível no cadastro (502 com o motivo) em vez de servidor gravado e quebrado. | idem, `REVISAR(human)` em `mcp.py` |
+| **Tools listadas só no cadastro**; no turno, o filtro deixa passar os nomes do registro | Toggle por Conversa precisa de linha no registro. Sincronizar a cada turno é YAGNI. Custo: Tool nova no servidor pede recadastro. | idem |
+| **Toggle `ativo` por servidor** | Desligar sem apagar. A coluna já estava no ticket. | idem |
+| **`GET /api/tools` esconde Tools MCP de outros Usuários** | O catálogo global vazaria nome e descrição de servidores alheios. | idem |
+| **Servidor demo sem proteção de DNS rebinding** | No compose o Host é `mcp-demo`, e a proteção do SDK recusa esse Host. | idem |
+| **Ressalvas do 17 (SSRF e servidor caído)** | Ficaram fora do aceite e viraram o ticket 23. | idem |
+
+### Resiliência MCP e SSRF (ticket 23)
+
+| Decisão | Por quê | Fonte |
+|---|---|---|
+| **Só `https://`, e todo IP resolvido precisa ser `is_global`** | `is_global` cobre privado, loopback, link-local (metadata da nuvem), reservado e CGNAT de uma vez. Checar todos os IPs impede o host com um IP público e um interno. | `DECISOES-AUTONOMAS.md` (23), `REVISAR(human)` em `mcp.py` |
+| **Config `ENV` com default `dev`**; em `dev`, `http://` para o demo passa | Segue o padrão do `config.py` e não quebra os testes do 17. Produção precisa de `ENV=prod`. | idem, `.env.example` |
+| **Sonda antes do turno** (conecta e lista, 3 s, em paralelo) | Servidor caído sai do turno com evento `mcp_server_unreachable`, em vez de derrubar a Conversa. Custo: um handshake a mais por servidor por turno. | idem |
+| **Aviso no stream como parte de texto `aviso-mcp`** | Determinístico, sem chamada ao Gemini e sem mudança em `web/`. | idem |
+| **Ressalva: checagem de SSRF só no cadastro** | DNS rebinding depois do cadastro não está coberto. Fixar o IP pediria transporte HTTP próprio no cliente MCP. | idem |
