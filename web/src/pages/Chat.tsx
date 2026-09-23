@@ -7,6 +7,7 @@ import { MessageSquareIcon, OctagonPauseIcon, WalletIcon } from 'lucide-react'
 import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
 import { AnexoNaMensagem, AnexosDoPrompt, BotaoAnexar, previews } from '@/components/Anexos'
 import { SeletorTools } from '@/components/SeletorTools'
+import { IndicadorContexto } from '@/components/IndicadorContexto'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
 import {
@@ -356,6 +357,7 @@ function Entrada({
         <div className="flex items-center gap-1">
           <BotaoAnexar />
           <SeletorTools conversaId={conversaId} />
+          <IndicadorContexto conversaId={conversaId} status={status} />
           <span className="px-1 text-xs text-muted-foreground">Enter envia, Shift+Enter quebra linha</span>
         </div>
         <PromptInputSubmit
