@@ -14,3 +14,6 @@ Gemini tem instabilidade conhecida (429, 503, timeouts). Um turno que falha sem 
 - Fallback para OpenAI exige preço na Tabela de Preço e a chave no ambiente.
 - Retry multiplica o tempo até o primeiro token em falha. Front mostra "tentando de novo".
 - A tela de auditoria vira o painel de observabilidade do agente. Sem ferramenta externa.
+
+## Revisão (2026-09-23)
+O front não mostra "tentando de novo". O retry só repete a abertura do stream (`api/app/resiliencia.py`). Antes do primeiro evento o browser não recebeu nada, então não há onde mostrar o aviso sem mudar o protocolo do stream. Falha no meio do stream vira chunk de erro. O retry aparece só na auditoria, no evento `llm_retry`.

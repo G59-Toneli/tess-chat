@@ -20,3 +20,8 @@ O Roteador só **força** tool de origem `nativa` ou `google`. Para tool de orig
 **Motivo:** o Jev não tem contexto para escolher entre tools genéricas de um servidor externo, que não foram desenhadas para roteamento (`implementation_planner`, `search_documentation`, `send_feedback`). Nos tickets 33 e 35 ele forçou o planner do Stripe para "gera o pagamento", e o turno terminou sem ação. Forçar errado custa o turno inteiro.
 
 **Alternativa descartada:** excluir as tools MCP da entrada do Jev. Perde o registro da decisão para a Auditoria e a Tela do Roteador.
+
+## Revisão (2026-09-23)
+O Jev não vê o conteúdo dos Anexos, mas recebe o nome e o mime type de cada um. O `state` leva `anexos_na_mensagem`: lista de `filename` (ou `media_type`, sem nome), ou `"nenhum"` (`_rotear` em `api/app/chat.py`, `decidir` em `api/app/roteador.py`). Bytes nunca vão ao Jev.
+
+**Por quê:** ticket 11. Sem esse campo, "resume esse PDF" parece igual com e sem PDF anexado. O caso 10 do golden set do spike ("resume esse PDF" sem anexo) espera confiança abaixo do limiar.
