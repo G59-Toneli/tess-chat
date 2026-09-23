@@ -18,7 +18,7 @@ import {
   PromptInputTextarea,
   type PromptInputMessage,
 } from '@/components/ai-elements/prompt-input'
-import { Shimmer } from '@/components/ai-elements/shimmer'
+import { textoTrabalhando, Trabalhando } from '@/components/Trabalhando'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
 import { IconeApp } from '@/components/Logo'
 import { MarcadorCompactacao } from '@/components/MarcadorCompactacao'
@@ -257,6 +257,8 @@ function ChatConversa({
   const vazia = (m?: UIMessage) => semTexto(m) && (!m || partesDeTool(m).length === 0)
   const pensando = status === 'submitted' || (status === 'streaming' && ultima?.role === 'assistant' && vazia(ultima))
   const visiveis = messages.filter((m) => m.role === 'user' || !vazia(m))
+  // Entre tools: o indicador vai no fim da última mensagem, abaixo do último card.
+  const aguardando = textoTrabalhando(ultima, status)
 
   async function enviar(texto: string, arquivos: FileUIPart[] = []) {
     if ((!texto.trim() && arquivos.length === 0) || status === 'submitted' || status === 'streaming') return
@@ -281,6 +283,7 @@ function ChatConversa({
               email={usuario?.email}
               uso={usos.get(m.id)}
               duracoes={duracoes}
+              aguardando={m === ultima ? aguardando : undefined}
             /></MarcadorCompactacao>
           ))}
           {pensando && <Pensando />}
@@ -401,12 +404,14 @@ function LinhaMensagem({
   email,
   uso,
   duracoes,
+  aguardando,
 }: {
   mensagem: UIMessage
   quando?: Date
   email?: string
   uso?: Uso
   duracoes?: Map<string, number>
+  aguardando?: string
 }) {
   const usuario = mensagem.role === 'user'
   const tools = partesDeTool(mensagem)
@@ -445,6 +450,7 @@ function LinhaMensagem({
           })}
           {rodando && !corte && <Buscando nome={nomeDaTool(rodando)} />}
           {corte && <AvisoTurnoInterrompido corte={corte} />}
+          {aguardando && <Trabalhando texto={aguardando} />}
         </MessageContent>
         {(quando || uso) && (
           <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1', usuario && 'justify-end')}>
@@ -489,18 +495,12 @@ function AvisoTurnoInterrompido({ corte }: { corte: Interrupcao }) {
   )
 }
 
+// Início do turno, antes do primeiro token. Mesmo indicador do intervalo entre tools.
 function Pensando() {
   return (
-    <div className="flex items-center gap-3" role="status" aria-label="Assistente pensando">
+    <div className="flex items-center gap-3">
       <AvatarAssistente />
-      <div className="flex items-center gap-1.5">
-        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
-        <Shimmer as="span" className="ml-2 text-sm">
-          Pensando...
-        </Shimmer>
-      </div>
+      <Trabalhando texto="Pensando…" />
     </div>
   )
 }

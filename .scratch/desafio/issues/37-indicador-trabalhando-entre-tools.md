@@ -1,7 +1,7 @@
 # 37 — Indicador de "trabalhando" entre tool calls
 
 **Type:** task (AFK, só web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** `docs/UI-GUIA.md`, https://www.beautifului.dev/ (referência visual obrigatória), skill `frontend-design:frontend-design`. Feedback do Toneli em 23/09 depois do teste do Stripe.
 
@@ -15,7 +15,14 @@
 - Sem mudança em `api/`: o estado vem do que o stream já entrega (status do useChat + partes da mensagem).
 
 **Aceite:**
-- [ ] Screenshot dark `37-trabalhando-entre-tools.png` mostrando um card "Concluída" e o indicador abaixo, antes do próximo card. Pode usar stream simulado (API mockada) para congelar o estado.
-- [ ] Screenshot `37-trabalhando-inicio.png` antes do primeiro token.
-- [ ] O indicador não aparece em mensagens já concluídas ao recarregar.
-- [ ] `tsc` e `npm run build` limpos.
+- [x] Screenshot dark `37-trabalhando-entre-tools.png` mostrando um card "Concluída" e o indicador abaixo, antes do próximo card. Pode usar stream simulado (API mockada) para congelar o estado.
+- [x] Screenshot `37-trabalhando-inicio.png` antes do primeiro token.
+- [x] O indicador não aparece em mensagens já concluídas ao recarregar.
+- [x] `tsc` e `npm run build` limpos.
+
+## Answer
+- `components/Trabalhando.tsx`: reimplementa o Loading State do beautifului.dev (variante Dots, MIT) em CSS puro: grade 3x3 com frente em chevron, texto com shimmer e tempo decorrido. Keyframes no `index.css`, com `motion-safe`/`motion-reduce`.
+- Aparece no início do turno (substitui o Pensando antigo) e no fim da última mensagem quando o fim é uma tool concluída: "Pensando…", "Analisando o resultado…" (1 tool), "Trabalhando…" (2+).
+- Some com texto no fim, tool rodando, corte do ticket 30 e stream fechado (`status !== 'streaming'`, por isso não aparece ao recarregar). Checado no Brave contra API mockada que segura o stream.
+- Ressalva: o tempo conta do zero a cada espera, não desde o início do turno.
+- `REVISAR(human)`: `textoTrabalhando` (quando aparece e com qual texto).
