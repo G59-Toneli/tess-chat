@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, exceptions, schemas
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import audit
@@ -92,15 +93,18 @@ auth_backend = AuthenticationBackend(
 
 fastapi_users = FastAPIUsers[User, uuid.UUID](get_user_manager, [auth_backend])
 current_user = fastapi_users.current_user(active=True)
+current_superuser = fastapi_users.current_user(active=True, superuser=True)
 
 
 # REVISAR(human): seed da conta demo no startup, idempotente. Se já existe,
-# não mexe (não reseta senha). Alternativa descartada: migração de dados.
+# não reseta a senha, só garante a flag de admin (is_superuser, ticket 15).
+# Alternativa descartada: migração de dados.
 async def garantir_conta_demo() -> None:
-    """Cria a conta demo se ela não existe."""
+    """Cria a conta demo se ela não existe. A conta demo é superuser."""
     async with SessionLocal() as session:
         manager = UserManager(SQLAlchemyUserDatabase(session, User))
         try:
-            await manager.create(UserCreate(email=DEMO_EMAIL, password=settings.demo_password))
+            await manager.create(UserCreate(email=DEMO_EMAIL, password=settings.demo_password, is_superuser=True))
         except exceptions.UserAlreadyExists:
-            pass
+            await session.execute(update(User).where(User.email == DEMO_EMAIL).values(is_superuser=True))
+            await session.commit()

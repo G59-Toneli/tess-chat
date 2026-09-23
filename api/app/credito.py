@@ -1,8 +1,9 @@
 """Crédito em micro-USD: Tabela de Preço, Ledger, Cap, reserva e acerto (ADR 0004)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -12,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.audit import audit
-from app.auth import User, current_user
+from app.auth import User, current_superuser, current_user
 from app.config import settings
 from app.db import Base, SessionLocal, get_session
 
@@ -192,3 +193,88 @@ async def credito_global(
 ) -> Saldo:
     """Gasto, Cap e saldo somados de todos os Usuários."""
     return await _saldo(session, None)
+
+
+class GastoDia(BaseModel):
+    dia: date
+    custo_micro_usd: int
+
+
+class GastoModelo(BaseModel):
+    model: str
+    custo_micro_usd: int
+    chamadas: int
+
+
+class LinhaLedger(BaseModel):
+    id: int
+    ts: datetime
+    user_id: uuid.UUID
+    conversation_id: uuid.UUID | None
+    model: str
+    input_tokens: int
+    output_tokens: int
+    thinking_tokens: int
+    cache_read_tokens: int
+    cost_micro_usd: int
+
+
+class Painel(BaseModel):
+    saldo: Saldo
+    por_dia: list[GastoDia]
+    por_modelo: list[GastoModelo]
+    ultimas: list[LinhaLedger]
+
+
+def _fuso(tz: str = "UTC") -> str:
+    """Fuso IANA do browser. Inválido é 422 antes de chegar ao Postgres."""
+    try:
+        ZoneInfo(tz)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(status_code=422, detail=f"Fuso inválido: {tz}") from None
+    return tz
+
+
+Fuso = Annotated[str, Depends(_fuso)]
+
+
+# REVISAR(human): dia do gasto no fuso do browser (UI-GUIA), não em UTC:
+# 22h em Brasília já é o dia seguinte em UTC. Últimas 20 linhas do Ledger.
+async def _painel(session: AsyncSession, user_id: uuid.UUID | None, tz: str) -> Painel:
+    filtro = [CreditLedger.user_id == user_id] if user_id is not None else []
+    custo = func.sum(CreditLedger.cost_micro_usd)
+    dia = func.date(func.timezone(tz, CreditLedger.ts)).label("dia")
+    por_dia = await session.execute(select(dia, custo).where(*filtro).group_by(dia).order_by(dia))
+    por_modelo = await session.execute(
+        select(CreditLedger.model, custo, func.count())
+        .where(*filtro)
+        .group_by(CreditLedger.model)
+        .order_by(custo.desc())
+    )
+    ultimas = await session.scalars(select(CreditLedger).where(*filtro).order_by(CreditLedger.id.desc()).limit(20))
+    return Painel(
+        saldo=await _saldo(session, user_id),
+        por_dia=[GastoDia(dia=d, custo_micro_usd=c) for d, c in por_dia.all()],
+        por_modelo=[GastoModelo(model=m, custo_micro_usd=c, chamadas=n) for m, c, n in por_modelo.all()],
+        ultimas=[LinhaLedger.model_validate(linha, from_attributes=True) for linha in ultimas.all()],
+    )
+
+
+@router.get("/me/painel")
+async def meu_painel(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(current_user)],
+    tz: Fuso,
+) -> Painel:
+    """Saldo, gasto por dia e por modelo e últimas linhas do Ledger do Usuário logado."""
+    return await _painel(session, user.id, tz)
+
+
+@router.get("/global/painel")
+async def painel_global(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    _admin: Annotated[User, Depends(current_superuser)],
+    tz: Fuso,
+) -> Painel:
+    """O mesmo painel somando todos os Usuários, contra o Cap global. Só admin."""
+    return await _painel(session, None, tz)
