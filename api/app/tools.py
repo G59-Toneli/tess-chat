@@ -12,7 +12,7 @@ import trafilatura
 from fastapi import APIRouter, Depends, HTTPException
 from mcp.types import CONNECTION_CLOSED, REQUEST_TIMEOUT
 from pydantic import BaseModel, Field
-from pydantic_ai import FunctionToolset, RunContext
+from pydantic_ai import FunctionToolset, ModelRetry, RunContext
 from pydantic_ai.toolsets import AbstractToolset, CombinedToolset, WrapperToolset
 from pydantic_ai.toolsets.abstract import ToolsetTool
 from sqlalchemy import Boolean, ForeignKey, Text, and_, exists, or_, select
@@ -31,6 +31,8 @@ from app.resiliencia import TIMEOUTS, resumo_erro
 
 # Teto do texto que volta ao modelo por chamada (~6k tokens, INFERIDO).
 LIMITE_CHARS = 20_000
+# Tool MCP devolve schema e JSON: cortar no meio tira campos. 40k cobre o maior visto (36k, Stripe api_details).
+LIMITE_CHARS_MCP = 40_000
 TRECHO_BUSCA = 600
 TIMEOUT = httpx.Timeout(30.0)
 
@@ -73,7 +75,7 @@ async def web_search(query: str, t: httpx.AsyncBaseTransport | None = None) -> s
     try:
         async with httpx.AsyncClient(transport=t, timeout=TIMEOUT) as http:
             r = await AsyncTavilyClient(api_key=settings.tavily_api_key, client=http).search(query, max_results=5)
-    except Exception as e:  # noqa: BLE001  erro vira texto para o modelo (Agent roda com retries=0)
+    except Exception as e:  # noqa: BLE001  erro vira texto para o modelo, sem gastar o retry da tool
         return f"web_search falhou: {type(e).__name__}"
     blocos = [
         f"[{i}] {x.get('title', '')}\nURL: {x.get('url', '')}\n{(x.get('content') or '')[:TRECHO_BUSCA]}"
@@ -90,7 +92,7 @@ async def web_fetch(url: str, t: httpx.AsyncBaseTransport | None = None) -> str:
         try:
             r = await http.get(f"https://r.jina.ai/{url}")
             if r.status_code == 200 and r.text.strip():
-                return r.text[:LIMITE_CHARS]
+                return cortar(r.text, LIMITE_CHARS)
         except httpx.HTTPError:
             pass
         try:
@@ -99,10 +101,17 @@ async def web_fetch(url: str, t: httpx.AsyncBaseTransport | None = None) -> str:
         except httpx.HTTPError as e:
             return f"web_fetch falhou: {type(e).__name__}"
     texto = await asyncio.to_thread(trafilatura.extract, r.text)
-    return texto[:LIMITE_CHARS] if texto else f"web_fetch: sem texto extraível em {url}."
+    return cortar(texto, LIMITE_CHARS) if texto else f"web_fetch: sem texto extraível em {url}."
 
 
 NATIVAS = {"web_search": web_search, "web_fetch": web_fetch}
+
+
+def cortar(texto: str, limite: int) -> str:
+    """Corta no teto e avisa o modelo do corte, para ele pedir só o trecho necessário (ticket 31)."""
+    if len(texto) <= limite:
+        return texto
+    return f"{texto[:limite]}\n[resultado cortado em {limite} caracteres; peça só o trecho necessário]"
 
 
 # ---------- Registro por Conversa ----------
@@ -144,7 +153,7 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
 
 @dataclass
 class Auditada(WrapperToolset[Any]):
-    """Grava um Evento tool_call por execução: nome, args, duração, tamanho do resultado."""
+    """Grava um Evento tool_call por execução: nome, args, duração, tamanho do resultado ou o erro."""
 
     uid: uuid.UUID
     cid: uuid.UUID
@@ -156,7 +165,19 @@ class Auditada(WrapperToolset[Any]):
         self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
     ) -> Any:
         t0 = time.perf_counter()
-        resultado = await super().call_tool(name, tool_args, ctx, tool)
+        base = {"tool": name, "origem": self.origens.get(name), "args": tool_args}
+        try:
+            resultado = await super().call_tool(name, tool_args, ctx, tool)
+        except Exception as exc:
+            await self._auditar(t0, {**base, "erro": resumo_erro(exc)})
+            raise
+        await self._auditar(t0, {**base, "result_chars": len(str(resultado))})
+        # Nativa já volta cortada; MCP não tinha teto (ticket 31).
+        if self.origens.get(name) == "mcp" and len(str(resultado)) > LIMITE_CHARS_MCP:
+            return cortar(str(resultado), LIMITE_CHARS_MCP)
+        return resultado
+
+    async def _auditar(self, t0: float, payload: dict[str, Any]) -> None:
         async with SessionLocal() as s:
             await audit(
                 s,
@@ -164,15 +185,9 @@ class Auditada(WrapperToolset[Any]):
                 user_id=self.uid,
                 conversation_id=self.cid,
                 latency_ms=int((time.perf_counter() - t0) * 1000),
-                payload={
-                    "tool": name,
-                    "origem": self.origens.get(name),
-                    "args": tool_args,
-                    "result_chars": len(str(resultado)),
-                },
+                payload=payload,
             )
             await s.commit()
-        return resultado
 
 
 async def toolset_da_conversa(
@@ -264,6 +279,10 @@ class ComTeto(WrapperToolset[Any]):
     # REVISAR(human): o que corta o turno. A (limite+1)ª chamada não roda; o teto conta chamadas,
     # não requests, porque é o que o Usuário vê como cards. Tool MCP cujo servidor caiu ou estourou
     # o timeout também corta: repetir no mesmo turno só gastaria mais requests.
+    # Erro da tool (ModelRetry, ticket 31) volta ao modelo uma vez. A falha seguida da mesma tool
+    # corta com "A tool X falhou": ctx.retry chegou em max_retries (Agent retries=1). O framework
+    # zera ctx.retry quando a tool acerta, então só conta falha seguida. Com retries=0 o corte
+    # seria imediato, sem nova tentativa.
     async def call_tool(
         self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
     ) -> Any:
@@ -274,10 +293,12 @@ class ComTeto(WrapperToolset[Any]):
             return await super().call_tool(name, tool_args, ctx, tool)
         except Exception as exc:
             motivo = _falha_mcp(exc) if self.wrapped.origens.get(name) == "mcp" else None
-            if motivo is None:
-                raise
             servidor = self.wrapped.servidores.get(name)
-            await self._cortar(ctx, {"motivo": motivo, "servidor": servidor, "tool": name, **resumo_erro(exc)})
+            if motivo is not None:
+                await self._cortar(ctx, {"motivo": motivo, "servidor": servidor, "tool": name, **resumo_erro(exc)})
+            if isinstance(exc, ModelRetry) and ctx.retry >= ctx.max_retries:
+                await self._cortar(ctx, {"motivo": "tool_falhou", "servidor": servidor, "tool": name, **resumo_erro(exc)})
+            raise
 
 
 def _ligar(nome: str, t: httpx.AsyncBaseTransport | None):

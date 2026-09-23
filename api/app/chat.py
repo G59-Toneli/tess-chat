@@ -54,7 +54,13 @@ MODELO = MODELO_PADRAO
 MODELO_RESERVA = "gemini-3.7-flash"
 SDK = 7
 
-agent = Agent(retries=0)
+# Tools MCP genéricas (Stripe) têm `parameters: object` sem propriedades: o nome dos campos só vem do *_api_details.
+INSTRUCOES = (
+    "Para tools `*_api_write` e `*_api_read`, use exatamente os nomes de parâmetros devolvidos por `*_api_details`; "
+    "não invente campos."
+)
+# retries=1: erro de tool volta ao modelo uma vez (ticket 31). A falha seguida corta o turno no ComTeto.
+agent = Agent(retries=1, instructions=INSTRUCOES)
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
@@ -404,9 +410,15 @@ def _evento(interrupcao: dict[str, Any]) -> str:
 
 
 def _aviso(i: dict[str, Any]) -> dict[str, Any]:
-    """Part que o front mostra e que fica na Mensagem. Sem o texto do erro: pode ter URL interna."""
+    """Part que o front mostra e que fica na Mensagem.
+
+    Queda de servidor vai sem o texto do erro: pode ter URL interna. Erro da tool vai com o texto:
+    é a resposta do servidor, que o modelo e o card já viram.
+    """
     if i["motivo"] == "tool_limit_reached":
         texto = f"Turno interrompido: limite de {i['limite']} chamadas de tool."
+    elif i["motivo"] == "tool_falhou":
+        texto = f"A tool {i['tool']} falhou: {i['msg']}"
     elif i["motivo"] == "mcp_timeout":
         texto = f"Turno interrompido: o servidor MCP {i['servidor']} não respondeu em {mcp.TIMEOUT_S:.0f} s."
     else:

@@ -254,3 +254,48 @@ async def test_toggle_global_de_tool_inexistente_e_sem_login(client):
     h = await demo(client)
     assert (await client.put("/api/tools/nao_existe", json={"ativa_global": True}, headers=h)).status_code == 404
     assert (await client.put("/api/tools/web_fetch", json={"ativa_global": True})).status_code == 401
+
+
+# ---------- Teto de texto com aviso de corte (ticket 31) ----------
+
+
+async def test_web_fetch_acima_do_teto_vem_com_a_frase_de_corte():
+    from app.tools import LIMITE_CHARS
+
+    grande = httpx.MockTransport(lambda _req: httpx.Response(200, text="a" * (LIMITE_CHARS + 5000)))
+    texto = await web_fetch("https://example.com", grande)
+
+    assert texto.startswith("a" * LIMITE_CHARS)
+    assert texto.endswith(f"[resultado cortado em {LIMITE_CHARS} caracteres; peça só o trecho necessário]")
+
+
+async def test_resultado_mcp_acima_do_teto_chega_ao_modelo_com_a_frase_de_corte(client):
+    import uuid
+
+    from pydantic_ai import Agent, FunctionToolset
+
+    from app.tools import LIMITE_CHARS_MCP, Auditada
+
+    uid, _ = await usuario(client)
+    ts = FunctionToolset()
+
+    @ts.tool_plain
+    def schema_grande() -> str:
+        return "x" * (LIMITE_CHARS_MCP + 1000)
+
+    vistas: list[list[ModelMessage]] = []
+
+    async def stream(msgs: list[ModelMessage], _info: AgentInfo):
+        vistas.append(msgs)
+        if len(vistas) == 1:
+            yield {0: DeltaToolCall(name="schema_grande", json_args="{}", tool_call_id="c1")}
+            return
+        yield "ok"
+
+    toolset = Auditada(ts, uid, uuid.uuid4(), {"schema_grande": "mcp"})
+    async with Agent(FunctionModel(stream_function=stream), toolsets=[toolset]).run_stream("oi") as r:
+        await r.get_output()
+
+    [ret] = retornos(vistas[-1])
+    assert ret.content.startswith("x" * LIMITE_CHARS_MCP)
+    assert ret.content.endswith(f"[resultado cortado em {LIMITE_CHARS_MCP} caracteres; peça só o trecho necessário]")

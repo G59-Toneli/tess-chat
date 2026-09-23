@@ -333,3 +333,82 @@ async def test_servidor_cai_no_meio_do_turno_e_o_turno_termina_com_aviso(client,
     [ev] = await eventos("mcp_tool_failed", user_id=uid)
     assert ev.payload["servidor"] == "Caidor" and ev.payload["tool"] == somar
     assert ev.cost_micro_usd > 0
+
+
+# ---------- Erro de tool volta ao modelo (ticket 31) ----------
+
+# Texto que o servidor demo devolve com isError quando a tool levanta exceção (fuso inválido).
+ERRO_DEMO = "Error executing tool hora_atual"
+
+
+def modelo_de_hora(hora: str, fusos: list[str], vistos: list):
+    """Chama `hora` com cada fuso da lista, um por request. Depois responde com o último retorno."""
+    from pydantic_ai.messages import ModelRequest, RetryPromptPart, ToolReturnPart
+    from pydantic_ai.models.function import DeltaToolCall, FunctionModel
+
+    from app.chat import MODELO
+
+    async def stream(msgs, _info):
+        vistos.append(msgs)
+        feitas = [p for m in msgs if isinstance(m, ModelRequest) for p in m.parts
+                  if isinstance(p, (ToolReturnPart, RetryPromptPart))]
+        if len(feitas) < len(fusos):
+            n = len(feitas)
+            yield {0: DeltaToolCall(name=hora, json_args=f'{{"fuso": "{fusos[n]}"}}', tool_call_id=f"c{n + 1}")}
+            return
+        yield f"Hora: {feitas[-1].content}"
+
+    return FunctionModel(stream_function=stream, model_name=MODELO)
+
+
+async def test_erro_da_tool_mcp_volta_ao_modelo_que_tenta_de_novo(client, demo, usar_modelo):
+    from pydantic_ai.messages import ModelRequest, RetryPromptPart
+
+    from tests.test_resiliencia import chunks
+
+    uid, h = await usuario(client)
+    tools = (await cadastrar(client, h, demo)).json()["tools"]
+    hora = next(t["nome"] for t in tools if t["nome"].endswith("_hora_atual"))
+    vistos = []
+    usar_modelo(modelo_de_hora(hora, ["Nao/Existe", "America/Sao_Paulo"], vistos))
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("que horas são?"), headers=h)
+
+    assert r.status_code == 200, r.text
+    [erro] = [c for c in chunks(r.text) if c["type"] == "tool-output-error"]
+    assert ERRO_DEMO in erro["errorText"]
+    # O modelo recebeu o texto do erro no request seguinte.
+    [retry] = [p for m in vistos[1] if isinstance(m, ModelRequest) for p in m.parts if isinstance(p, RetryPromptPart)]
+    assert ERRO_DEMO in str(retry.content)
+    assert (await ultima_resposta(client, h, cid)).startswith("Hora: 20")
+    falha, ok = await eventos("tool_call", user_id=uid)
+    assert falha.payload["tool"] == hora and ERRO_DEMO in falha.payload["erro"]["msg"]
+    assert "erro" not in ok.payload
+
+
+async def test_tool_mcp_que_falha_duas_vezes_encerra_o_turno_com_aviso(client, demo, usar_modelo):
+    from tests.test_resiliencia import chunks
+
+    uid, h = await usuario(client)
+    tools = (await cadastrar(client, h, demo)).json()["tools"]
+    hora = next(t["nome"] for t in tools if t["nome"].endswith("_hora_atual"))
+    usar_modelo(modelo_de_hora(hora, ["Nao/Existe", "Nem/Isso", "Nunca/Chega"], []))
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("que horas são?"), headers=h)
+
+    assert r.status_code == 200, r.text
+    assert "error" not in [c["type"] for c in chunks(r.text)]
+    [aviso] = [c for c in chunks(r.text) if c["type"] == "data-turno-interrompido"]
+    assert aviso["data"]["motivo"] == "tool_falhou" and aviso["data"]["tool"] == hora
+    assert aviso["data"]["texto"] == f"A tool {hora} falhou: {ERRO_DEMO}"
+    msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+    # O adapter parte a resposta em duas Mensagens depois do retry; o par começa no usuário.
+    assert msgs[0]["role"] == "user" and msgs[-1]["role"] == "assistant"
+    assert aviso["data"]["tool_call_ids"] == ["c2"]
+    assert any(p["type"] == "data-turno-interrompido" for p in msgs[-1]["parts"])
+    falhas = await eventos("tool_call", user_id=uid)
+    assert len(falhas) == 2 and all("erro" in f.payload for f in falhas)
+    [ev] = await eventos("mcp_tool_failed", user_id=uid)
+    assert ev.payload["tool"] == hora and ev.cost_micro_usd > 0
