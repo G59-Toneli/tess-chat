@@ -5,7 +5,7 @@ Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta.
 ## Crédito (ADR 0004)
 - ~~Reserva estimada localmente em vez de `count_tokens`~~. **Decidido pelo Toneli em 23/09 ([ADR 0019](adr/0019-reserva-por-estimativa-local.md)):** fica a estimativa local, ~3 caracteres por token (INFERIDO). A reserva só segura crédito; o acerto usa o uso real.
 - **Duas chamadas simultâneas** do mesmo usuário podem passar juntas do cap. Corrige com lock por usuário ou `SELECT ... FOR UPDATE` na reserva. **Sem ticket.**
-- ~~Turno cortado pelo teto de tool calls não é cobrado~~ (06b). **Resolvido no ticket 30:** o Ledger recebe o uso real dos requests do turno cortado.
+- ~~Turno cortado pelo teto de tool calls não é cobrado~~ (06b). **Resolvido no ticket 30:** o Ledger recebe o uso real dos requests do turno cortado. Toneli confirmou manter a cobrança em 23/09.
 - **Anexo em base64 volta ao modelo em todo turno** e infla a reserva. **Ticket 09b.**
 
 ## Compactação (ADR 0006)
