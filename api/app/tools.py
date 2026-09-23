@@ -47,7 +47,7 @@ class Tool(Base):
     __tablename__ = "tools"
 
     nome: Mapped[str] = mapped_column(Text, primary_key=True)
-    origem: Mapped[str] = mapped_column(Text)  # nativa | mcp
+    origem: Mapped[str] = mapped_column(Text)  # nativa | mcp | google
     descricao: Mapped[str] = mapped_column(Text)  # o que o modelo recebe
     descricao_usuario: Mapped[str] = mapped_column(Text)  # o que a tela mostra (ticket 28)
     schema: Mapped[dict[str, Any]] = mapped_column(JSONB)

@@ -30,8 +30,8 @@ Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta.
 - **Teste de reboot do VPS adiado** pelo Toneli em 23/09. O VPS é produção do trabalho. Testado só `down` + `up` sem `-v` (ticket 16).
 
 ## Auth e demo
-- ~~`JWT_SECRET` com default de dev~~. **Resolvido:** em produção está definido, com 64 caracteres, e não é o default (verificado em 2026-09-23). Com `ENV=prod`, o boot recusa segredo default ou curto. `DEMO_PASSWORD` com default de dev: não verificado.
-- Senha demo fixa no front; precisa bater com `DEMO_PASSWORD`.
+- ~~`JWT_SECRET` com default de dev~~. **Resolvido:** em produção está definido, com 64 caracteres, e não é o default (verificado em 2026-09-23). Com `ENV=prod`, o boot recusa segredo default ou curto. `DEMO_PASSWORD` trocado por valor aleatório em produção em 2026-09-23.
+- ~~Senha demo fixa no front~~. **Resolvido:** o front não carrega mais a senha.
 
 ## Front
 - Sem teste unitário no front; verificação é por fluxo no browser e screenshot.

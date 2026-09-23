@@ -4,7 +4,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 
 ## Inventário do VPS (23/09/2026)
 - Oracle, São Paulo. `aarch64`, Ubuntu 24.04, 4 OCPU, 24 GB. Disco `/` de 96 GB.
-- Acesso: `ssh -i <chave> ubuntu@<ip-do-vps>`. Sudo sem senha. Regras em `<arquivo-de-acesso>`.
+- Acesso: `ssh -i <chave> <usuario>@<ip-do-vps>`. Sudo sem senha. Regras em `<arquivo-de-acesso>`.
 - É o VPS compartilhado. Outros projetos: outro projeto-hub (outro projeto, 127.0.0.1:3100), outro projeto-orchestrator (127.0.0.1:8000), cdt-erpnext (127.0.0.1:8081), cloudflared (127.0.0.1:20241).
 - Nginx no host em 80/443 com certbot. `outro projeto-hub` é `default_server` em 80 e 443.
 - Portas em uso antes do deploy: 22 53 80 111 443 3100 8000 8081 20241.
@@ -44,8 +44,8 @@ O script faz `git pull --ff-only` (se houver `.git`), confere o disco, `up -d --
 
 **Deploy manual sem git no VPS (até a deploy key existir), a partir da máquina local:**
 ```
-git -c core.autocrlf=false archive HEAD | ssh -i <chave> ubuntu@<ip-do-vps> 'tar -x -C /opt/tess-chat'
-ssh -i <chave> ubuntu@<ip-do-vps> 'bash /opt/tess-chat/deploy/deploy.sh'
+git -c core.autocrlf=false archive HEAD | ssh -i <chave> <usuario>@<ip-do-vps> 'tar -x -C /opt/tess-chat'
+ssh -i <chave> <usuario>@<ip-do-vps> 'bash /opt/tess-chat/deploy/deploy.sh'
 ```
 Grave o hash em `DEPLOYED_COMMIT`.
 

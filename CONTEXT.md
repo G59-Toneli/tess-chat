@@ -20,3 +20,4 @@ Termos do produto. Um significado por termo. Sem detalhe de implementação.
 - **Compartilhamento**: link público somente-leitura de uma Conversa, cortado na última Mensagem existente no momento da criação. Pode ser revogado.
 - **Evento de auditoria**: registro somente-inserção de uma ação relevante: login, mensagem, chamada de modelo, chamada de tool, compactação, compartilhamento, conector, cap atingido.
 - **Configuração**: parâmetros persistidos por Usuário e por Conversa: modelo, nível de raciocínio, limiar de Compactação, Cap.
+- **Configuração global**: parâmetros da instância, uma linha só, que só admin altera. Hoje: cadastro aberto ou fechado.
