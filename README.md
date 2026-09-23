@@ -85,7 +85,7 @@ Abra `http://localhost:8000` e clique em "conta demo". Credencial: `demo@toneli.
 
 **O que cada chave liga.** Sem `GEMINI_PAID_API_KEY` o chat não responde. Sem `TAVILY_API_KEY` a busca responde "indisponível". Sem `TYPESAFE_API_KEY` o Roteador fica de fora e o Gemini escolhe a tool. Sem `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `CONNECTORS_KEY`, a tela de Conectores não conecta. O comando que gera a `CONNECTORS_KEY` está no `.env.example`. O projeto OAuth no Google está em [`docs/WIZARD-GOOGLE.md`](docs/WIZARD-GOOGLE.md).
 
-**Servidor MCP de demo.** Em `/mcp`, cadastre a URL `http://127.0.0.1:8765/mcp`, sem header. Ele expõe tools simples, como `somar`.
+**Servidor MCP de demo.** Em `/mcp`, cadastre a URL `http://127.0.0.1:8765/mcp`, sem header. Ele expõe tools simples, como `somar`. URL `http://` só é aceita com `ENV=dev`, o default, e só para os hosts `127.0.0.1` e `mcp-demo`. Em produção, `ENV=prod` exige `https://`.
 
 **Desenvolvimento do front com hot reload:** `cd web && npm run dev`. O Vite repassa `/api`, `/auth` e `/users` para a porta 8000.
 
