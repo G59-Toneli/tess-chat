@@ -180,6 +180,13 @@ async def test_teto_de_tool_calls_corta_o_turno_e_cobra_o_uso_real(client, usar_
     assert (linha.input_tokens, linha.cost_micro_usd) == (ev.input_tokens, ev.cost_micro_usd)
     assert linha.message_id == msgs[-1]["id"]
 
+    # O Usuário sobe o teto e segue: o histórico com o aviso e a tool interrompida volta ao modelo sem quebrar.
+    await client.put(f"/api/conversations/{cid}/settings", json={"tool_calls_limite": 7}, headers=h)
+    r = await client.post(f"/api/chat/{cid}", json=corpo("continua"), headers=h)
+    assert r.status_code == 200, r.text
+    assert "error" not in [c["type"] for c in chunks(r.text)]
+    assert len(pedidos) > 6
+
 
 async def test_os_dois_modelos_esgotam_vira_502(client, usar_modelo, usar_reserva):
     primario, _ = falha_n_vezes(99, 503)

@@ -89,6 +89,8 @@ export const ROTULO_EVENTO: Record<string, string> = {
   llm_call: 'Chamada de modelo',
   llm_error: 'Erro do modelo',
   tool_call: 'Chamada de tool',
+  tool_limit_reached: 'Turno cortado (teto de tools)',
+  mcp_tool_failed: 'Turno cortado (MCP falhou)',
   tool_toggled: 'Tool ligada/desligada',
   router_decision: 'Roteador',
   router_fallback: 'Roteador (fallback)',
