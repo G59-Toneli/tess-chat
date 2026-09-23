@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { WrenchIcon } from 'lucide-react'
 import { PromptInputButton } from '@/components/ai-elements/prompt-input'
+import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -81,8 +82,15 @@ export function SeletorTools({ conversaId }: { conversaId?: string }) {
               return (
                 <li key={t.nome} className="space-y-1">
                   <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor={id} className="font-mono text-sm">
-                      {t.nome}
+                    <Label htmlFor={id} className="min-w-0 font-mono text-sm">
+                      <span className="truncate" title={t.nome}>
+                        {t.nome}
+                      </span>
+                      {t.origem === 'mcp' && (
+                        <Badge variant="outline" className="shrink-0 font-sans" title={t.servidor ?? undefined}>
+                          mcp
+                        </Badge>
+                      )}
                     </Label>
                     <Switch
                       id={id}
@@ -92,7 +100,7 @@ export function SeletorTools({ conversaId }: { conversaId?: string }) {
                     />
                   </div>
                   <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {global ? t.descricao : 'Desligada para todas as conversas.'}
+                    {!global ? 'Desligada para todas as conversas.' : t.servidor ? `${t.servidor} · ${t.descricao}` : t.descricao}
                   </p>
                 </li>
               )

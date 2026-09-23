@@ -9,6 +9,7 @@ import { Conectores } from '@/pages/Conectores'
 import { Configuracao } from '@/pages/Configuracao'
 import { Creditos } from '@/pages/Creditos'
 import { Login } from '@/pages/Login'
+import { Mcp } from '@/pages/Mcp'
 import { Placeholder } from '@/pages/Placeholder'
 import { Tools } from '@/pages/Tools'
 
@@ -24,7 +25,7 @@ export default function App() {
         <Route path="/auditoria" element={<Auditoria />} />
         <Route path="/creditos" element={<Creditos />} />
         <Route path="/tools" element={<Tools />} />
-        <Route path="/mcp" element={<Placeholder titulo="Servidores MCP" />} />
+        <Route path="/mcp" element={<Mcp />} />
         <Route path="/conectores" element={<Conectores />} />
         <Route path="/compartilhados" element={<Compartilhados />} />
         <Route path="/perfil" element={<Placeholder titulo="Perfil" />} />

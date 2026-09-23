@@ -17,5 +17,13 @@ services:
       timeout: 3s
       retries: 20
 
+  # Servidor MCP mínimo, plano B do ticket 17. MCP_DEMO_TOKEN vazio = sem autenticação.
+  mcp-demo:
+    build: ./deploy/mcp-demo
+    environment:
+      MCP_DEMO_TOKEN: ${MCP_DEMO_TOKEN:-}
+    ports:
+      - "8765:8765"
+
 volumes:
   pgdata:

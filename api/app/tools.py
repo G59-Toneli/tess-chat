@@ -11,15 +11,15 @@ import trafilatura
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from pydantic_ai import FunctionToolset, RunContext
-from pydantic_ai.toolsets import AbstractToolset, WrapperToolset
+from pydantic_ai.toolsets import AbstractToolset, CombinedToolset, WrapperToolset
 from pydantic_ai.toolsets.abstract import ToolsetTool
-from sqlalchemy import Boolean, ForeignKey, Text, exists, or_, select
+from sqlalchemy import Boolean, ForeignKey, Text, and_, exists, or_, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from tavily import AsyncTavilyClient
 
-from app import conectores
+from app import conectores, mcp
 from app.audit import audit
 from app.config import settings
 from app.auth import User, current_superuser
@@ -40,6 +40,7 @@ class Tool(Base):
     descricao: Mapped[str] = mapped_column(Text)
     schema: Mapped[dict[str, Any]] = mapped_column(JSONB)
     ativa_global: Mapped[bool] = mapped_column(Boolean)
+    mcp_server_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("mcp_servers.id", ondelete="CASCADE"))
 
 
 class ConversationTool(Base):
@@ -105,11 +106,18 @@ NATIVAS = {"web_search": web_search, "web_fetch": web_fetch}
 # REVISAR(human): ativa = ativa_global E toggle da Conversa. Sem linha em conversation_tools,
 # o toggle herda ativa_global. ativa_global=false desliga a Tool em todas as Conversas.
 # Tool de origem 'google' só existe se o dono da Conversa tem Conector Google (ticket 18).
+# Tool de origem 'mcp' só existe para o dono do Servidor MCP, e só com o servidor ativo (ticket 17).
 async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tuple[Tool, bool]]:
     """Cada Tool do registro com o estado efetivo na Conversa."""
     tem_conector = exists().where(
         conectores.Connector.user_id == Conversation.user_id,
         conectores.Connector.provedor == conectores.PROVEDOR,
+        Conversation.id == cid,
+    )
+    servidor_do_dono = exists().where(
+        mcp.McpServer.id == Tool.mcp_server_id,
+        mcp.McpServer.user_id == Conversation.user_id,
+        mcp.McpServer.ativo,
         Conversation.id == cid,
     )
     q = (
@@ -118,7 +126,7 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
             ConversationTool,
             (ConversationTool.tool_nome == Tool.nome) & (ConversationTool.conversation_id == cid),
         )
-        .where(or_(Tool.origem != conectores.PROVEDOR, tem_conector))
+        .where(or_(Tool.origem == "nativa", and_(Tool.origem == conectores.PROVEDOR, tem_conector), servidor_do_dono))
         .order_by(Tool.nome)
     )
     return [(t, t.ativa_global and (a if a is not None else True)) for t, a in (await session.execute(q)).all()]
@@ -130,6 +138,7 @@ class Auditada(WrapperToolset[Any]):
 
     uid: uuid.UUID
     cid: uuid.UUID
+    origens: dict[str, str]
 
     async def call_tool(
         self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
@@ -143,7 +152,12 @@ class Auditada(WrapperToolset[Any]):
                 user_id=self.uid,
                 conversation_id=self.cid,
                 latency_ms=int((time.perf_counter() - t0) * 1000),
-                payload={"tool": name, "args": tool_args, "result_chars": len(str(resultado))},
+                payload={
+                    "tool": name,
+                    "origem": self.origens.get(name),
+                    "args": tool_args,
+                    "result_chars": len(str(resultado)),
+                },
             )
             await s.commit()
         return resultado
@@ -154,12 +168,18 @@ async def toolset_da_conversa(
 ) -> AbstractToolset[Any]:
     """Só as Tools ativas na Conversa, com a descrição do registro, embrulhadas na auditoria."""
     ts = FunctionToolset[Any]()
-    for tool, ativa in await estado_da_conversa(session, cid):
-        if ativa and tool.nome in NATIVAS:
+    por_servidor: dict[uuid.UUID, set[str]] = {}
+    ativas = [tool for tool, ativa in await estado_da_conversa(session, cid) if ativa]
+    for tool in ativas:
+        if tool.nome in NATIVAS:
             ts.add_function(_ligar(tool.nome, t), name=tool.nome, description=tool.descricao)
-        elif ativa and tool.nome in conectores.TOOLS:
+        elif tool.nome in conectores.TOOLS:
             ts.add_function(conectores.ligar(tool.nome, uid, t), name=tool.nome, description=tool.descricao)
-    return Auditada(ts, uid, cid)
+        elif tool.mcp_server_id is not None:
+            por_servidor.setdefault(tool.mcp_server_id, set()).add(tool.nome)
+    servidores = (await session.scalars(select(mcp.McpServer).where(mcp.McpServer.id.in_(por_servidor)))).all()
+    todos = CombinedToolset([ts, *(mcp.toolset(s, por_servidor[s.id]) for s in servidores)])
+    return Auditada(todos, uid, cid, {tool.nome: tool.origem for tool in ativas})
 
 
 def _ligar(nome: str, t: httpx.AsyncBaseTransport | None):
@@ -197,6 +217,7 @@ class ToolConversaOut(BaseModel):
     origem: str
     descricao: str
     ativa: bool
+    servidor: str | None = None  # nome do Servidor MCP, só em origem mcp
 
 
 router = APIRouter(tags=["tools"])
@@ -204,9 +225,11 @@ Admin = Annotated[User, Depends(current_superuser)]
 
 
 @router.get("/api/tools", response_model=list[ToolOut])
-async def catalogo(session: Sessao, _: Usuario) -> list[ToolOut]:
-    """Todas as Tools do registro."""
-    tools = (await session.scalars(select(Tool).order_by(Tool.nome))).all()
+async def catalogo(session: Sessao, user: Usuario) -> list[ToolOut]:
+    """Todas as Tools do registro, menos as MCP de outros Usuários."""
+    meus = select(mcp.McpServer.id).where(mcp.McpServer.user_id == user.id)
+    q = select(Tool).where(or_(Tool.mcp_server_id.is_(None), Tool.mcp_server_id.in_(meus))).order_by(Tool.nome)
+    tools = (await session.scalars(q)).all()
     return [ToolOut.model_validate(t, from_attributes=True) for t in tools]
 
 
@@ -223,9 +246,15 @@ async def alternar_global(nome: str, body: ToolGlobalIn, session: Sessao, user: 
 
 
 async def _lista(session: AsyncSession, cid: uuid.UUID) -> list[ToolConversaOut]:
+    estado = await estado_da_conversa(session, cid)
+    ids = {t.mcp_server_id for t, _ in estado if t.mcp_server_id}
+    q = select(mcp.McpServer.id, mcp.McpServer.nome).where(mcp.McpServer.id.in_(ids))
+    servidores = dict((await session.execute(q)).tuples().all()) if ids else {}
     return [
-        ToolConversaOut(nome=t.nome, origem=t.origem, descricao=t.descricao, ativa=a)
-        for t, a in await estado_da_conversa(session, cid)
+        ToolConversaOut(
+            nome=t.nome, origem=t.origem, descricao=t.descricao, ativa=a, servidor=servidores.get(t.mcp_server_id)
+        )
+        for t, a in estado
     ]
 
 
