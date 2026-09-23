@@ -26,6 +26,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 - Antes de buildar: `df -h /`. Acima de 90%, pare.
 - Limpeza: `docker image prune -f`. Nunca `-a`, nunca `docker builder prune`.
 - Não toque em serviço, container, site ou diretório que não esteja na tabela acima.
+- O `.env` de produção precisa de `ENV=prod`: fecha o http do MCP demo e esconde o botão demo do login (ticket 34).
 
 ## Runbook
 Todos os comandos rodam em `/opt/tess-chat` no VPS.
