@@ -39,3 +39,12 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 10 | `tool_call` gravado por um `WrapperToolset` (`Auditada`), sessão própria, por execução. | Auditar dentro de cada função. | Um ponto só; o 17 (MCP) reusa. |
 | 10 | Resultado cortado em 20.000 caracteres (fetch) e 600 por resultado (busca, 5 resultados). | Sem corte. | Página grande estoura contexto e Crédito. INFERIDO ~6k tokens. |
 | 10 | HTTP das tools injetado por dependência `transporte()`; testes usam `httpx.MockTransport` com resposta gravada (Tavily real 1x, Jina real 1x). | Mockar as funções das tools. | Testa o parse e o fallback de verdade. Cliente separado por tool: header da Tavily não vaza para o Jina. |
+| 07 | JWT no `localStorage`, enviado como `Authorization: Bearer`. 401 limpa o token e volta para `/login`. | Cookie httpOnly. | A API do 04 é só Bearer. Cookie pediria mudar `api/`, fora deste ticket. |
+| 07 | Proxy do Vite também em `/auth` e `/users`. | Mover as rotas de auth para `/api`. | Auth do 04 fica fora de `/api`. Não toco em `api/` neste ticket. |
+| 07 | Botão de conta demo preenche `demo@toneli.dev.br` / `demo12345` fixos no front. | Endpoint que devolve a credencial demo. | É o default de `app/config.py`. Se o deploy (16) trocar `DEMO_PASSWORD`, o front precisa trocar junto. |
+| 07 | Em `/`, a primeira mensagem cria a Conversa com título = primeiros 60 caracteres, e o envio acontece em `/c/:id`. | Criar a Conversa dentro do transporte do `useChat`. | A troca de rota remonta o chat e mata o stream. |
+| 07 | Envio pendente com `setTimeout` no efeito. | Enviar direto no efeito. | No StrictMode o cleanup do `useChat` chama `stop()` e aborta o primeiro envio. |
+| 07 | Sem runner de teste no front. O gate é o fluxo no browser (Playwright no Brave). | Vitest para as funções puras. | Aceite do ticket é o fluxo no browser. 07a seguiu o mesmo gate. |
+| 07 | Erro do provedor vira toast com ação "Tentar de novo" (`regenerate`). Erro no meio do stream mostra texto genérico em pt-BR. | Mostrar o texto do provedor. | O 502 já vem em pt-BR da API. O chunk de erro vem em inglês. |
+| 07 | Toaster do shadcn sem `next-themes`: lê o tema de `tema.ts`. | Instalar `next-themes`. | 07a já decidiu pelo tema próprio. |
+| 07 | Sem Evento de auditoria no front. | Emitir evento do front. | Login, cadastro, Conversa e mensagem já emitem evento na API. |
