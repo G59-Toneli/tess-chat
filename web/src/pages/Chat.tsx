@@ -186,16 +186,6 @@ function emCompactacao(m: UIMessage): boolean {
   return !!p && 'data' in p && !(p.data as { feita: boolean }).feita
 }
 
-// REVISAR(human): o corte vem com id do banco, mas as Mensagens deste stream têm id do useChat.
-// juntarTurnos(linhas) tem a mesma forma da lista do useChat; a posição traduz o id.
-// Se as listas não batem, não marca: melhor sem marcador do que no lugar errado.
-function idNoChat(linhas: MensagemComUso[], mensagens: UIMessage[], corte: number): string | null {
-  const doBanco = juntarTurnos(linhas)
-  if (doBanco.length !== mensagens.length) return null
-  const i = doBanco.findIndex((m) => m.id === String(corte))
-  return i < 0 ? null : mensagens[i].id
-}
-
 function ChatConversa({
   id,
   inicial,
@@ -209,7 +199,7 @@ function ChatConversa({
 }) {
   const { usuario, recarregarConversas } = useContextoApp()
   const [usos, setUsos] = useState(usosIniciais)
-  // Id (no useChat) da Mensagem depois da qual vai o marcador de Compactação.
+  // Id (no useChat) da pergunta do turno que compactou: o separador vai antes dela.
   const [corte, setCorte] = useState<string | null>(null)
 
   useEffect(() => {
@@ -222,19 +212,16 @@ function ChatConversa({
 
   // O stream não traz usage nem a decisão do Roteador. A API grava os dois antes do fim
   // do stream, então no onFinish a última resposta do banco já é a deste turno.
-  // Com `mensagens` (turno que compactou), também move o marcador.
   const buscarUso = useCallback(
-    async (mensagemId: string, mensagens?: UIMessage[]) => {
+    async (mensagemId: string) => {
       try {
-        const [linhas, decisoes, novoCorte] = await Promise.all([
+        const [linhas, decisoes] = await Promise.all([
           listarMensagens(id) as Promise<MensagemComUso[]>,
           decisoesDoRoteador(id).catch(() => []),
-          mensagens ? lerCorte(id) : Promise.resolve(null),
         ])
         const ultima = linhas.filter((m) => m.role === 'assistant').at(-1)
         const uso = ultima && usoPorMensagem(linhas, decisoes).get(String(ultima.id))
         if (uso) setUsos((u) => new Map(u).set(mensagemId, uso))
-        if (mensagens && novoCorte !== null) setCorte(idNoChat(linhas, mensagens, novoCorte))
       } catch {
         // Badge é informativo: sem ele a resposta continua visível.
       }
@@ -252,8 +239,10 @@ function ChatConversa({
     transport,
     onFinish: ({ message, messages, isError, isAbort }) => {
       void recarregarConversas()
-      if (!isError && !isAbort)
-        void buscarUso(message.id, message.parts.some((p) => p.type === COMPACTANDO) ? messages : undefined)
+      if (!isError && !isAbort) void buscarUso(message.id)
+      // Turno que compactou: o separador vai antes da pergunta dele (a penúltima da lista).
+      const pergunta = messages.at(-2)
+      if (message.parts.some((p) => p.type === COMPACTANDO) && pergunta?.role === 'user') setCorte(pergunta.id)
     },
   })
   const duracoes = useDuracoes(messages)
@@ -328,7 +317,7 @@ function ChatConversa({
               aguardando={m === ultima ? aguardando : undefined}
             /></MarcadorCompactacao>
           ))}
-          {pensando && <Pensando texto={compactando ? 'Compactando histórico…' : 'Pensando…'} />}
+          {pensando && (compactando ? <Pensando key="compactando" texto="Compactando histórico…" orbita /> : <Pensando key="pensando" texto="Pensando…" />)}
           {cap && <AvisoCap />}
         </>
       )}
@@ -543,11 +532,11 @@ function AvisoTurnoInterrompido({ corte }: { corte: Interrupcao }) {
 }
 
 // Início do turno, antes do primeiro token. Mesmo indicador do intervalo entre tools.
-function Pensando({ texto }: { texto: string }) {
+function Pensando({ texto, orbita }: { texto: string; orbita?: boolean }) {
   return (
     <div className="flex items-center gap-3">
       <AvatarAssistente />
-      <Trabalhando texto={texto} />
+      <Trabalhando texto={texto} orbita={orbita} />
     </div>
   )
 }

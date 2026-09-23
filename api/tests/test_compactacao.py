@@ -100,9 +100,9 @@ async def test_quarta_mensagem_compacta_e_mantem_originais(client, usar_modelo, 
     assert [m["role"] for m in msgs] == ["user", "assistant"] * 4
     assert msgs[-1]["parts"][-1]["text"] == "resposta 4"
 
-    # O front sabe onde marcar: depois da 2ª Mensagem (fim do 1º turno).
+    # O Resumo cobre até o fim do 1º turno e foi feito no 4º: o separador vai antes da 4ª pergunta.
     corte = (await client.get(f"/api/chat/{cid}/compactacao", headers=h)).json()
-    assert corte == {"ate_message_id": msgs[1]["id"]}
+    assert corte == {"ate_message_id": msgs[1]["id"], "turno_message_id": msgs[6]["id"]}
 
     [ev] = await eventos("compaction", user_id=uid)
     assert ev.payload["tokens_antes"] > 2_000
@@ -162,7 +162,7 @@ async def test_abaixo_do_limiar_nao_compacta(client, usar_modelo, resumidor):
         assert (await client.post(f"/api/chat/{cid}", json=corpo(t), headers=h)).status_code == 200
 
     assert resumidor == []
-    assert (await client.get(f"/api/chat/{cid}/compactacao", headers=h)).json() == {"ate_message_id": None}
+    assert (await client.get(f"/api/chat/{cid}/compactacao", headers=h)).json() == {"ate_message_id": None, "turno_message_id": None}
 
 
 def pares_orfaos(msgs: list[ModelMessage]) -> list[str]:
