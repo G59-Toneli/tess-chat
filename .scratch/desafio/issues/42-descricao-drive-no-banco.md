@@ -1,4 +1,4 @@
-# 40 — Descrição de `drive_search_read` volta a ter uma fonte só (banco)
+# 42 — Descrição de `drive_search_read` volta a ter uma fonte só (banco)
 
 **Type:** task (AFK, só api/)
 **Status:** ready-for-agent
