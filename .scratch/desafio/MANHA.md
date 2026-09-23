@@ -6,7 +6,7 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
 - [x] `TAVILY_API_KEY` adicionada (free, 1.000 créditos/mês). Testes do ticket 10 usam resposta gravada, não a API.
 - [ ] Ler `docs/DECISOES-AUTONOMAS.md`: decisões que os agentes tomaram sozinhos. Já tem a do JWT_SECRET e DEMO_PASSWORD com default de dev.
 - [ ] Ler os `REVISAR(human)` no código: `grep -rn "REVISAR(human)" api/`. São as funções que você ia escrever e que caem na entrevista.
-- [ ] Pegar chaves SSH do VPS compartilhado (usuário, IP, arquivo .pem) e salvar em `~/.ssh/`. Me passar o caminho. Criar registro A `chat.toneli.dev.br` apontando pro IP desse VPS.
+- [x] SSH do VPS e registro A `chat.toneli.dev.br` feitos (23/09). Produção em https://chat.toneli.dev.br com HTTPS e CI.
 - [x] Projeto OAuth no Google feito e testado (23/09 ~03:00). `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no `.env`. JSON do client em `C:ProjectsGoogleJsonDesafio` (fora do repo).
 - [ ] **Validar o Conector Google (ticket 18, aceites 1 e 2).** O consentimento pede seu login Google, então o agente testou só com Google mockado.
   1. Confira no `.env`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `CONNECTORS_KEY` (o agente gerou). Não troque a `CONNECTORS_KEY` depois de conectar.
@@ -59,3 +59,6 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
   6. Teste o CI: push na main (ou Actions > deploy > Run workflow) e confira `git -C /opt/tess-chat rev-parse HEAD`.
   7. TLS: o registro A `chat.toneli.dev.br` ainda não existia (NXDOMAIN no registro.br). Crie o registro A para `<ip-do-vps>`. Quando `dig +short chat.toneli.dev.br @8.8.8.8` devolver o IP, rode no VPS `sudo certbot --nginx -d chat.toneli.dev.br --non-interactive --agree-tos --redirect` e teste em janela anônima.
   8. Aceite "reiniciar o VPS mantém dados" NÃO foi testado com reboot: o VPS é produção do trabalho. Testado `down` + `up` sem `-v` (dados mantidos) e restart policy `unless-stopped` com docker `enabled`. Reboot real é decisão sua.
+
+- [ ] **Produção: conectar Google e cadastrar o Stripe em https://chat.toneli.dev.br** (conectores e servidores MCP são por ambiente). Antes disso, no Google Console, confirmar que o redirect `https://chat.toneli.dev.br/api/connectors/google/callback` está cadastrado (o ticket 18 diz que sim).
+- [ ] **Dica de demo do Stripe:** modelo da conta no padrão (3.8 Flash). Pedidos de ação funcionam numa frase ("gera o pagamento de R$ 1000 do celular"). Se quiser encurtar, desligue no popover de tools o `stripe_implementation_planner`, `search_stripe_documentation` e `send_stripe_feedback` da conversa.

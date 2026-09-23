@@ -1,6 +1,6 @@
 # Handoff do orquestrador
 
-Atualizado em 2026-09-23 ~13:10 (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
+Atualizado em 2026-09-23 ~13:20 (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
 
 ## Como orquestrar (ciclo)
 1. Escolher ticket `ready-for-agent` cujos `Blocked by` estão `resolved`.
@@ -23,8 +23,11 @@ Atualizado em 2026-09-23 ~13:10 (horário local -03:00). Sessão atual: orquestr
 - **Tickets só de docs correm em paralelo com qualquer ticket de código** (20, 22, 24). Bom uso da fila enquanto `chat.py` está ocupado.
 
 ## Estado dos tickets
-- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 (AFK), 20 a 33. Tudo em `origin/main`.
-- **Produção:** https://chat.toneli.dev.br no ar (VPS compartilhado, nginx do host + certbot, ADR 0014). Deploy manual: `git archive HEAD | ssh ... tar -x -C /opt/tess-chat` e `bash /opt/tess-chat/deploy/deploy.sh` (runbook em `docs/INFRA.md`). CI escrito, depende de deploy key e secrets (MANHA).
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 (AFK), 20 a 36. Tudo em `origin/main` e em produção.
+- **CI ligado (23/09 ~13:00):** push na `main` → GitHub Actions → ssh com chave própria do CI (`<chave-do-ci>`, só no VPS e nos secrets) → `deploy.sh`. Deploy key read-only cadastrada; `/opt/tess-chat` é clone git. Não precisa mais de `git archive`.
+- **Stripe MCP validado com a frase do Toneli** depois dos tickets 35 e 36 e de voltar o modelo da conta demo ao padrão (um agente tinha deixado flash-lite na conta; flash-lite escolhe mal a tool).
+- **Regra nova:** agente NÃO altera a Configuração da conta demo (modelo, limiares) sem reverter no fim do ticket.
+- **Produção:** https://chat.toneli.dev.br no ar (VPS compartilhado, nginx do host + certbot, ADR 0014). Deploy manual: `git archive HEAD | ssh ... tar -x -C /opt/tess-chat` e `bash /opt/tess-chat/deploy/deploy.sh` (runbook em `docs/INFRA.md`). CI funcionando.
 - **Tickets da manhã de 23/09 (pedidos do Toneli):** 25 e-mail com confirmação, 26 e 27 UI/UX, 28 nav + descricao_usuario, 29 conta Google + erros do Gmail, 30 teto de tools visível/configurável, 31 e 33 erro de tool MCP e args do Stripe, 32 indicador de contexto. Stripe MCP validado ponta a ponta (link de pagamento real em sandbox).
 - **Chave Fernet regenerada** em 23/09 ~11:50 (a antiga se perdeu do .env local); Google e Stripe do demo local foram recadastrados.
 - **Rodando:** nenhum. Todos os agentes encerrados.
