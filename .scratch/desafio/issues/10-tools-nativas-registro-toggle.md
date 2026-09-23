@@ -11,3 +11,5 @@
 - [ ] Com `web_search` desligada, pergunta "notícias de hoje" não gera tool_call.
 - [ ] Com ligada, gera evento `tool_call` e a resposta cita a fonte.
 - [ ] `web_fetch` de uma URL devolve texto limpo.
+
+**Chave:** `TAVILY_API_KEY` no `.env` está no plano free (1.000 créditos/mês). Nos testes use resposta gravada. Chamada real só na verificação manual final, no máximo 5.
