@@ -17,5 +17,5 @@
 
 ## Consequências
 - Um PDF de página cheia custa ~560 tokens de entrada por página (resolução medium), só no turno da Tool.
-- Perguntas de seguimento sobre o PDF dependem do que o modelo já respondeu: o arquivo não volta. Para reler, o modelo chama a Tool de novo.
+- Perguntas de seguimento sobre o PDF dependem do que o modelo já respondeu: o arquivo não volta. Para reler, o modelo chama a Tool de novo. O marcador diz isso ao modelo (23/09, depois do ADR 0016): sem o aviso, ele respondia de memória e inventava.
 - Só o primeiro PDF é lido. Mais de um PDF relevante exige outra busca.

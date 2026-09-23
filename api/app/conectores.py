@@ -50,7 +50,11 @@ PDF = "application/pdf"
 # PDF do Drive acima disso não baixa (ticket 38). Anexo aceita 20 MB; aqui metade, pelo custo em tokens.
 TETO_PDF = 10 * 1024 * 1024
 # O que o histórico guarda no lugar dos bytes, como `[anexo: nome]` do anexo.
-MARCADOR_PDF = "[arquivo do Drive: {nome}]"
+# O aviso vai junto: o PDF só existe no turno da Tool (ADR 0015). Sem ele o modelo respondia de memória.
+MARCADOR_PDF = (
+    "[arquivo do Drive: {nome}. O PDF só fica visível no turno em que foi lido. Em turno seguinte, "
+    "para responder sobre o conteúdo, chame drive_search_read de novo; não responda de memória.]"
+)
 CAMPOS_DRIVE = "files(id,name,mimeType,createdTime,modifiedTime,size)"
 RECENTES = 10
 FUSO = ZoneInfo("America/Sao_Paulo")
