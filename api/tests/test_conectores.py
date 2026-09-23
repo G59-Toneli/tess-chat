@@ -14,7 +14,7 @@ from sqlalchemy import text
 
 from app.anexos import MEDIA_PDF
 from app.chat import MODELO
-from app.conectores import CALLBACK, COOKIE_PKCE, transporte_google
+from app.conectores import CALLBACK, COOKIE_PKCE, drive_search_read, transporte_google
 from app.config import settings
 from app.db import SessionLocal
 from app.main import app
@@ -426,6 +426,37 @@ async def test_drive_search_read_le_o_arquivo(client, google, usar_modelo):
     busca = next(r for r in google.vistas if r.url.path == "/drive/v3/files")
     assert "orderBy" not in busca.url.params  # a Drive API recusa orderBy com fullText
     assert "criado 20/09/2026 09:00" in resposta and "modificado 23/09/2026 10:05" in resposta
+
+
+class Lento(httpx.AsyncBaseTransport):
+    """Estoura timeout nas `falhas` primeiras buscas do Drive; o resto vai para o Google falso."""
+
+    def __init__(self, google, falhas: int):
+        self.google, self.falhas = google, falhas
+
+    async def handle_async_request(self, req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/drive/v3/files" and self.falhas:
+            self.falhas -= 1
+            raise httpx.ReadTimeout("lento", request=req)
+        return await self.google.handle_async_request(req)
+
+
+async def test_drive_timeout_repete_uma_vez(client, google):
+    uid, h = await usuario(client)
+    await conectar(client, h)
+
+    r = await drive_search_read(uid, "Plano Q4", Lento(google, falhas=1))
+
+    assert "Plano Q4: lançar o conector em outubro." in r
+
+
+async def test_drive_dois_timeouts_dizem_a_etapa(client, google):
+    uid, h = await usuario(client)
+    await conectar(client, h)
+
+    r = await drive_search_read(uid, "Plano Q4", Lento(google, falhas=2))
+
+    assert r == "drive_search_read falhou: ReadTimeout em /drive/v3/files, duas vezes"
 
 
 async def test_drive_query_vazia_lista_recentes_com_datas(client, google, usar_modelo):
