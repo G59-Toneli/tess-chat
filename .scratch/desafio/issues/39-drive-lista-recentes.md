@@ -1,7 +1,7 @@
 # 39 — `drive_search_read` lista os arquivos mais recentes
 
 **Type:** task (AFK, só api/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ADR 0010, ticket 38 (`drive_search_read` com PDF). Feedback do Toneli em 23/09: "quais últimos arquivos foram adicionados?" devolveu 5 arquivos na ordem de relevância do Drive, não por data. O modelo respondeu como se fossem os mais recentes.
 
@@ -15,7 +15,14 @@
 - Conferir que o Roteador (ticket 36) não quebra com `query` vazia.
 
 **Aceite:**
-- [ ] Teste: `query` vazia chama a Drive API com `orderBy=modifiedTime desc` e sem `fullText`, e devolve a lista com datas, sem baixar arquivo.
-- [ ] Teste: busca por termo não envia `orderBy` e mostra as datas nos achados.
-- [ ] Teste: comportamento do ticket 38 (PDF, teto de 10 MB, texto preferido) preservado.
-- [ ] Sem chamada real a Gemini, Tavily ou Jev.
+- [x] Teste: `query` vazia chama a Drive API com `orderBy=modifiedTime desc` e sem `fullText`, e devolve a lista com datas, sem baixar arquivo.
+- [x] Teste: busca por termo não envia `orderBy` e mostra as datas nos achados.
+- [x] Teste: comportamento do ticket 38 (PDF, teto de 10 MB, texto preferido) preservado.
+- [x] Sem chamada real a Gemini, Tavily ou Jev.
+
+## Answer
+- `query` vazia ou só espaços lista os 10 arquivos mais recentes (`q = trashed = false`, `orderBy = modifiedTime desc`), sem baixar conteúdo. Busca por termo segue sem `orderBy`.
+- Toda linha de achado mostra `criado` e `modificado` em `dd/mm/aaaa hh:mm`, fuso America/Sao_Paulo (`_achado`, `_data`). Data ausente é omitida.
+- Descrição que o modelo vê vem de `conectores.DESCRICOES` e sobrepõe a do registro, sem migração. O Roteador (Jev) segue lendo a descrição do banco; ele só escolhe a tool, não o argumento, então `query` vazia não o afeta.
+- Testes de PDF do ticket 38 passam sem mudança. 0 chamadas a Gemini, Tavily e Jev.
+- REVISAR(human): comentário acima de `drive_search_read` ganhou a regra da query vazia.
