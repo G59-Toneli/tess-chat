@@ -48,9 +48,9 @@ Float erra na soma de centavos. Inteiro soma exato. Dinheiro, não token, porque
 Entram os dois, cada um com coluna própria na Tabela de Preço. No Gemini, `thoughts_token_count` vem separado de `candidates_token_count` (spike H4). No `RunUsage` o output já inclui thinking, então `debit()` tira o thinking do output e cobra ao preço de thinking. O input já inclui o cache, então input cobrado = input menos cache. Uma divisão só no fim, arredondada para cima: nunca cobra menos que o provedor. O uso vem do último chunk do stream, que é cumulativo. Fonte: `debit()` em `credito.py`, `spike/RESULTADO.md` H4.
 
 **Lacuna: o ADR fala em estimativa, e dois pedidos juntos passam do Cap. Por quê?**
-A reserva estima o input localmente, cerca de 3 caracteres por token, sem `count_tokens`. Motivo: `count_tokens` custa um request extra por turno e o modelo de teste não implementa. A reserva não grava linha e não trava por Usuário, então duas chamadas simultâneas podem passar juntas. Correção: `SELECT ... FOR UPDATE` ou lock por Usuário na reserva. O acerto sempre usa o uso real. Fonte: LACUNAS, DECISOES-AUTONOMAS (08).
+A reserva estima o input localmente, cerca de 3 caracteres por token, sem `count_tokens`. O ADR 0019 registra o porquê; veja a seção dele. A reserva não grava linha e não trava por Usuário, então duas chamadas simultâneas podem passar juntas. Correção: `SELECT ... FOR UPDATE` ou lock por Usuário na reserva. O acerto sempre usa o uso real. Fonte: LACUNAS, DECISOES-AUTONOMAS (08).
 
-Pergunta extra provável: **turno cortado pelo teto de tools é cobrado?** Não. É lacuna aberta (06b).
+Pergunta extra provável: **turno cortado pelo teto de tools é cobrado?** Sim, desde o ticket 30: o `on_cancel` acerta o Ledger com o uso real e emite `tool_limit_reached` com o custo. Fonte: `api/app/chat.py`, ticket 30.
 
 ## ADR 0005 — Jev como Roteador
 
@@ -143,8 +143,8 @@ Estado: o deploy é o ticket 16, bloqueado no acesso SSH ao VPS.
 **Por que o retry não repete o stream que já começou?**
 Parte do texto já foi para o browser. Repetir duplicaria. Só a abertura do stream repete; falha no meio vira chunk de erro. Por isso o front não mostra "tentando de novo": o retry acontece antes do stream abrir.
 
-**Lacuna: o ADR promete OpenAI no fallback. Cadê?**
-Não está implementado. A cadeia é `gemini-3.8-flash` e depois `gemini-3.7-flash`; nada lê `OPENAI_API_KEY`. Ativar pede a chave, o modelo na cadeia e a linha de preço na Tabela de Preço. Outra aresta: com o 3.8 fora, cada request tenta 3 vezes antes de trocar, e turno com tool fica lento. Fonte: `api/app/chat.py`, LACUNAS.
+**O ADR promete OpenAI no fallback. Cadê?**
+Saiu. O ADR 0018 revisa este: a cadeia é só `gemini-3.8-flash` e depois `gemini-3.7-flash`. Veja a seção do 0018. Aresta que ficou: com o 3.8 fora, cada request tenta 3 vezes antes de trocar, e turno com tool fica lento. Fonte: ADR 0018, LACUNAS.
 
 ## ADR 0013 — Envio de e-mail só com confirmação
 
@@ -158,6 +158,39 @@ Confirmação por texto põe o modelo para decidir se a frase é um sim. Erro de
 A aprovação nativa pausa o run e exige retomar o mesmo run com o resultado, o que custa mais uma chamada ao modelo e amarra o envio ao ciclo do Agent. O Rascunho é linha no banco: sobrevive a recarregar a página, tem estado próprio (`pendente|enviado|descartado`), auditoria própria e um endpoint que qualquer tool futura com escrita externa pode copiar. Fonte: ADR 0013, seção Consequências. **INFERIDO:** a mecânica do `requires_approval` foi lida da assinatura de `add_function`, não da doc do Pydantic AI; confirme antes da entrevista.
 
 Pergunta extra provável: **como responde na mesma thread?** `gmail_read` devolve `thread_id`. Com ele, `gmail_send` lê o `Message-ID` da última mensagem da thread e grava `In-Reply-To` e `References` no Rascunho; o envio manda `threadId` e esses cabeçalhos no MIME.
+
+## ADR 0017 — Conector Google com as libs oficiais de auth
+
+**Por que trocou o `httpx` puro pelas libs do Google?**
+Decisão do ticket 41: OAuth e refresh passam para `google-auth` e `google-auth-oauthlib` (`Flow`), com PKCE ligado e `code_verifier` em cookie httpOnly. Lib oficial trata refresh, expiração e `RefreshError` do jeito que o Google documenta; eu não mantenho esse código. Fonte: ADR 0017.
+
+**Então por que Gmail e Drive seguem em `httpx`?**
+O `google-api-python-client` está em maintenance mode, roda sobre `google-auth-httplib2` (deprecated pelo Google) e é síncrono. Não existe cliente oficial async para Gmail e Drive. Por isso o caminho é híbrido: lib oficial na auth, `httpx` async nas APIs. Fonte: ADR 0017.
+
+**O que o PKCE protege, se já tem `state` assinado?**
+O `state` barra CSRF e identifica o dono. O PKCE prende o `code` a quem começou o fluxo: um `code` vazado não troca por token sem o `code_verifier`, que só existe no cookie. Fonte: ADR 0017, ticket 41.
+
+## ADR 0018 — Fallback só entre modelos Gemini
+
+**Por que não tem fallback para outro provedor?**
+Não há chave OpenAI. Código para um provedor sem chave é código morto: precisaria de preço na Tabela de Preço e de teste do stream de outro provedor, para um cenário que a demo não exercita. Fica retry com backoff e a cadeia `gemini-3.8-flash` → `gemini-3.7-flash`. Fonte: ADR 0018, `api/app/resiliencia.py`.
+
+**E se o Google inteiro cair?**
+O chat cai. Os dois modelos dependem do mesmo provedor e da mesma chave. É risco aceito e escrito. Voltar a ter terceiro provedor pede ADR novo. Fonte: ADR 0018.
+
+**Por que escrever ADR para tirar uma coisa?**
+O ADR 0012 prometia OpenAI e o código não fazia. Documento que diverge do código é pergunta sem resposta. O 0018 alinha os dois. Fonte: ADR 0012 (status), ADR 0018.
+
+## ADR 0019 — Reserva por estimativa local
+
+**Por que não usa `count_tokens`, se ele dá o número exato?**
+A reserva só segura crédito. A cobrança final usa o `usage` real (ADR 0004). `count_tokens` custaria uma ida de rede por turno antes do primeiro token e seria mais um ponto de falha, cujo fallback seria a própria estimativa. Fonte: ADR 0019.
+
+**O spike H5 provou que `UsageLimits(count_tokens_before_request=True)` funciona. Por que não usou?**
+Provou que funciona, não que compensa. Tem o mesmo custo de rede, limita tokens e não dinheiro, e o `FunctionModel` dos testes não implementa. Fonte: DECISOES-AUTONOMAS (08), `spike/py/h5_runusage.py`.
+
+**Quanto a estimativa erra?**
+Não medido. A razão ~3 caracteres por token é INFERIDA; imagem soma `TOKENS_IMAGEM` fixo. O erro só afeta turno perto do Cap: pode recusar um que caberia ou aceitar um que passa um pouco. O acerto grava o valor real. Fonte: `_estimar_input` em `api/app/chat.py`.
 
 ## Workflow com IA
 

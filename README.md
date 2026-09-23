@@ -126,13 +126,13 @@ Estado em 2026-09-23. Fonte: [`docs/LACUNAS.md`](docs/LACUNAS.md) e as ressalvas
 
 **Crédito (ADR 0004)**
 
-- A reserva estima a entrada localmente, cerca de 3 caracteres por token (INFERIDO), em vez de `count_tokens`. O acerto usa o uso real.
+- A reserva estima a entrada localmente, cerca de 3 caracteres por token (INFERIDO), em vez de `count_tokens` ([ADR 0019](docs/adr/0019-reserva-por-estimativa-local.md)). O acerto usa o uso real.
 - Duas chamadas simultâneas do mesmo Usuário podem passar juntas do Cap. A reserva não trava por Usuário.
-- Turno cortado pelo teto de tool calls não é cobrado.
+- Turno cortado pelo teto de tool calls é cobrado pelo uso real dos requests que rodaram (ticket 30).
 
 **Resiliência (ADR 0012)**
 
-- O fallback para OpenAI do ADR não está implementado. A cadeia é `gemini-3.8-flash` e depois `gemini-3.7-flash`; nada no código lê `OPENAI_API_KEY`.
+- Sem fallback para OpenAI ([ADR 0018](docs/adr/0018-fallback-so-entre-geminis.md)). A cadeia é `gemini-3.8-flash` e depois `gemini-3.7-flash`. Queda do Google inteiro derruba o chat.
 - Com o 3.8 fora, cada request tenta 3 vezes antes do fallback. Turno com tool fica lento.
 - O front não mostra "tentando de novo": o retry acontece antes do stream abrir.
 - Preço do `gemini-3.7-flash` igual ao do 3.8 (INFERIDO).
