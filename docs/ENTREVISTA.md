@@ -149,7 +149,7 @@ Não está implementado. A cadeia é `gemini-3.8-flash` e depois `gemini-3.7-fla
 ## Workflow com IA
 
 **Como o projeto foi construído?**
-Um orquestrador, uma sessão do Claude Code, escolhe o próximo ticket livre e dispara um agente Opus por ticket, às vezes em paralelo. O agente segue um prompt-padrão, faz TDD, commita e reporta. O orquestrador confere, dá push e encerra o agente. Você decide ADRs, glossário e tickets. Fonte: `docs/WORKFLOW.md`, `docs/AGENT-PROMPT.md`.
+Um orquestrador, uma sessão do Claude Code, escolhe o próximo ticket livre e dispara um agente Opus por ticket, às vezes em paralelo. O agente segue um prompt-padrão, faz TDD, commita e reporta. O orquestrador confere, dá push e encerra o agente. Você decide ADRs e glossário e escreveu os tickets do plano. O orquestrador abriu tickets de ajuste (20 a 23) a partir de ressalvas dos agentes. Fonte: `docs/WORKFLOW.md`, `docs/AGENT-PROMPT.md`.
 
 **O que é um ticket aqui?**
 Fatia vertical com contexto, o que construir, aceite testável e dependências (`Blocked by`). Fecha com uma seção `## Answer` e uma linha no `LEDGER.md` com testes e chamadas reais. Fonte: `.scratch/desafio/issues/`.
