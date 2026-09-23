@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # Fallback de dev. Produção define JWT_SECRET no .env (ver DECISOES-AUTONOMAS).
     jwt_secret: str = "dev-secret-trocar-em-producao-0123456789"
     demo_password: str = "demo12345"
+    # Tier pago (ADR 0003).
+    gemini_paid_api_key: str | None = None
 
 
 settings = Settings()

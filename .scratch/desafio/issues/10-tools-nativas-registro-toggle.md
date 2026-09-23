@@ -1,7 +1,7 @@
 # 10 — Registro de Tools nativas: web_search e web_fetch com toggle por conversa
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 06
 **Refs:** ADR 0009.
 

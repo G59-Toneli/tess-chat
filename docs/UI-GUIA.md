@@ -33,4 +33,4 @@ Vale para todo ticket que toca `web/`. Meta do Toneli: tela bonita, clara e vis�
 | `/admin` (só admin) | cap global, usuários, gasto total |
 
 ## Verificação visual
-Antes de fechar um ticket de front: rodar a app, abrir cada tela tocada com Playwright (MCP `plugin_playwright`), tirar screenshot em dark mode 1440x900, salvar em `.scratch/desafio/screens/NN-<tela>.png`, e checar: sem texto cortado, sem overflow horizontal, estados vazio/carregando/erro visíveis. Screenshot vai no relatório ao orquestrador como caminho, não colado.
+Antes de fechar um ticket de front: rodar a app, abrir cada tela tocada com Playwright (MCP `plugin_playwright`), usando o **Brave** como browser (executável `C:Program FilesBraveSoftwareBrave-BrowserApplicationbrave.exe`), nunca o Google Chrome, tirar screenshot em dark mode 1440x900, salvar em `.scratch/desafio/screens/NN-<tela>.png`, e checar: sem texto cortado, sem overflow horizontal, estados vazio/carregando/erro visíveis. Screenshot vai no relatório ao orquestrador como caminho, não colado.
