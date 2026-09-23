@@ -17,6 +17,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 | App | `127.0.0.1:8010` |
 | Volumes | `tess-chat_pgdata`, `tess-chat_appdata` (anexos) |
 | Site nginx | `/etc/nginx/sites-available/tess-chat` + symlink em `sites-enabled` |
+| Zonas de rate limit | `/etc/nginx/conf.d/tess-chat-zones.conf` (cópia de `deploy/nginx-tess-chat-zones.conf`) |
 | Backup | `/etc/cron.d/tess-chat`, dumps em `/opt/tess-chat/backups` (7 dias) |
 | Limpeza de anexos | mesmo cron às 03:45: `python -m app.limpeza_anexos` no container `app`, log em `/opt/tess-chat/backups/limpeza.log` (ticket 50) |
 | Deploy key | `~/.ssh/tess-deploy`, alias ssh `github-tess` em `~/.ssh/config` |
@@ -27,7 +28,8 @@ ADR 0014. URL: https://chat.toneli.dev.br
 - Antes de buildar: `df -h /`. Acima de 90%, pare.
 - Limpeza: `docker image prune -f`. Nunca `-a`, nunca `docker builder prune`.
 - Não toque em serviço, container, site ou diretório que não esteja na tabela acima.
-- O `.env` de produção precisa de `ENV=prod`: fecha o http do MCP demo e esconde o botão demo do login (ticket 34).
+- O `.env` de produção precisa de `ENV=prod`: fecha o http do MCP demo e desliga `/docs`. Com `ENV=prod`, o boot falha sem `JWT_SECRET` próprio de 32+ caracteres.
+- `ADMIN_EMAIL` no `.env`: conta que o startup marca como admin. A conta demo nunca é admin.
 
 ## Runbook
 Todos os comandos rodam em `/opt/tess-chat` no VPS.
@@ -55,6 +57,15 @@ git reset --hard origin/main
 rm -f DEPLOYED_COMMIT
 ```
 O `reset --hard` não apaga `.env`, `backups/` nem `build.log`: não estão no git.
+
+**Nginx (rate limit e headers):** o site usa as zonas `tess_auth` e `tess_chat`. Sem o arquivo de zonas, `nginx -t` falha.
+```
+sudo cp deploy/nginx-tess-chat-zones.conf /etc/nginx/conf.d/tess-chat-zones.conf
+```
+O site em `sites-available` foi alterado pelo certbot (bloco 443). Copie à mão os `add_header`, o `limit_req_status` e as locations `/auth/` e `/api/chat/` de `deploy/nginx-tess-chat.conf` para o bloco 443. Depois:
+```
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 **Logs:**
 ```
