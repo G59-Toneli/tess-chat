@@ -10,11 +10,11 @@
 **Aceite:**
 - [x] Teste: imagem do turno 1 vai como `inlineData` no request do turno 2.
 - [x] Teste: imagem sumida do disco vira o aviso `fora do contexto`, sem `inlineData`.
-- [x] Teste: PDF de turno anterior continua como texto, agora com o aviso.
+- [x] Teste: PDF do turno 1 vai como `inlineData` no turno 2, com `media_resolution` medium.
 - [x] Sem chamada real a Gemini, Tavily ou Jev.
 
 ## Answer
-- `anexos.partes_do_historico` substitui `sem_bytes`. Imagem própria volta com bytes; outro arquivo vira `FORA_DO_CONTEXTO`.
+- `anexos.partes_do_historico` substitui `sem_bytes`. Anexo próprio (imagem e PDF) volta com bytes; outro arquivo vira `FORA_DO_CONTEXTO`.
 - Mensagens que vão para o Resumo não levam imagem.
 - `_estimar_input` soma `TOKENS_IMAGEM` = 1120 por imagem.
 - REVISAR(human): comentário acima de `partes_do_historico`.
