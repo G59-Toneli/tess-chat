@@ -1,4 +1,6 @@
-"""Servidor MCP por OAuth: descoberta, DCR, PKCE, troca de code e refresh (ticket 52, ADR 0022)."""
+"""Servidor MCP por OAuth: descoberta, DCR, PKCE, troca de code e refresh (ticket 52, ADR 0022).
+
+O iniciar também detecta o caminho de uma URL qualquer: oauth, sem_auth ou token (ticket 56)."""
 
 import time
 import uuid
@@ -44,8 +46,8 @@ COOKIE_PKCE = "tess_mcp_pkce"
 FOLGA_S = 60
 TIMEOUT = httpx.Timeout(15.0)
 GRANTS = ["authorization_code", "refresh_token"]
-SEM_DCR = "Esse servidor exige app registrado. Use token no header."
-SEM_OAUTH = "Esse servidor não anuncia OAuth. Use token no header."
+SEM_DCR = "Esse servidor exige app registrado."
+SEM_OAUTH = "Esse servidor não anuncia OAuth."
 # Sonda do passo 2: um initialize sem token. Servidor com OAuth responde 401 com WWW-Authenticate.
 INITIALIZE = {
     "jsonrpc": "2.0",
@@ -64,7 +66,7 @@ Transporte = Annotated[httpx.AsyncBaseTransport | None, Depends(transporte_mcp_o
 
 
 class OAuthRecusado(ValueError):
-    """Servidor fora do que o fluxo suporta. A mensagem vai para o usuário."""
+    """Servidor exige auth, mas sem OAuth com DCR. O iniciar responde modo token."""
 
 
 def _redirect_uri() -> str:
@@ -76,14 +78,18 @@ async def _get(http: httpx.AsyncClient, url: str) -> httpx.Response:
     return await http.get(url, headers={"Accept": "application/json"})
 
 
-# REVISAR(human): descoberta. Passo 2: initialize sem token; servidor com OAuth responde 401 e o
-# WWW-Authenticate aponta o metadata do recurso (RFC 9728). Sem header, os well-known do SDK entram
+# REVISAR(human): descoberta. Passo 2: initialize sem token. 2xx: o servidor não exige auth e a função
+# devolve None (modo sem_auth). Outro status segue para os well-known; sem metadata, só 401/403 vira
+# modo token, e o resto é erro real (502). Servidor com OAuth
+# responde 401 e o WWW-Authenticate aponta o metadata do recurso (RFC 9728). Sem header, os well-known do SDK entram
 # como fallback. O metadata do recurso diz qual é o authorization server; o metadata dele (RFC 8414,
 # com os fallbacks OIDC do SDK) diz authorize, token e registration. Toda URL passa por validar_url.
 async def _descobrir(
     http: httpx.AsyncClient, url: str
-) -> tuple[ProtectedResourceMetadata | None, OAuthMetadata, str | None]:
+) -> tuple[ProtectedResourceMetadata | None, OAuthMetadata, str | None] | None:
     sonda = await http.post(url, json=INITIALIZE, headers={"Accept": "application/json, text/event-stream"})
+    if sonda.is_success:
+        return None
     nao_autorizado = sonda.status_code in (401, 403)
     www = extract_resource_metadata_from_www_auth(sonda) if nao_autorizado else None
     escopo = extract_scope_from_www_auth(sonda) if nao_autorizado else None
@@ -99,6 +105,8 @@ async def _descobrir(
         if asm is not None or not seguir:
             break
     if asm is None:
+        if not nao_autorizado:
+            sonda.raise_for_status()
         raise OAuthRecusado(SEM_OAUTH)
     return prm, asm, escopo
 
@@ -204,21 +212,30 @@ class IniciarIn(BaseModel):
 router = APIRouter(prefix="/api/mcp-servers/oauth", tags=["mcp"])
 
 
+# REVISAR(human): o app escolhe o caminho, não o usuário. sem_auth e token não gravam linha: o front
+# segue pelo POST /api/mcp-servers, que conecta e lista antes de gravar. SSRF continua 422 e rede 502.
 @router.post("/iniciar")
 async def iniciar(body: IniciarIn, session: Sessao, user: Usuario, t: Transporte) -> JSONResponse:
-    """Descobre o OAuth do servidor, registra o cliente e devolve a URL de consentimento."""
+    """Detecta o caminho da URL. Com OAuth e DCR, registra o cliente e devolve a URL de consentimento."""
     _fernet()
     srv = await _do_usuario(session, user, body.sid) if body.sid else None
     url = srv.url if srv else body.url
     try:
         await validar_url(url)
         async with httpx.AsyncClient(transport=t, timeout=TIMEOUT) as http:
-            prm, asm, escopo = await _descobrir(http, url)
-            oauth = await _registrar(http, prm, asm, escopo)
-    except (UrlRecusada, OAuthRecusado) as e:
+            descoberta = await _descobrir(http, url)
+            if descoberta is None:
+                return JSONResponse({"modo": "sem_auth"})
+            oauth = await _registrar(http, *descoberta)
+    except UrlRecusada as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
-    except (httpx.HTTPError, OAuthRegistrationError) as e:
+    except OAuthRecusado:
+        return JSONResponse({"modo": "token"})
+    except OAuthRegistrationError as e:
         raise HTTPException(status_code=502, detail=f"Não foi possível registrar o app no servidor OAuth. ({e})") from e
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Não foi possível falar com o servidor MCP. Confira a URL. ({e})") from e
+    asm = descoberta[1]
     oauth["resource"] = resource_url_from_server_url(url)
     if srv is None:
         srv = McpServer(id=uuid.uuid4(), user_id=user.id, nome=body.nome.strip(), url=url, headers=_cifrar({}))
@@ -247,7 +264,7 @@ async def iniciar(body: IniciarIn, session: Sessao, user: Usuario, t: Transporte
         payload={"servidor": str(srv.id), "nome": srv.nome, "url": url, "authorization_server": str(asm.issuer)},
     )
     await session.commit()
-    r = JSONResponse({"id": str(srv.id), "url": f"{autorizar}{'&' if '?' in autorizar else '?'}{urlencode(params)}"})
+    r = JSONResponse({"modo": "oauth", "id": str(srv.id), "url": f"{autorizar}{'&' if '?' in autorizar else '?'}{urlencode(params)}"})
     r.set_cookie(
         COOKIE_PKCE, pkce.code_verifier, max_age=VALIDADE_STATE, path=CALLBACK, httponly=True, samesite="lax",
         secure=settings.env == "prod",

@@ -3,6 +3,10 @@
 import base64
 import hashlib
 import json
+import os
+import socket
+import subprocess
+import sys
 import time
 from urllib.parse import parse_qs, urlparse
 
@@ -19,7 +23,7 @@ from tests.test_auth import eventos
 from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
 from tests.test_conectores import modelo_que_chama, ultima_resposta
 from tests.test_conversas import criar, usuario
-from tests.test_mcp import TOKEN, demo  # noqa: F401  (fixture)
+from tests.test_mcp import SERVIDOR, TOKEN, demo, porta_livre  # noqa: F401  (fixture)
 
 AS = "https://8.8.8.8"  # IP público literal: passa no validar_url sem DNS; o MockTransport atende
 CLIENT_ID = "cli-dcr-1"
@@ -138,6 +142,7 @@ async def test_iniciar_devolve_authorize_com_pkce_resource_e_client_id_do_dcr(cl
     r = await iniciar(client, h, auth.mcp_url)
 
     assert r.status_code == 200, r.text
+    assert r.json()["modo"] == "oauth"
     url = urlparse(r.json()["url"])
     q = query(r.json()["url"])
     assert f"{url.scheme}://{url.netloc}{url.path}" == f"{AS}/authorize"
@@ -154,14 +159,77 @@ async def test_iniciar_devolve_authorize_com_pkce_resource_e_client_id_do_dcr(cl
     assert ev.payload["servidor"] == r.json()["id"]
 
 
-async def test_servidor_sem_dcr_recebe_422_legivel(client, auth):
+async def test_servidor_sem_dcr_pede_token_e_nao_cria_linha(client, auth):
     _, h = await usuario(client)
     auth.com_dcr = False
 
     r = await iniciar(client, h, auth.mcp_url)
 
-    assert r.status_code == 422
-    assert r.json()["detail"] == "Esse servidor exige app registrado. Use token no header."
+    assert r.status_code == 200 and r.json() == {"modo": "token"}
+    assert not [v for v in auth.vistas if v.url.path == "/register"]
+    assert (await client.get("/api/mcp-servers", headers=h)).json() == []
+
+
+async def test_servidor_com_401_sem_metadata_pede_token(client, demo):  # noqa: F811
+    """O mcp-demo com token responde 401 sem WWW-Authenticate e 404 nos well-known."""
+    _, h = await usuario(client)
+
+    r = await iniciar(client, h, demo, nome="demo")
+
+    assert r.status_code == 200 and r.json() == {"modo": "token"}
+    assert (await client.get("/api/mcp-servers", headers=h)).json() == []
+    cad = await client.post("/api/mcp-servers", json={"nome": "demo", "url": demo, "autorizacao": TOKEN}, headers=h)
+    assert cad.status_code == 201 and len(cad.json()["tools"]) == 3
+
+
+@pytest.fixture
+def demo_aberto():
+    """mcp-demo sem MCP_DEMO_TOKEN: o initialize sem header responde OK."""
+    porta = porta_livre()
+    env = {k: v for k, v in os.environ.items() if k != "MCP_DEMO_TOKEN"} | {"PORT": str(porta)}
+    proc = subprocess.Popen([sys.executable, str(SERVIDOR)], env=env)
+    try:
+        for _ in range(100):
+            try:
+                socket.create_connection(("127.0.0.1", porta), timeout=0.2).close()
+                break
+            except OSError:
+                time.sleep(0.1)
+        else:
+            pytest.fail("servidor demo não subiu")
+        yield f"http://127.0.0.1:{porta}/mcp"
+    finally:
+        proc.terminate()
+        proc.wait(5)
+
+
+async def test_servidor_sem_auth_devolve_sem_auth_e_o_post_sem_header_cadastra(client, demo_aberto):
+    uid, h = await usuario(client)
+
+    r = await iniciar(client, h, demo_aberto, nome="aberto")
+
+    assert r.status_code == 200 and r.json() == {"modo": "sem_auth"}
+    assert (await client.get("/api/mcp-servers", headers=h)).json() == []
+    assert not await eventos("mcp_oauth_started", user_id=uid)
+    cad = await client.post("/api/mcp-servers", json={"nome": "aberto", "url": demo_aberto, "autorizacao": None}, headers=h)
+    assert cad.status_code == 201 and cad.json()["tem_auth"] is False and len(cad.json()["tools"]) == 3
+
+
+async def test_url_fora_do_ar_recebe_502(client):
+    _, h = await usuario(client)
+
+    r = await iniciar(client, h, f"http://127.0.0.1:{porta_livre()}/mcp")
+
+    assert r.status_code == 502 and "modo" not in r.json()
+    assert (await client.get("/api/mcp-servers", headers=h)).json() == []
+
+
+async def test_url_interna_continua_recusada(client):
+    _, h = await usuario(client)
+
+    r = await iniciar(client, h, "https://10.0.0.7/mcp")
+
+    assert r.status_code == 422 and "endereço interno" in r.json()["detail"]
     assert (await client.get("/api/mcp-servers", headers=h)).json() == []
 
 
