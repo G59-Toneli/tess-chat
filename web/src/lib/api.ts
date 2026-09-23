@@ -3,8 +3,6 @@ import type { UIMessage } from 'ai'
 
 const CHAVE_TOKEN = 'token'
 
-export const CONTA_DEMO = { email: 'demo@toneli.dev.br', senha: 'demo12345' }
-
 export type Usuario = { id: string; email: string; is_superuser: boolean }
 export type Conversa = { id: string; title: string; created_at: string; updated_at: string }
 export type MensagemApi = {
@@ -92,7 +90,7 @@ export async function cadastrar(email: string, senha: string): Promise<void> {
 }
 
 // Pública: o Login lê antes de ter token (ticket 34).
-export const configPublica = () => api<{ demo: boolean; env: string }>('/api/config-publica')
+export const configPublica = () => api<{ env: string }>('/api/config-publica')
 export const eu = () => api<Usuario>('/users/me')
 export const listarConversas = () => api<Conversa[]>('/api/conversations')
 export const criarConversa = (title: string) =>
