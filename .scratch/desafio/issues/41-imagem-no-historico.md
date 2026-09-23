@@ -1,5 +1,5 @@
 # 41 — Imagem de turno anterior volta ao modelo
-n> Commits `feat(40): imagem-no-historico` e `feat(40): pdf-no-historico` são deste ticket. O número 40 colidiu com `40-descricao-drive-no-banco`.
+> Commits `feat(40): imagem-no-historico` e `feat(40): pdf-no-historico` são deste ticket. O número 40 colidiu com `40-descricao-drive-no-banco`.
 
 **Type:** bug (só api/)
 **Status:** resolved
