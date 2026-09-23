@@ -1,7 +1,6 @@
 """Servidor MCP por Usuário: cadastro, listagem das tools e toolset do turno (ticket 17, ADR 0009)."""
 
 import asyncio
-import ipaddress
 import re
 import uuid
 from datetime import datetime
@@ -21,6 +20,7 @@ from app.conectores import _cifrar, _decifrar
 from app.config import settings
 from app.conversas import Sessao, Usuario
 from app.db import Base
+from app.rede import ip_interno
 from app.resiliencia import resumo_erro
 
 # Timeout do handshake e de cada chamada. Servidor lento não segura o cadastro nem o turno.
@@ -67,10 +67,9 @@ class UrlRecusada(ValueError):
     """URL de Servidor MCP fora da política. A mensagem vai para o usuário."""
 
 
-# REVISAR(human): barreira de SSRF no cadastro. Só https, e todo IP que o host resolve precisa ser
-# público (`is_global` recusa privado, loopback, link-local 169.254 da metadata, reservado).
-# Checa TODOS os IPs: um host com um IP público e um interno passaria se olhasse só o primeiro.
-# Exceção: em dev, o demo em http. Ressalva: o turno resolve o DNS de novo (rebinding não coberto).
+# REVISAR(human): barreira de SSRF no cadastro. Só https, e todo IP do host precisa ser público
+# (`rede.ip_interno`). Exceção: em dev, o demo em http.
+# Ressalva: o turno resolve o DNS de novo (rebinding não coberto).
 async def validar_url(url: str) -> None:
     partes = urlsplit(url)
     host = (partes.hostname or "").lower()
@@ -79,17 +78,11 @@ async def validar_url(url: str) -> None:
     if partes.scheme != "https":
         raise UrlRecusada("A URL do servidor MCP precisa usar https://.")
     try:
-        ips = [ipaddress.ip_address(host)]
-    except ValueError:
-        try:
-            infos = await asyncio.get_running_loop().getaddrinfo(host, partes.port or 443)
-        except OSError as e:
-            raise UrlRecusada(f"Não consegui resolver o host da URL ({host}).") from e
-        ips = [ipaddress.ip_address(i[4][0].split("%")[0]) for i in infos]
-    for ip in ips:
-        real = ip.ipv4_mapped if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped else ip
-        if not real.is_global:
-            raise UrlRecusada(f"A URL aponta para um endereço interno ({real}). Use um servidor MCP público.")
+        interno = await ip_interno(host, partes.port or 443)
+    except OSError as e:
+        raise UrlRecusada(f"Não consegui resolver o host da URL ({host}).") from e
+    if interno:
+        raise UrlRecusada(f"A URL aponta para um endereço interno ({interno}). Use um servidor MCP público.")
 
 
 async def alcancavel(srv: McpServer) -> BaseException | None:
