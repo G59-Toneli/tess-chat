@@ -20,12 +20,15 @@ Atualizado em 2026-09-23 ~02:45 (horário local -03:00). Sessão anterior: `desa
 - Rate limit do plano Max: esperar e repetir.
 
 ## Estado dos tickets
-- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 08, 09, 10, 11, 12, 13, 15. Tudo em `origin/main` (HEAD e237314 + docs).
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 08, 09, 10, 11, 12, 13, 15. Tudo em `origin/main`.
 - **Rodando:** nenhum. Todos os agentes encerrados.
 - **Próximos, nesta ordem:** 14 (configurações; inclui restringir toggle global a superuser; próxima migração livre: 0011) → 09b (anexo por referência, corta custo de turnos seguintes) → 07c (seletor de tools na barra do input) → **suíte completa em lote** (`cd api && uv run pytest`; `cd web && npm run build`; corrigir regressões com um agente) → 16 (deploy, HITL: precisa SSH) → 17 (MCP) → 18 (Google, HITL: precisa GOOGLE_CLIENT_ID/SECRET do wizard) → 19 (README, vídeo, guia de entrevista).
 - 14 e 09b tocam `chat.py`: um por vez. 07c só `web/`, pode correr junto com um deles.
 - **Bloqueados em Toneli:** 02 e 16 (chaves SSH do VPS do trabalho, registro A `chat.toneli.dev.br`), 18 (rodar `docs/WIZARD-GOOGLE.md`). Ver `MANHA.md`.
 - Ticket 02 estava com outra sessão do Toneli; confirmar com ele se ainda está.
+
+## Lacunas conhecidas
+Consolidadas em `docs/LACUNAS.md`. Ticket 19 lê. Duas pedem decisão: reserva por `count_tokens` (ADR 0004 vs código) e cobrança do turno cortado pelo teto de tools.
 
 ## Marco
 Camada 1 no ar até sexta 26/09. Prazo final terça 29/09 12h, confirmado com o CPO.

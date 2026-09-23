@@ -4,7 +4,7 @@
 **Status:** blocked
 **Blocked by:** 17, 18
 
-**AFK:** README com arquitetura (diagrama), como rodar, decisões (links pros ADRs), limites conhecidos. `docs/ENTREVISTA.md`: para cada ADR, 3 perguntas prováveis e resposta curta. Roteiro do vídeo em ordem: login → conversa → imagem → PDF → tool web → compactação com limiar baixo → cap estourando → auditoria → share → MCP → Google.
+**AFK:** ler `docs/LACUNAS.md` e listar as lacunas no README como "limites conhecidos" e no guia como perguntas prováveis. README com arquitetura (diagrama), como rodar, decisões (links pros ADRs), limites conhecidos. `docs/ENTREVISTA.md`: para cada ADR, 3 perguntas prováveis e resposta curta. Roteiro do vídeo em ordem: login → conversa → imagem → PDF → tool web → compactação com limiar baixo → cap estourando → auditoria → share → MCP → Google.
 
 **HITL:** Toneli grava o vídeo (≤ 5 min) e confirma recebimento/entrega ao CPO.
 
