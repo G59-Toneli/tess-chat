@@ -1,4 +1,4 @@
-"""Anexos: upload, download e entrega ao modelo como BinaryContent (ticket 09)."""
+"""Anexos: upload, download e entrega ao modelo como BinaryContent (tickets 09 e 09b)."""
 
 import base64
 import re
@@ -9,7 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, UIMessage
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import audit
@@ -109,3 +109,31 @@ async def montar_anexos(session: AsyncSession, uid: uuid.UUID, nova: UIMessage) 
         p.filename = anexo.filename
         if anexo.mime_type == "application/pdf":
             p.provider_metadata = RESOLUCAO_PDF
+
+
+# REVISAR(human): bytes só no turno do anexo. Em turno anterior o modelo já respondeu sobre
+# o arquivo e a resposta está no histórico; reenviar pesaria na reserva e no contexto todo turno.
+# Todo arquivo vira texto, inclusive linhas antigas com data URI e URL externa (SSRF).
+def sem_bytes(partes: list[dict]) -> list[dict]:
+    """Partes de turno anterior com cada arquivo trocado por `[anexo: nome]`."""
+    return [
+        {"type": "text", "text": f"[anexo: {p.get('filename') or p.get('mediaType')}]"} if p.get("type") == "file" else p
+        for p in partes
+    ]
+
+
+def partes_por_referencia(nova: UIMessage) -> list[dict]:
+    """Partes da mensagem do front como chegaram: arquivo com url `/api/attachments/{id}`, sem bytes."""
+    return [p.model_dump(mode="json", by_alias=True, exclude_none=True) for p in nova.parts]
+
+
+async def ligar_a_mensagem(session: AsyncSession, uid: uuid.UUID, nova: UIMessage, message_id: int) -> list[str]:
+    """Preenche `attachments.message_id` dos anexos citados. Devolve os ids ligados."""
+    ids = [
+        uuid.UUID(c[1]) for p in nova.parts if isinstance(p, FileUIPart) and (c := URL_ANEXO.match(p.url))
+    ]
+    if ids:
+        await session.execute(
+            update(Attachment).where(Attachment.id.in_(ids), Attachment.user_id == uid).values(message_id=message_id)
+        )
+    return [str(i) for i in ids]
