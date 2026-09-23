@@ -19,6 +19,9 @@ export default function App() {
         <Route path="/tools" element={<Placeholder titulo="Tools" />} />
         <Route path="/mcp" element={<Placeholder titulo="Servidores MCP" />} />
         <Route path="/conectores" element={<Placeholder titulo="Conectores" />} />
+        <Route path="/compartilhados" element={<Placeholder titulo="Compartilhados" />} />
+        <Route path="/perfil" element={<Placeholder titulo="Perfil" />} />
+        <Route path="/admin" element={<Placeholder titulo="Administração" />} />
         <Route path="*" element={<Placeholder titulo="Página não encontrada" />} />
       </Route>
     </Routes>
