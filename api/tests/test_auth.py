@@ -1,9 +1,9 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.audit import AuditEvent
-from app.auth import DEMO_EMAIL, garantir_conta_demo
+from app.auth import DEMO_EMAIL, User, garantir_admin, garantir_conta_demo
 from app.config import settings
 from app.db import SessionLocal
 
@@ -107,22 +107,51 @@ async def test_conta_demo_existe_e_loga_apos_seed(client):
     assert resp.status_code == 200
 
 
-async def test_config_publica_em_prod_esconde_demo(client, monkeypatch):
+async def test_config_publica_devolve_o_env(client, monkeypatch):
     monkeypatch.setattr(settings, "env", "prod")
 
     resp = await client.get("/api/config-publica")
 
     assert resp.status_code == 200
-    assert resp.json() == {"demo": False, "env": "prod"}
+    assert resp.json()["env"] == "prod"
 
 
-async def test_config_publica_em_dev_mostra_demo(client, monkeypatch):
-    monkeypatch.setattr(settings, "env", "dev")
+async def test_conta_demo_nao_e_admin_mesmo_se_ja_foi(client, session):
+    await garantir_conta_demo()
+    await session.execute(update(User).where(User.email == DEMO_EMAIL).values(is_superuser=True))
+    await session.commit()
 
-    resp = await client.get("/api/config-publica")
+    await garantir_conta_demo()
 
-    assert resp.status_code == 200
-    assert resp.json() == {"demo": True, "env": "dev"}
+    token = (await logar(client, DEMO_EMAIL, settings.demo_password)).json()["access_token"]
+    me = await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.json()["is_superuser"] is False
+
+
+async def test_admin_email_vira_superuser_no_startup(client, monkeypatch):
+    email = f"dono-{uuid.uuid4().hex[:8]}@teste.dev"
+    await client.post("/auth/register", json={"email": email, "password": SENHA})
+    monkeypatch.setattr(settings, "admin_email", email)
+
+    await garantir_admin()
+
+    token = (await logar(client, email)).json()["access_token"]
+    me = await client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.json()["is_superuser"] is True
+
+
+async def test_rotas_de_editar_e_apagar_usuario_nao_existem(client):
+    email = f"alvo-{uuid.uuid4().hex[:8]}@teste.dev"
+    await client.post("/auth/register", json={"email": email, "password": SENHA})
+    token = (await logar(client, email)).json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    uid = (await client.get("/users/me", headers=h)).json()["id"]
+
+    patch = await client.patch("/users/me", json={"email": "outro@teste.dev"}, headers=h)
+    delete = await client.delete(f"/users/{uid}", headers=h)
+
+    assert patch.status_code in (404, 405) and delete.status_code in (404, 405)
+    assert (await client.get("/users/me", headers=h)).json()["email"] == email
 
 
 async def test_em_prod_login_da_conta_demo_continua_aceito(client, monkeypatch):

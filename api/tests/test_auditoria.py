@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from sqlalchemy import select
 
-from app.auth import DEMO_EMAIL, garantir_conta_demo
+from app.auth import DEMO_EMAIL, garantir_admin, garantir_conta_demo
 from app.chat import MODELO
 from app.config import settings
 from app.credito import Cap, CreditLedger, preco_vigente
@@ -18,7 +18,13 @@ from tests.test_tools import Rotas, modelo_que_busca, usar_rotas  # noqa: F401  
 
 
 async def demo(client) -> dict:
+    """Conta demo promovida a admin por ADMIN_EMAIL, como o .env de produção faz com a conta do dono."""
     await garantir_conta_demo()
+    antes, settings.admin_email = settings.admin_email, DEMO_EMAIL
+    try:
+        await garantir_admin()
+    finally:
+        settings.admin_email = antes
     token = (await logar(client, DEMO_EMAIL, settings.demo_password)).json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 

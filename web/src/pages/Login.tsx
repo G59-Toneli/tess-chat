@@ -1,15 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
-import { UserRoundIcon } from 'lucide-react'
 import { IconeApp, NOME_APP } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { cadastrar, configPublica, CONTA_DEMO, entrar, lerToken, textoErroAuth } from '@/lib/api'
+import { cadastrar, entrar, lerToken, textoErroAuth } from '@/lib/api'
 
-/** Login e cadastro no mesmo card. Conta demo entra direto. */
+/** Login e cadastro no mesmo card. */
 export function Login() {
   const navigate = useNavigate()
   // Volta para onde o usuário estava (ex.: link compartilhado). Só caminho interno.
@@ -20,15 +19,6 @@ export function Login() {
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
-  // Botão demo só depois da resposta, sem piscar. Falhou: some (ticket 34).
-  const [demo, setDemo] = useState(false)
-
-  useEffect(() => {
-    configPublica()
-      .then((c) => setDemo(c.demo))
-      .catch(() => setDemo(false))
-  }, [])
-
   if (lerToken()) return <Navigate to={destino} replace />
 
   const cadastro = modo === 'cadastrar'
@@ -49,11 +39,6 @@ export function Login() {
   function enviar(e: FormEvent) {
     e.preventDefault()
     void autenticar(() => (cadastro ? cadastrar : entrar)(email, senha))
-  }
-
-  // Um clique: entra com a conta demo e vai para o chat (ticket 28).
-  function usarDemo() {
-    void autenticar(() => entrar(CONTA_DEMO.email, CONTA_DEMO.senha))
   }
 
   return (
@@ -101,11 +86,6 @@ export function Login() {
             <Button type="submit" className="w-full" disabled={enviando}>
               {enviando && <Spinner />} {cadastro ? 'Criar conta' : 'Entrar'}
             </Button>
-            {!cadastro && demo && (
-              <Button type="button" variant="outline" className="w-full" onClick={usarDemo} disabled={enviando}>
-                <UserRoundIcon /> Entrar com conta demo
-              </Button>
-            )}
             <p className="text-sm text-muted-foreground">
               {cadastro ? 'Já tem conta?' : 'Não tem conta?'}{' '}
               <button
