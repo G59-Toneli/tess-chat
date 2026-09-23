@@ -6,8 +6,9 @@ services:
   postgres:
     image: postgres:17
     restart: unless-stopped
-    # POSTGRES_PASSWORD vem do .env da raiz. Interpolação ${} leria deploy/.env, por isso env_file.
-    env_file: ../.env
+    # Só POSTGRES_PASSWORD, num arquivo próprio: o .env da raiz tem chaves que o banco não usa.
+    # Interpolação ${} leria deploy/.env, por isso env_file.
+    env_file: ../.env.postgres
     environment:
       POSTGRES_USER: tess_owner
       POSTGRES_DB: tess
