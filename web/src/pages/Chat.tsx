@@ -7,6 +7,8 @@ import { MessageSquareIcon, OctagonPauseIcon, WalletIcon } from 'lucide-react'
 import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
 import { AnexoNaMensagem, AnexosDoPrompt, BotaoAnexar, previews } from '@/components/Anexos'
 import { SeletorTools } from '@/components/SeletorTools'
+import { SeletorModelo, type EscolhaModelo } from '@/components/SeletorModelo'
+import { salvarConfig } from '@/lib/configuracao'
 import { IndicadorContexto } from '@/components/IndicadorContexto'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
@@ -84,6 +86,7 @@ function ChatNovo() {
   const navigate = useNavigate()
   const { recarregarConversas } = useContextoApp()
   const [criando, setCriando] = useState(false)
+  const [escolha, setEscolha] = useState<EscolhaModelo>({})
 
   async function comecar(texto: string, arquivos: FileUIPart[] = []) {
     if ((!texto.trim() && arquivos.length === 0) || criando) return
@@ -97,6 +100,12 @@ function ChatNovo() {
     }
     try {
       const conv = await criarConversa(tituloDe(texto) || (arquivos[0]?.filename ?? 'Anexo'))
+      // Modelo e raciocínio escolhidos antes de a Conversa existir valem já na primeira mensagem.
+      if (Object.keys(escolha).length > 0) {
+        await salvarConfig(conv.id, escolha).catch(() =>
+          toast.error('Não foi possível aplicar o modelo escolhido. A conversa usa o padrão da conta.'),
+        )
+      }
       pendentes.set(conv.id, { texto, arquivos: partes })
       void recarregarConversas()
       navigate(`/c/${conv.id}`)
@@ -108,7 +117,14 @@ function ChatNovo() {
 
   return (
     <LayoutChat
-      entrada={<Entrada status={criando ? 'submitted' : 'ready'} onEnviar={comecar} />}
+      entrada={
+        <Entrada
+          status={criando ? 'submitted' : 'ready'}
+          onEnviar={comecar}
+          escolha={escolha}
+          onEscolha={setEscolha}
+        />
+      }
     >
       <TelaVazia onEscolher={comecar} />
     </LayoutChat>
@@ -328,11 +344,15 @@ function Entrada({
   status,
   onEnviar,
   onParar,
+  escolha,
+  onEscolha,
 }: {
   conversaId?: string
   status: ChatStatus
   onEnviar: (texto: string, arquivos: FileUIPart[]) => Promise<void>
   onParar?: () => void
+  escolha?: EscolhaModelo
+  onEscolha?: (e: EscolhaModelo) => void
 }) {
   return (
     <PromptInput
@@ -352,6 +372,7 @@ function Entrada({
         <div className="flex items-center gap-1">
           <BotaoAnexar />
           <SeletorTools conversaId={conversaId} />
+          <SeletorModelo conversaId={conversaId} escolha={escolha} onEscolha={onEscolha} />
           <IndicadorContexto conversaId={conversaId} status={status} />
           <span className="px-1 text-xs text-muted-foreground">Enter envia, Shift+Enter quebra linha</span>
         </div>
