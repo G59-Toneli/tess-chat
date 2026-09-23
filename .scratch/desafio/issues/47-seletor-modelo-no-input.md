@@ -9,4 +9,4 @@
 ## Answer
 `web/src/components/SeletorModelo.tsx`: botão `3.8 Flash · Médio ⌄` no rodapé do input, com popover Modelo / Raciocínio e o link "Mais opções" para `/config`. Com Conversa, faz PUT em `/api/conversations/{id}/settings`, com update otimista e rollback. Sem Conversa, `ChatNovo` guarda a escolha e faz o PUT logo depois de `criarConversa`, antes do primeiro envio.
 Screenshots: `screens/47-seletor-modelo-aberto.png`, `screens/47-seletor-modelo-escolhido.png`.
-Ressalva: os caminhos que gravam na Conversa não foram testados no browser, porque precisariam de uma mensagem real ao Gemini.
+Validado no browser em 23/09, ambiente local (web :5199, api :8000), com 1 chamada ao Gemini: Flash-Lite + Mínimo escolhidos em `/` gravaram no settings da Conversa nova, e a resposta saiu com `model: gemini-3.1-flash-lite`. Trocar para Alto numa Conversa existente gravou `high` nela. O settings da conta ficou `null` nos dois casos.
