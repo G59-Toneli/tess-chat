@@ -22,11 +22,6 @@ export type Faixa = 'normal' | 'alerta' | 'critico'
 /** Até 70 % normal, de 70 a 90 % alerta, acima de 90 % crítico. */
 export const faixa = (f: number): Faixa => (f > 0.9 ? 'critico' : f >= 0.7 ? 'alerta' : 'normal')
 
-export function resumo(c: Contexto): string {
-  const janela = `janela do modelo ${tokens(c.limite)} · ${c.modelo}`
-  if (c.usado > c.limiar_compactacao)
-    return `Contexto: ${tokens(c.usado)} tokens, acima do limiar de compactação (${tokens(c.limiar_compactacao)}): o histórico antigo vai ser resumido · ${janela}`
-  const pct = (fracao(c) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
-  const restante = tokens(c.limiar_compactacao - c.usado)
-  return `Contexto: ${tokens(c.usado)} de ${tokens(c.limiar_compactacao)} tokens até compactar (${pct} %) · faltam ${restante} · ${janela}`
-}
+/** "3 %", "71,5 %". */
+export const porcento = (c: Contexto) =>
+  `${(fracao(c) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} %`
