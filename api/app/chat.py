@@ -53,7 +53,7 @@ from app.roteador import PRECO_JEV, Gate, apply_gate, cliente_jev, decidir, opco
 from app.tools import ComTeto, estado_da_conversa, toolset_da_conversa, transporte
 
 MODELO = MODELO_PADRAO
-# Fallback do ADR 0012. Sem OPENAI_API_KEY no .env, a cadeia para aqui.
+# Fallback do ADR 0018: só entre Geminis, sem OpenAI.
 MODELO_RESERVA = "gemini-3.7-flash"
 # Imagem no Gemini 3, media_resolution default (high). Fonte: ai.google.dev/gemini-api/docs/media-resolution.
 TOKENS_IMAGEM = 1120
