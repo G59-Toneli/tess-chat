@@ -1,7 +1,7 @@
 # 14 — Configurações por usuário e por conversa
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 12
 **Refs:** `CONTEXT.md` (Configuração).
 

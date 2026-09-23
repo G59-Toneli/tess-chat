@@ -17,6 +17,7 @@ import {
 import { Shimmer } from '@/components/ai-elements/shimmer'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
 import { IconeApp } from '@/components/Logo'
+import { MarcadorCompactacao } from '@/components/MarcadorCompactacao'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useContextoApp } from '@/layout/AppLayout'
@@ -180,7 +181,7 @@ function ChatConversa({ id, inicial, horarios }: { id: string; inicial: UIMessag
       ) : (
         <>
           {visiveis.map((m) => (
-            <LinhaMensagem key={m.id} mensagem={m} quando={hs.current.get(m.id)} email={usuario?.email} />
+            <MarcadorCompactacao key={m.id} conversaId={id} mensagemId={m.id}><LinhaMensagem key={m.id} mensagem={m} quando={hs.current.get(m.id)} email={usuario?.email} /></MarcadorCompactacao>
           ))}
           {pensando && <Pensando />}
         </>

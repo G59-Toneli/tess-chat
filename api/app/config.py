@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     cap_global_micro_usd: int = 20_000_000
     # Teto de saída por request: a reserva usa esse valor inteiro.
     max_output_tokens: int = 8192
+    # Compactação (ADR 0006). Vão para a Configuração no ticket 14.
+    compactacao_limiar: int = 100_000
+    compactacao_turnos_literais: int = 2
 
 
 settings = Settings()
