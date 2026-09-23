@@ -92,7 +92,7 @@ function LayoutAutenticado() {
   )
 
   return (
-    <div className="flex h-dvh">
+    <div className="flex h-svh overflow-hidden">
       <aside className="flex w-72 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
         <Link to="/" className="flex h-14 shrink-0 items-center gap-2 px-4 font-semibold">
           <IconeApp className="size-7" /> {NOME_APP}
@@ -128,7 +128,7 @@ function LayoutAutenticado() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="min-h-0 flex-1">
+        <main className="min-h-0 flex-1 overflow-y-auto">
           <Outlet context={contexto} />
         </main>
       </div>
