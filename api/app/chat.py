@@ -387,17 +387,24 @@ async def chat(
             raise
 
     nativos = eventos()
-    try:
-        primeiro = await anext(nativos)
-    except ERROS_PROVEDOR as exc:
-        exc = causa(exc)
-        status = f"HTTP {exc.status_code}" if isinstance(exc, ModelHTTPError) else type(exc).__name__
-        return JSONResponse({"detail": f"O provedor do modelo falhou ({status}). Tente de novo."}, status_code=502)
+    # REVISAR(human): com Compactação o stream abre antes do 1º evento do modelo, para o
+    # "Compactando histórico…" aparecer durante o Resumo. O preço: falha do provedor nesse
+    # turno chega como erro no stream, não como 502. Sem Compactação, nada muda.
+    todos: AsyncIterator[Any] = nativos
+    if comp is None:
+        try:
+            primeiro = await anext(nativos)
+        except ERROS_PROVEDOR as exc:
+            exc = causa(exc)
+            status = f"HTTP {exc.status_code}" if isinstance(exc, ModelHTTPError) else type(exc).__name__
+            return JSONResponse({"detail": f"O provedor do modelo falhou ({status}). Tente de novo."}, status_code=502)
 
-    async def todos() -> AsyncIterator[Any]:
-        yield primeiro
-        async for ev in nativos:
-            yield ev
+        async def com_primeiro() -> AsyncIterator[Any]:
+            yield primeiro
+            async for ev in nativos:
+                yield ev
+
+        todos = com_primeiro()
 
     async def ao_fim(result: AgentRunResult[Any]) -> None:
         await _persistir(cid, uid, turno, result.all_messages(), result.usage, len(historico), novas[0], comp)
@@ -411,7 +418,9 @@ async def chat(
         await _persistir(cid, uid, turno, todas, cancelado.usage, len(historico), novas[0], comp, inter)
         yield DataChunk(type=AVISO, data=_aviso(inter))
 
-    chunks = adapter.transform_stream(todos(), on_complete=ao_fim, on_cancel=ao_cancelar)
+    chunks = adapter.transform_stream(todos, on_complete=ao_fim, on_cancel=ao_cancelar)
+    if comp is not None:
+        chunks = _com_compactando(chunks)
     if tools.fora_do_ar:
         chunks = _com_aviso(chunks, _aviso_mcp(tools.fora_do_ar))
     return adapter.streaming_response(chunks)
@@ -431,6 +440,24 @@ async def _com_aviso(chunks: AsyncIterator[BaseChunk], texto: str) -> AsyncItera
             yield TextStartChunk(id="aviso-mcp")
             yield TextDeltaChunk(id="aviso-mcp", delta=texto)
             yield TextEndChunk(id="aviso-mcp")
+
+
+COMPACTANDO = "data-compactando"
+
+
+async def _com_compactando(chunks: AsyncIterator[BaseChunk]) -> AsyncIterator[BaseChunk]:
+    """Avisa a Compactação logo depois do start. O Resumo roda antes do request do modelo,
+    então o próximo chunk só chega depois dele: aí a mesma parte (mesmo id) vira `feita`.
+    Só na tela: não vai para o histórico."""
+    etapa = 0
+    async for c in chunks:
+        if etapa == 1:
+            etapa = 2
+            yield DataChunk(type=COMPACTANDO, id="compactacao", data={"feita": True})
+        yield c
+        if etapa == 0:
+            etapa = 1
+            yield DataChunk(type=COMPACTANDO, id="compactacao", data={"feita": False})
 
 
 AVISO = "data-turno-interrompido"

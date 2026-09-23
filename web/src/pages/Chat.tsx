@@ -34,6 +34,7 @@ import {
   criarConversa,
   enviarAnexo,
   juntarTurnos,
+  lerCorte,
   listarMensagens,
   sair,
   textoErroAnexo,
@@ -177,6 +178,24 @@ function CarregarConversa({ id }: { id: string }) {
   return <ChatConversa id={id} inicial={inicial.mensagens} horarios={inicial.horarios} usosIniciais={inicial.usos} />
 }
 
+const COMPACTANDO = 'data-compactando'
+
+/** O stream manda `data-compactando` com feita=false no início do Resumo e feita=true no fim. */
+function emCompactacao(m: UIMessage): boolean {
+  const p = m.parts.findLast((x) => x.type === COMPACTANDO)
+  return !!p && 'data' in p && !(p.data as { feita: boolean }).feita
+}
+
+// REVISAR(human): o corte vem com id do banco, mas as Mensagens deste stream têm id do useChat.
+// juntarTurnos(linhas) tem a mesma forma da lista do useChat; a posição traduz o id.
+// Se as listas não batem, não marca: melhor sem marcador do que no lugar errado.
+function idNoChat(linhas: MensagemComUso[], mensagens: UIMessage[], corte: number): string | null {
+  const doBanco = juntarTurnos(linhas)
+  if (doBanco.length !== mensagens.length) return null
+  const i = doBanco.findIndex((m) => m.id === String(corte))
+  return i < 0 ? null : mensagens[i].id
+}
+
 function ChatConversa({
   id,
   inicial,
@@ -190,19 +209,32 @@ function ChatConversa({
 }) {
   const { usuario, recarregarConversas } = useContextoApp()
   const [usos, setUsos] = useState(usosIniciais)
+  // Id (no useChat) da Mensagem depois da qual vai o marcador de Compactação.
+  const [corte, setCorte] = useState<string | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    void lerCorte(id).then((c) => vivo && setCorte(c === null ? null : String(c)))
+    return () => {
+      vivo = false
+    }
+  }, [id])
 
   // O stream não traz usage nem a decisão do Roteador. A API grava os dois antes do fim
   // do stream, então no onFinish a última resposta do banco já é a deste turno.
+  // Com `mensagens` (turno que compactou), também move o marcador.
   const buscarUso = useCallback(
-    async (mensagemId: string) => {
+    async (mensagemId: string, mensagens?: UIMessage[]) => {
       try {
-        const [linhas, decisoes] = await Promise.all([
+        const [linhas, decisoes, novoCorte] = await Promise.all([
           listarMensagens(id) as Promise<MensagemComUso[]>,
           decisoesDoRoteador(id).catch(() => []),
+          mensagens ? lerCorte(id) : Promise.resolve(null),
         ])
         const ultima = linhas.filter((m) => m.role === 'assistant').at(-1)
         const uso = ultima && usoPorMensagem(linhas, decisoes).get(String(ultima.id))
         if (uso) setUsos((u) => new Map(u).set(mensagemId, uso))
+        if (mensagens && novoCorte !== null) setCorte(idNoChat(linhas, mensagens, novoCorte))
       } catch {
         // Badge é informativo: sem ele a resposta continua visível.
       }
@@ -218,9 +250,10 @@ function ChatConversa({
     id,
     messages: inicial,
     transport,
-    onFinish: ({ message, isError, isAbort }) => {
+    onFinish: ({ message, messages, isError, isAbort }) => {
       void recarregarConversas()
-      if (!isError && !isAbort) void buscarUso(message.id)
+      if (!isError && !isAbort)
+        void buscarUso(message.id, message.parts.some((p) => p.type === COMPACTANDO) ? messages : undefined)
     },
   })
   const duracoes = useDuracoes(messages)
@@ -263,6 +296,7 @@ function ChatConversa({
   const semTexto = (m?: UIMessage) => !m?.parts.some((p) => p.type === 'text' && p.text)
   // Resposta só com tool (ainda sem texto) aparece: o bloco de tool é o progresso do turno.
   const vazia = (m?: UIMessage) => semTexto(m) && (!m || partesDeTool(m).length === 0)
+  const compactando = status === 'streaming' && ultima?.role === 'assistant' && emCompactacao(ultima)
   const pensando = status === 'submitted' || (status === 'streaming' && ultima?.role === 'assistant' && vazia(ultima))
   const visiveis = messages.filter((m) => m.role === 'user' || !vazia(m))
   // Entre tools: o indicador vai no fim da última mensagem, abaixo do último card.
@@ -284,7 +318,7 @@ function ChatConversa({
       ) : (
         <>
           {visiveis.map((m) => (
-            <MarcadorCompactacao key={m.id} conversaId={id} mensagemId={m.id}><LinhaMensagem
+            <MarcadorCompactacao key={m.id} aqui={m.id === corte}><LinhaMensagem
               key={m.id}
               mensagem={m}
               quando={hs.current.get(m.id)}
@@ -294,7 +328,7 @@ function ChatConversa({
               aguardando={m === ultima ? aguardando : undefined}
             /></MarcadorCompactacao>
           ))}
-          {pensando && <Pensando />}
+          {pensando && <Pensando texto={compactando ? 'Compactando histórico…' : 'Pensando…'} />}
           {cap && <AvisoCap />}
         </>
       )}
@@ -509,11 +543,11 @@ function AvisoTurnoInterrompido({ corte }: { corte: Interrupcao }) {
 }
 
 // Início do turno, antes do primeiro token. Mesmo indicador do intervalo entre tools.
-function Pensando() {
+function Pensando({ texto }: { texto: string }) {
   return (
     <div className="flex items-center gap-3">
       <AvatarAssistente />
-      <Trabalhando texto="Pensando…" />
+      <Trabalhando texto={texto} />
     </div>
   )
 }

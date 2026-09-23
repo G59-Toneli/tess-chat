@@ -113,6 +113,31 @@ async def test_quarta_mensagem_compacta_e_mantem_originais(client, usar_modelo, 
     assert modelos.count(MODELO_RESUMO) == 1
 
 
+def chunks(sse: str) -> list[dict]:
+    return [json.loads(l[6:]) for l in sse.splitlines() if l.startswith("data: {")]
+
+
+async def test_stream_avisa_compactando_so_no_turno_que_compacta(client, usar_modelo, limiar, resumidor):
+    usar_modelo(modelo_eco([]))
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    streams = []
+    for t in [f"um. {LONGO}", f"dois. {LONGO}", f"três. {LONGO}", "quatro"]:
+        r = await client.post(f"/api/chat/{cid}", json=corpo(t), headers=h)
+        assert r.status_code == 200, r.text
+        streams.append(chunks(r.text))
+
+    for s in streams[:3]:
+        assert not [c for c in s if c["type"] == "data-compactando"]
+    tipos = [c["type"] for c in streams[3]]
+    avisos = [c for c in streams[3] if c["type"] == "data-compactando"]
+    # Logo depois do start, "rodando"; antes do 1º texto do modelo, a mesma parte vira "feita".
+    assert tipos[0] == "start" and tipos[1] == "data-compactando"
+    assert [a["data"] for a in avisos] == [{"feita": False}, {"feita": True}]
+    assert {a["id"] for a in avisos} == {"compactacao"}
+    assert tipos.index("data-compactando", 2) < tipos.index("text-start")
+
+
 async def test_proximo_turno_usa_resumo_sem_resumir_de_novo(client, usar_modelo, limiar, resumidor, monkeypatch):
     vistas: list[list[ModelMessage]] = []
     usar_modelo(modelo_eco(vistas))
