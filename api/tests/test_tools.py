@@ -299,3 +299,50 @@ async def test_resultado_mcp_acima_do_teto_chega_ao_modelo_com_a_frase_de_corte(
     [ret] = retornos(vistas[-1])
     assert ret.content.startswith('{"campos": "xxx')  # JSON, não repr do dict
     assert ret.content.endswith(f"[resultado cortado em {LIMITE_CHARS_MCP} caracteres; peça só o trecho necessário]")
+
+
+# ---------- Args de tool MCP e validação (ticket 33) ----------
+
+
+def test_string_json_aninhada_vira_objeto_e_string_comum_fica():
+    from app.tools import desembrulhar_json
+
+    # Formato exato que o Gemini mandou ao Stripe no turno real do ticket 31.
+    args = {
+        "stripe_api_operation_id": "PostPaymentLinks",
+        "parameters": {"line_items": [{"quantity": 1, "price_data": '{ "currency": "brl", "unit_amount": 100000 }'}]},
+        "texto": "Olá {mundo}",
+        "chaves": "{mundo}",
+        "lista": "[1, 2]",
+    }
+
+    saida = desembrulhar_json(args)
+
+    assert saida["parameters"]["line_items"][0]["price_data"] == {"currency": "brl", "unit_amount": 100000}
+    assert saida["texto"] == "Olá {mundo}" and saida["chaves"] == "{mundo}"
+    assert saida["lista"] == [1, 2]
+    assert saida["stripe_api_operation_id"] == "PostPaymentLinks"
+
+
+async def test_args_invalidos_duas_vezes_encerram_o_turno_com_aviso(client, usar_modelo):
+    from tests.test_resiliencia import chunks
+
+    uid, h = await usuario(client)
+
+    async def stream(msgs: list[ModelMessage], _info: AgentInfo):
+        n = sum(1 for m in msgs if isinstance(m, ModelRequest))
+        # Sem o campo query: a validação do Pydantic recusa.
+        yield {0: DeltaToolCall(name="web_search", json_args="{}", tool_call_id=f"c{n}")}
+
+    usar_modelo(FunctionModel(stream_function=stream, model_name=MODELO))
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("busca algo"), headers=h)
+
+    assert r.status_code == 200, r.text
+    assert "error" not in [c["type"] for c in chunks(r.text)]
+    [aviso] = [c for c in chunks(r.text) if c["type"] == "data-turno-interrompido"]
+    assert aviso["data"]["motivo"] == "tool_falhou" and aviso["data"]["tool"] == "web_search"
+    assert "query" in aviso["data"]["texto"]
+    falhas = await eventos("tool_call", user_id=uid)
+    assert len(falhas) == 2 and all("erro" in f.payload for f in falhas)

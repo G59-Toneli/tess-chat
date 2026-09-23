@@ -5,6 +5,7 @@ Env: HOST (padrão 127.0.0.1), PORT (padrão 8765), MCP_DEMO_TOKEN (opcional: ex
 
 import os
 from datetime import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import uvicorn
@@ -24,6 +25,12 @@ def somar(a: float, b: float) -> float:
 def hora_atual(fuso: str = "America/Sao_Paulo") -> str:
     """Data e hora atuais no fuso IANA informado (ex.: America/Sao_Paulo)."""
     return datetime.now(ZoneInfo(fuso)).isoformat(timespec="seconds")
+
+
+@server.tool()
+def tipos(dados: dict[str, Any]) -> str:
+    """Ecoa o tipo de cada valor recebido."""
+    return " ".join(f"{k}={type(v).__name__}" for k, v in dados.items())
 
 
 def app(token: str | None):

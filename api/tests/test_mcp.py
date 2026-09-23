@@ -75,12 +75,13 @@ async def test_cadastro_lista_tools_e_guarda_header_cifrado(client, demo):
     assert r.status_code == 201, r.text
     srv = r.json()
     registradas = {t["nome"] for t in srv["tools"]}
-    assert len(registradas) == 2
+    assert len(registradas) == 3
     assert any(n.endswith("_somar") for n in registradas)
     assert any(n.endswith("_hora_atual") for n in registradas)
     assert {t["descricao_usuario"] for t in srv["tools"]} == {
         "Soma dois números.",
         "Data e hora atuais no fuso IANA informado (ex.: America/Sao_Paulo).",
+        "Ecoa o tipo de cada valor recebido.",
     }
     assert srv["tem_auth"] is True and "autorizacao" not in srv
     lista = (await client.get("/api/mcp-servers", headers=h)).json()
@@ -89,7 +90,7 @@ async def test_cadastro_lista_tools_e_guarda_header_cifrado(client, demo):
         guardado = await s.scalar(text("SELECT headers FROM mcp_servers WHERE id = :i"), {"i": srv["id"]})
     assert TOKEN not in guardado
     [ev] = await eventos("mcp_server_added", user_id=uid)
-    assert ev.payload["url"] == demo and ev.payload["tools"] == 2 and TOKEN not in str(ev.payload)
+    assert ev.payload["url"] == demo and ev.payload["tools"] == 3 and TOKEN not in str(ev.payload)
 
 
 async def test_servidor_fora_do_ar_da_erro_legivel_e_nao_grava(client):
@@ -412,3 +413,22 @@ async def test_tool_mcp_que_falha_duas_vezes_encerra_o_turno_com_aviso(client, d
     assert len(falhas) == 2 and all("erro" in f.payload for f in falhas)
     [ev] = await eventos("mcp_tool_failed", user_id=uid)
     assert ev.payload["tool"] == hora and ev.cost_micro_usd > 0
+
+
+# ---------- String JSON nos args vira objeto (ticket 33) ----------
+
+
+async def test_string_json_nos_args_chega_ao_servidor_mcp_como_objeto(client, demo, usar_modelo):
+    uid, h = await usuario(client)
+    tools = (await cadastrar(client, h, demo)).json()["tools"]
+    tipos = next(t["nome"] for t in tools if t["nome"].endswith("_tipos"))
+    args = {"dados": {"preco": '{"currency": "brl", "unit_amount": 100000}', "itens": "[1, 2]", "texto": "Olá {mundo}"}}
+    usar_modelo(modelo_que_chama(tipos, args, []))
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("ecoa os tipos"), headers=h)
+
+    assert r.status_code == 200, r.text
+    assert await ultima_resposta(client, h, cid) == "Resposta: preco=dict itens=list texto=str"
+    [ev] = await eventos("tool_call", user_id=uid)
+    assert ev.payload["args"]["dados"]["preco"] == {"currency": "brl", "unit_amount": 100000}
