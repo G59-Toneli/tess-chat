@@ -10,7 +10,6 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google import GoogleProvider
 
-import app.chat as chat_mod
 from app.chat import MODELO, modelo
 from app.config import settings
 from app.conversas import Attachment
@@ -163,44 +162,6 @@ async def test_request_ao_gemini_leva_media_resolution_no_pdf(client, usar_model
     assert com_arquivo[0]["mediaResolution"] == {"level": "MEDIA_RESOLUTION_MEDIUM"}
 
 
-PDF_1MB = PDF + b"0" * (1024 * 1024)
-
-
-async def test_turno_seguinte_nao_carrega_o_peso_do_anexo(client, usar_modelo, monkeypatch):
-    """GoogleModel real, HTTP falso: mede o corpo que sai para o Gemini em cada turno."""
-    enviados: list[str] = []
-
-    def responder(req: httpx2.Request) -> httpx2.Response:
-        enviados.append(req.content.decode())
-        return httpx2.Response(200, content=GRAVADA.read_bytes(), headers={"content-type": "text/event-stream"})
-
-    estimativas: list[int] = []
-    reservar = chat_mod.reservar
-
-    async def espiar(s, uid, cid, nome, estimado):
-        estimativas.append(estimado)
-        return await reservar(s, uid, cid, nome, estimado)
-
-    monkeypatch.setattr(chat_mod, "reservar", espiar)
-    provider = GoogleProvider(api_key="teste", http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(responder)))
-    usar_modelo(GoogleModel(MODELO, provider=provider))
-    _, h = await usuario(client)
-    pdf = (await subir(client, h, "grande.pdf", PDF_1MB, "application/pdf")).json()
-    cid = (await criar(client, h))["id"]
-
-    r = await client.post(f"/api/chat/{cid}", json=corpo("resuma", [parte(pdf)]), headers=h)
-    assert r.status_code == 200, r.text
-    r = await client.post(f"/api/chat/{cid}", json=corpo("e a conclusão?", []), headers=h)
-    assert r.status_code == 200, r.text
-
-    # Turno do anexo leva os bytes. Turno seguinte só a menção textual.
-    assert len(enviados[0]) > 1_000_000
-    assert len(enviados[1]) < 10_000
-    assert "inlineData" not in enviados[1]
-    assert "[anexo: grande.pdf" in enviados[1]
-    assert "fora do contexto" in enviados[1]
-    assert estimativas[1] < 10_000
-
 
 def gemini_gravando(enviados: list[dict]) -> GoogleModel:
     """GoogleModel real com HTTP falso que guarda o JSON de cada request."""
@@ -245,6 +206,22 @@ async def test_imagem_sumida_do_disco_vira_aviso(client, usar_modelo, pasta):
     assert imagens_enviadas(enviados[1]) == []
     textos = [p.get("text", "") for c in enviados[1]["contents"] for p in c["parts"]]
     assert any("meme.png" in t and "fora do contexto" in t for t in textos)
+
+
+async def test_pdf_volta_ao_modelo_no_turno_seguinte_em_resolucao_media(client, usar_modelo):
+    """Mesmo bug da imagem: sem o PDF no turno 2, o modelo inventava o conteúdo."""
+    enviados: list[dict] = []
+    usar_modelo(gemini_gravando(enviados))
+    _, h = await usuario(client)
+    pdf = (await subir(client, h, "contrato.pdf", PDF, "application/pdf")).json()
+    cid = (await criar(client, h))["id"]
+
+    assert (await client.post(f"/api/chat/{cid}", json=corpo("resuma", [parte(pdf)]), headers=h)).status_code == 200
+    assert (await client.post(f"/api/chat/{cid}", json=corpo("e a cláusula 3?", []), headers=h)).status_code == 200
+
+    arquivos = [p for c in enviados[1]["contents"] for p in c["parts"] if "inlineData" in p]
+    assert [p["inlineData"]["mime_type"] for p in arquivos] == ["application/pdf"]
+    assert arquivos[0]["mediaResolution"] == {"level": "MEDIA_RESOLUTION_MEDIUM"}
 
 
 async def test_recarregar_mostra_o_anexo_por_referencia(client, usar_modelo):

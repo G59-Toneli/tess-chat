@@ -113,18 +113,18 @@ async def montar_anexos(session: AsyncSession, uid: uuid.UUID, nova: UIMessage) 
             p.provider_metadata = RESOLUCAO_PDF
 
 
-# REVISAR(human): imagem de turno anterior volta com os bytes (ADR 0016). Sem eles o modelo
-# inventava detalhe da imagem no turno seguinte. PDF, arquivo sumido, data URI antiga e URL
-# externa (SSRF) viram texto que diz ao modelo que ele não vê o arquivo.
+# REVISAR(human): anexo de turno anterior volta com os bytes (ADR 0016). Sem eles o modelo
+# inventava detalhe do arquivo no turno seguinte. PDF mantém a resolução medium. Arquivo sumido,
+# data URI antiga e URL externa (SSRF) viram texto que diz ao modelo que ele não vê o arquivo.
 async def partes_do_historico(
     session: AsyncSession, uid: uuid.UUID, partes: list[dict], com_imagem: bool = True
 ) -> list[dict]:
-    """Partes de turno anterior: imagem própria com bytes, qualquer outro arquivo como `FORA_DO_CONTEXTO`."""
+    """Partes de turno anterior: anexo próprio com bytes, qualquer outro arquivo como `FORA_DO_CONTEXTO`."""
     ids = [uuid.UUID(c[1]) for p in partes if p.get("type") == "file" and (c := URL_ANEXO.match(p.get("url", "")))]
     anexos = {}
     if com_imagem and ids:
         q = select(Attachment).where(Attachment.id.in_(ids), Attachment.user_id == uid)
-        anexos = {str(a.id): a for a in await session.scalars(q) if a.mime_type.startswith("image/")}
+        anexos = {str(a.id): a for a in await session.scalars(q)}
     saida = []
     for p in partes:
         if p.get("type") != "file":
@@ -134,7 +134,8 @@ async def partes_do_historico(
         anexo = anexos.get(c[1]) if c else None
         if anexo is not None and Path(anexo.path).is_file():
             dados = base64.b64encode(Path(anexo.path).read_bytes()).decode()
-            saida.append({**p, "url": f"data:{anexo.mime_type};base64,{dados}"})
+            extra = {"providerMetadata": RESOLUCAO_PDF} if anexo.mime_type == "application/pdf" else {}
+            saida.append({**p, "url": f"data:{anexo.mime_type};base64,{dados}", **extra})
         else:
             saida.append({"type": "text", "text": FORA_DO_CONTEXTO.format(p.get("filename") or p.get("mediaType"))})
     return saida
