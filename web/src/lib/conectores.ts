@@ -57,6 +57,7 @@ const ERROS_OAUTH: Record<string, string> = {
   access_denied: 'Você recusou o acesso no Google.',
   state_invalido: 'O link de conexão venceu. Tente de novo.',
   troca_falhou: 'O Google não confirmou a conexão. Tente de novo.',
+  pkce_ausente: 'A conexão venceu ou começou em outro navegador. Tente de novo.',
 }
 
 export const textoErroOAuth = (codigo: string) =>

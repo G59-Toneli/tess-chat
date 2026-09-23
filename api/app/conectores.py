@@ -5,7 +5,7 @@ import base64
 import json
 import re
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from typing import Annotated, Any
 from urllib.parse import urlencode
@@ -13,9 +13,12 @@ from zoneinfo import ZoneInfo
 
 import httpx
 from cryptography.fernet import Fernet
-from fastapi import APIRouter, Depends, HTTPException, Response
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi_users.jwt import decode_jwt, generate_jwt
+from google.auth.exceptions import RefreshError, TransportError
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
 from pydantic import BaseModel
 from pydantic_ai import BinaryContent, RunContext, ToolReturn
 from sqlalchemy import ARRAY, Boolean, DateTime, ForeignKey, Text, func, select
@@ -26,6 +29,7 @@ from app.audit import audit
 from app.config import settings
 from app.conversas import Sessao, Usuario
 from app.db import Base, SessionLocal
+from app.google_transporte import AdaptadorRequests, RequestHttpx
 
 PROVEDOR = "google"
 CALLBACK = "/api/connectors/google/callback"
@@ -43,8 +47,8 @@ DRIVE = "https://www.googleapis.com/drive/v3/files"
 DRIVE_ABOUT = "https://www.googleapis.com/drive/v3/about"
 AUD_STATE = "tess:google-oauth"
 VALIDADE_STATE = 600
-# Renova um pouco antes de vencer: o token não expira no meio da chamada.
-FOLGA = timedelta(seconds=60)
+# code_verifier do PKCE entre o authorize e o callback (ADR 0017).
+COOKIE_PKCE = "tess_google_pkce"
 LIMITE_CHARS = 20_000
 PDF = "application/pdf"
 # PDF do Drive acima disso não baixa (ticket 38). Anexo aceita 20 MB; aqui metade, pelo custo em tokens.
@@ -130,23 +134,38 @@ def _redirect_uri() -> str:
     return f"{settings.public_base_url}{CALLBACK}"
 
 
-async def _pedir_token(form: dict[str, str], t: httpx.AsyncBaseTransport | None) -> dict[str, Any]:
-    """POST no endpoint de token do Google. Erro HTTP sobe como httpx.HTTPError."""
-    base = {"client_id": settings.google_client_id or "", "client_secret": settings.google_client_secret or ""}
-    async with httpx.AsyncClient(transport=t, timeout=TIMEOUT) as http:
-        r = await http.post(TOKEN_URL, data={**base, **form})
-        r.raise_for_status()
-        return r.json()
+def _cliente_config() -> dict[str, Any]:
+    """Client OAuth no formato do `Flow` (tipo `web`)."""
+    return {
+        "web": {
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "auth_uri": AUTH_URL,
+            "token_uri": TOKEN_URL,
+        }
+    }
 
 
-def _expira(resp: dict[str, Any]) -> datetime:
-    return datetime.now(UTC) + timedelta(seconds=int(resp.get("expires_in", 3600)))
+def _flow(t: httpx.AsyncBaseTransport | None, code_verifier: str | None = None) -> Flow:
+    """`Flow` do google-auth-oauthlib. Com transporte injetado, o HTTP dele passa pelo httpx."""
+    flow = Flow.from_client_config(
+        _cliente_config(), scopes=ESCOPOS, redirect_uri=_redirect_uri(), code_verifier=code_verifier
+    )
+    if t is not None:
+        flow.oauth2session.mount("https://", AdaptadorRequests(t))
+    return flow
 
 
-# REVISAR(human): token válido por mais de FOLGA segue direto. Vencido, renova com o refresh_token
-# e grava o novo. O Google às vezes não devolve refresh_token na renovação: mantém o antigo.
-# Sem refresh_token ou com invalid_grant (app em Testing expira em 7 dias), vira ConectorExpirado
-# com texto claro, que o modelo repassa ao usuário.
+def _utc(d: datetime) -> datetime:
+    """google-auth usa datetime naive em UTC; o banco guarda com fuso."""
+    return d.astimezone(UTC).replace(tzinfo=None)
+
+
+# REVISAR(human): a lib decide se o token venceu (`creds.expired` já conta vencido 3m45s antes do
+# `expiry`). Vencido, `creds.refresh` renova com o refresh_token, em thread, porque a lib é síncrona.
+# O Google às vezes não devolve refresh_token na renovação: a lib mantém o antigo. Sem refresh_token
+# ou com invalid_grant (app em Testing expira em 7 dias), a lib levanta RefreshError: vira
+# ConectorExpirado com texto claro, que o modelo repassa ao usuário. JSON cifrado no formato do ticket 18.
 async def _token(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None) -> str:
     """Access token do Usuário, renovado se preciso."""
     async with SessionLocal() as s:
@@ -154,21 +173,23 @@ async def _token(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None) -> str:
         if c is None:
             raise ConectorExpirado(NAO_CONECTADO)
         tokens = _decifrar(c.tokens)
-        if c.expira_em > datetime.now(UTC) + FOLGA:
+        creds = Credentials(
+            tokens["access_token"], refresh_token=tokens.get("refresh_token"), token_uri=TOKEN_URL,
+            client_id=settings.google_client_id, client_secret=settings.google_client_secret,
+            scopes=c.escopos, expiry=_utc(c.expira_em),
+        )
+        if not creds.expired:
             return tokens["access_token"]
-        if not tokens.get("refresh_token"):
-            raise ConectorExpirado(EXPIROU)
         try:
-            novo = await _pedir_token({"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"]}, t)
-        except httpx.HTTPError as e:
-            status = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None
-            await audit(s, "connector_refresh_failed", user_id=uid, payload={"provedor": PROVEDOR, "status": status})
+            await asyncio.to_thread(creds.refresh, RequestHttpx(t))
+        except (RefreshError, TransportError) as e:
+            await audit(s, "connector_refresh_failed", user_id=uid, payload={"provedor": PROVEDOR, "erro": str(e)[:200]})
             await s.commit()
             raise ConectorExpirado(EXPIROU) from e
-        tokens["access_token"] = novo["access_token"]
-        tokens["refresh_token"] = novo.get("refresh_token") or tokens["refresh_token"]
+        tokens["access_token"] = creds.token
+        tokens["refresh_token"] = creds.refresh_token or tokens.get("refresh_token")
         c.tokens = _cifrar(tokens)
-        c.expira_em = _expira(novo)
+        c.expira_em = creds.expiry.replace(tzinfo=UTC)
         await audit(s, "connector_refreshed", user_id=uid, payload={"provedor": PROVEDOR})
         await s.commit()
         return tokens["access_token"]
@@ -477,24 +498,23 @@ async def listar(session: Sessao, user: Usuario) -> list[ConectorOut]:
 
 # REVISAR(human): o callback chega por GET do browser, sem o Bearer do front. O state é um JWT
 # assinado com jwt_secret, com o id do Usuário e validade de 10 min: identifica o dono e barra CSRF.
+# O PKCE fecha a outra ponta: o code_verifier fica num cookie httpOnly que só o browser que abriu o
+# authorize tem. Um code interceptado não vira token sem ele (ADR 0017).
 @router.get("/google/authorize")
-async def autorizar(user: Usuario) -> dict[str, str]:
+async def autorizar(user: Usuario) -> JSONResponse:
     """URL de consentimento do Google. O front redireciona o browser para ela."""
     if not settings.google_client_id:
         raise HTTPException(status_code=503, detail="GOOGLE_CLIENT_ID ausente no servidor")
     _fernet()
     state = generate_jwt({"sub": str(user.id), "aud": AUD_STATE}, settings.jwt_secret, VALIDADE_STATE)
-    params = {
-        "client_id": settings.google_client_id,
-        "redirect_uri": _redirect_uri(),
-        "response_type": "code",
-        "scope": " ".join(ESCOPOS),
-        "access_type": "offline",
-        "prompt": "consent",
-        "include_granted_scopes": "true",
-        "state": state,
-    }
-    return {"url": f"{AUTH_URL}?{urlencode(params)}"}
+    flow = _flow(None)
+    url, _ = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true", state=state)
+    r = JSONResponse({"url": url})
+    r.set_cookie(
+        COOKIE_PKCE, flow.code_verifier, max_age=VALIDADE_STATE, path=CALLBACK, httponly=True, samesite="lax",
+        secure=settings.env == "prod",
+    )
+    return r
 
 
 def _motivo(r: httpx.Response) -> str:
@@ -538,9 +558,22 @@ def _voltar(**query: str) -> RedirectResponse:
 
 @router.get("/google/callback", include_in_schema=False)
 async def callback(
-    session: Sessao, t: Transporte, code: str | None = None, state: str | None = None, error: str | None = None
+    request: Request, session: Sessao, t: Transporte,
+    code: str | None = None, state: str | None = None, error: str | None = None,
 ) -> RedirectResponse:
     """Volta do Google: troca o code por tokens, grava cifrado e devolve o browser à tela Conectores."""
+    r = await _trocar(session, t, request.cookies.get(COOKIE_PKCE), code, state, error)
+    r.delete_cookie(COOKIE_PKCE, path=CALLBACK)
+    return r
+
+
+# REVISAR(human): par do cookie do authorize. Sem o cookie (outro browser, ou passaram 10 min) não há
+# code_verifier: volta com `pkce_ausente` sem chamar o Google. Com ele, o Flow manda o verifier no
+# POST /token e o Google confere com o code_challenge do authorize. O callback sempre apaga o cookie.
+async def _trocar(
+    session, t: httpx.AsyncBaseTransport | None, verifier: str | None,
+    code: str | None, state: str | None, error: str | None,
+) -> RedirectResponse:
     if error:
         return _voltar(erro=error)
     try:
@@ -549,21 +582,24 @@ async def callback(
         return _voltar(erro="state_invalido")
     if not code:
         return _voltar(erro="sem_code")
+    if not verifier:
+        return _voltar(erro="pkce_ausente")
+    flow = _flow(t, code_verifier=verifier)
     try:
-        resp = await _pedir_token(
-            {"grant_type": "authorization_code", "code": code, "redirect_uri": _redirect_uri()}, t
-        )
-    except httpx.HTTPError:
+        await asyncio.to_thread(flow.fetch_token, code=code)
+    except Exception:  # noqa: BLE001  HTTP, invalid_grant ou resposta fora do formato
         return _voltar(erro="troca_falhou")
-    escopos = resp.get("scope", " ".join(ESCOPOS)).split()
+    creds = flow.credentials
+    concedidos = creds.granted_scopes
+    escopos = (concedidos.split() if isinstance(concedidos, str) else list(concedidos)) if concedidos else ESCOPOS
     c = await session.get(Connector, (uid, PROVEDOR))
     antigo = _decifrar(c.tokens).get("refresh_token") if c else None
-    tokens = {"access_token": resp["access_token"], "refresh_token": resp.get("refresh_token") or antigo}
+    tokens = {"access_token": creds.token, "refresh_token": creds.refresh_token or antigo}
     if c is None:
         c = Connector(user_id=uid, provedor=PROVEDOR)
         session.add(c)
-    conta_email, gmail = await _conta(resp["access_token"], t)
-    c.tokens, c.escopos, c.expira_em = _cifrar(tokens), escopos, _expira(resp)
+    conta_email, gmail = await _conta(creds.token, t)
+    c.tokens, c.escopos, c.expira_em = _cifrar(tokens), escopos, creds.expiry.replace(tzinfo=UTC)
     c.conta_email, c.gmail_disponivel = conta_email, gmail
     await audit(
         session, "connector_linked", user_id=uid,
