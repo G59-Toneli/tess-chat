@@ -18,6 +18,16 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
   7. "resume o arquivo <nome de um Google Doc seu> do meu Drive". Esperado: tool `drive_search_read` e resumo do conteúdo.
   8. Auditoria: eventos `connector_linked` e `tool_call`. Revogar em Conectores gera `connector_revoked`.
   9. Produção: no `.env` do deploy, `PUBLIC_BASE_URL=https://chat.toneli.dev.br` e uma `CONNECTORS_KEY` própria.
+- [ ] **Validar o envio de e-mail com confirmação (ticket 25, ADR 0013).**
+  1. GCP > APIs e serviços > Tela de consentimento OAuth > Escopos: adicione `https://www.googleapis.com/auth/gmail.send`. Salve. (App em Testing: seu e-mail continua na lista de testadores.)
+  2. `cd api && uv run alembic upgrade head` (aplica a migração 0014).
+  3. Suba a app. Em `/conectores` aparece "Reconecte para enviar e-mails". Clique em Reconectar e aceite a permissão de envio. O selo "Gmail (envio com confirmação)" aparece.
+  4. Nova conversa. No seletor de tools, ligue `gmail_send` (nasce desligada).
+  5. Peça: "responde o último e-mail do X dizendo que confirmo a reunião". Esperado: `gmail_search`, `gmail_read`, depois um cartão "Rascunho de e-mail" com Para, Assunto, corpo e os botões Enviar e Descartar.
+  6. Digite "pode enviar" no chat. Esperado: nada sai; o cartão continua "Aguardando você".
+  7. Clique em Enviar. Esperado: selo "Enviado". No Gmail, o e-mail aparece em Enviados, na mesma thread do original.
+  8. Auditoria: `email_draft_created` e `email_sent` (com `message_id`). Teste também Descartar num segundo rascunho: `email_draft_discarded`.
+  9. Se der 502 "insufficient authentication scopes", o escopo não entrou no token: repita os passos 1 e 3.
 - [ ] **Gravar o vídeo (ticket 19, até 5 min) e entregar ao CPO.** Roteiro completo em `README.md`, seção "Roteiro do vídeo". Ordem:
   1. Login com a conta demo.
   2. Conversa simples: stream e badge de modelo e tokens.

@@ -1,4 +1,4 @@
-"""Conector Google: OAuth web flow, tokens cifrados por Usuário e as Tools gmail_search, gmail_read, drive_search_read (ADR 0010)."""
+"""Conector Google: OAuth web flow, tokens cifrados por Usuário, Tools de leitura (ADR 0010) e Rascunho de e-mail (ADR 0013)."""
 
 import asyncio
 import base64
@@ -6,6 +6,7 @@ import json
 import re
 import uuid
 from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
 from typing import Annotated, Any
 from urllib.parse import urlencode
 
@@ -15,7 +16,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from fastapi_users.jwt import decode_jwt, generate_jwt
 from pydantic import BaseModel
-from sqlalchemy import ARRAY, DateTime, ForeignKey, Text, func
+from pydantic_ai import RunContext
+from sqlalchemy import ARRAY, DateTime, ForeignKey, Text, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.audit import audit
@@ -25,9 +27,11 @@ from app.db import Base, SessionLocal
 
 PROVEDOR = "google"
 CALLBACK = "/api/connectors/google/callback"
+ESCOPO_ENVIO = "https://www.googleapis.com/auth/gmail.send"
 ESCOPOS = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/drive.readonly",
+    ESCOPO_ENVIO,
 ]
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -56,6 +60,27 @@ class Connector(Base):
     escopos: Mapped[list[str]] = mapped_column(ARRAY(Text))
     expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EmailDraft(Base):
+    """Rascunho: e-mail que o modelo preparou e que só sai com clique do dono (ADR 0013)."""
+
+    __tablename__ = "email_drafts"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    conversation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"))
+    tool_call_id: Mapped[str | None] = mapped_column(Text)
+    para: Mapped[str] = mapped_column(Text)
+    assunto: Mapped[str] = mapped_column(Text)
+    corpo: Mapped[str] = mapped_column(Text)
+    thread_id: Mapped[str | None] = mapped_column(Text)
+    in_reply_to: Mapped[str | None] = mapped_column(Text)
+    referencias: Mapped[str | None] = mapped_column(Text)
+    estado: Mapped[str] = mapped_column(Text, default="pendente")  # pendente | enviado | descartado
+    gmail_message_id: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decidido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ConectorExpirado(Exception):
@@ -207,9 +232,12 @@ async def gmail_read(uid: uuid.UUID, message_id: str, t: httpx.AsyncBaseTranspor
     async def ler(http: httpx.AsyncClient) -> str:
         r = await http.get(f"{GMAIL}/messages/{message_id}", params={"format": "full"})
         r.raise_for_status()
-        payload = r.json().get("payload", {})
+        j = r.json()
+        payload = j.get("payload", {})
         h = _cabecalhos(payload)
+        # Os ids deixam o modelo responder na thread com gmail_send (ADR 0013).
         return (
+            f"message_id: {j.get('id', message_id)}\nthread_id: {j.get('threadId', '')}\n"
             f"De: {h.get('from', '')}\nPara: {h.get('to', '')}\nAssunto: {h.get('subject', '')}\n"
             f"Data: {h.get('date', '')}\n\n{_corpo(payload) or '(sem corpo em texto)'}"
         )
@@ -257,11 +285,81 @@ async def drive_search_read(uid: uuid.UUID, query: str, t: httpx.AsyncBaseTransp
     return await _chamar(uid, t, "drive_search_read", buscar_e_ler)
 
 
-TOOLS = {"gmail_search", "gmail_read", "drive_search_read"}
+AGUARDANDO = (
+    "Rascunho criado, aguardando confirmação. O e-mail NÃO foi enviado: o usuário precisa clicar em "
+    "Enviar no cartão do rascunho, na tela. Mensagem no chat não envia."
+)
 
 
-def ligar(nome: str, uid: uuid.UUID, t: httpx.AsyncBaseTransport | None):
-    """Função que o modelo vê: só o argumento da tool, com Usuário e transporte fixos."""
+async def _resposta_a(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, thread_id: str) -> tuple[str | None, str]:
+    """In-Reply-To e References para responder na thread: o Message-ID da última mensagem dela."""
+    token = await _token(uid, t)
+    params = {"format": "metadata", "metadataHeaders": ["Message-ID", "References"]}
+    async with httpx.AsyncClient(transport=t, timeout=TIMEOUT, headers={"Authorization": f"Bearer {token}"}) as http:
+        r = await http.get(f"{GMAIL}/threads/{thread_id}", params=params)
+        r.raise_for_status()
+    msgs = r.json().get("messages", [])
+    h = _cabecalhos(msgs[-1].get("payload", {})) if msgs else {}
+    original = h.get("message-id")
+    referencias = " ".join(x for x in (h.get("references"), original) if x)
+    return original, referencias
+
+
+# REVISAR(human): a Tool nunca envia. Grava o Rascunho `pendente` e devolve o id ao modelo.
+# Com thread_id, busca agora o Message-ID do original: o Rascunho já nasce com In-Reply-To e References,
+# e o clique em Enviar não depende de outra leitura. Falha na busca volta como texto e não cria Rascunho.
+async def gmail_send(
+    uid: uuid.UUID,
+    cid: uuid.UUID,
+    tool_call_id: str | None,
+    para: str,
+    assunto: str,
+    corpo: str,
+    thread_id: str | None = None,
+    t: httpx.AsyncBaseTransport | None = None,
+) -> dict[str, Any] | str:
+    """Cria o Rascunho do e-mail. O envio real só acontece no endpoint de confirmação."""
+    in_reply_to, referencias = None, None
+    if thread_id:
+        try:
+            in_reply_to, referencias = await _resposta_a(uid, t, thread_id)
+        except ConectorExpirado as e:
+            return str(e)
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            return EXPIROU if status == 401 else f"gmail_send: thread {thread_id} não lida (HTTP {status})"
+        except httpx.HTTPError as e:
+            return f"gmail_send falhou: {type(e).__name__}"
+    d = EmailDraft(
+        id=uuid.uuid4(), user_id=uid, conversation_id=cid, tool_call_id=tool_call_id, para=para, assunto=assunto,
+        corpo=corpo, thread_id=thread_id, in_reply_to=in_reply_to, referencias=referencias or None,
+    )
+    async with SessionLocal() as s:
+        s.add(d)
+        await audit(
+            s, "email_draft_created", user_id=uid, conversation_id=cid,
+            payload={"draft_id": str(d.id), "para": para, "assunto": assunto, "thread_id": thread_id},
+        )
+        await s.commit()
+    return {
+        "draft_id": str(d.id), "estado": "pendente", "para": para, "assunto": assunto, "corpo": corpo,
+        "thread_id": thread_id, "aviso": AGUARDANDO,
+    }
+
+
+TOOLS = {"gmail_search", "gmail_read", "drive_search_read", "gmail_send"}
+
+
+def ligar(nome: str, uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, cid: uuid.UUID | None = None):
+    """Função que o modelo vê: só o argumento da tool, com Usuário, Conversa e transporte fixos."""
+    if nome == "gmail_send":
+
+        async def rascunhar(
+            ctx: RunContext[Any], para: str, assunto: str, corpo: str, thread_id: str | None = None
+        ) -> dict[str, Any] | str:
+            return await gmail_send(uid, cid, ctx.tool_call_id, para, assunto, corpo, thread_id, t)
+
+        return rascunhar
     if nome == "gmail_read":
 
         async def ler(message_id: str) -> str:
@@ -373,3 +471,121 @@ async def revogar(session: Sessao, user: Usuario, t: Transporte) -> Response:
         await audit(session, "connector_revoked", user_id=user.id, payload={"provedor": PROVEDOR})
         await session.commit()
     return Response(status_code=204)
+
+
+# ---------- Rascunho: confirmação por clique (ADR 0013) ----------
+
+
+class RascunhoOut(BaseModel):
+    id: uuid.UUID
+    para: str
+    assunto: str
+    corpo: str
+    thread_id: str | None
+    em_resposta: bool
+    estado: str
+    decidido_em: datetime | None
+
+
+def _saida(d: EmailDraft) -> RascunhoOut:
+    return RascunhoOut(
+        id=d.id, para=d.para, assunto=d.assunto, corpo=d.corpo, thread_id=d.thread_id,
+        em_resposta=d.in_reply_to is not None, estado=d.estado, decidido_em=d.decidido_em,
+    )
+
+
+async def _do_dono(session, user, did: uuid.UUID, travar: bool = False) -> EmailDraft:
+    """Rascunho do Usuário. De outro dono é 404: não revela que existe."""
+    q = select(EmailDraft).where(EmailDraft.id == did, EmailDraft.user_id == user.id)
+    d = await session.scalar(q.with_for_update() if travar else q)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Rascunho não encontrado")
+    return d
+
+
+def _pendente(d: EmailDraft) -> None:
+    if d.estado != "pendente":
+        raise HTTPException(status_code=409, detail=f"Rascunho já {d.estado}")
+
+
+def _mime(d: EmailDraft) -> str:
+    """RFC 2822 em base64url, formato do campo `raw` do Gmail."""
+    m = EmailMessage()
+    m["To"] = d.para
+    m["Subject"] = d.assunto
+    if d.in_reply_to:
+        m["In-Reply-To"] = d.in_reply_to
+        m["References"] = d.referencias or d.in_reply_to
+    m.set_content(d.corpo)
+    return base64.urlsafe_b64encode(m.as_bytes()).decode()
+
+
+def _texto_erro_gmail(e: httpx.HTTPStatusError) -> str:
+    status = e.response.status_code
+    if status == 401:
+        return EXPIROU
+    try:
+        motivo = e.response.json()["error"]["message"]
+    except Exception:  # noqa: BLE001  corpo fora do formato do Google
+        motivo = e.response.text[:300]
+    dica = " Reconecte a conta Google em Conectores." if status == 403 else ""
+    return f"O Gmail recusou o envio (HTTP {status}): {motivo}.{dica}"
+
+
+@router.get("/google/drafts/{did}", response_model=RascunhoOut)
+async def ler_rascunho(did: uuid.UUID, session: Sessao, user: Usuario) -> RascunhoOut:
+    """Estado atual do Rascunho. O cartão do chat lê daqui: a parte gravada na Mensagem fica em `pendente`."""
+    return _saida(await _do_dono(session, user, did))
+
+
+# REVISAR(human): único caminho que envia e-mail. Trava a linha (SELECT ... FOR UPDATE): dois cliques
+# simultâneos não enviam duas vezes, o segundo espera e recebe 409. Falha do Gmail mantém `pendente`,
+# grava email_send_failed e devolve 502 com o motivo do Google em texto.
+@router.post("/google/drafts/{did}/enviar", response_model=RascunhoOut)
+async def enviar_rascunho(did: uuid.UUID, session: Sessao, user: Usuario, t: Transporte) -> RascunhoOut:
+    """Envia o Rascunho pelo Gmail do dono. Só o clique no front chega aqui."""
+    d = await _do_dono(session, user, did, travar=True)
+    _pendente(d)
+    corpo: dict[str, str] = {"raw": _mime(d)}
+    if d.thread_id:
+        corpo["threadId"] = d.thread_id
+    try:
+        token = await _token(user.id, t)
+        async with httpx.AsyncClient(transport=t, timeout=TIMEOUT, headers={"Authorization": f"Bearer {token}"}) as http:
+            r = await http.post(f"{GMAIL}/messages/send", json=corpo)
+            r.raise_for_status()
+    except (ConectorExpirado, httpx.HTTPError) as e:
+        if isinstance(e, ConectorExpirado):
+            texto = str(e)
+        elif isinstance(e, httpx.HTTPStatusError):
+            texto = _texto_erro_gmail(e)
+        else:
+            texto = f"Não foi possível falar com o Gmail ({type(e).__name__}). Tente de novo."
+        status = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None
+        await audit(
+            session, "email_send_failed", user_id=user.id, conversation_id=d.conversation_id,
+            payload={"draft_id": str(d.id), "status": status, "erro": texto[:500]},
+        )
+        await session.commit()
+        raise HTTPException(status_code=502, detail=texto) from e
+    d.estado, d.gmail_message_id, d.decidido_em = "enviado", r.json().get("id"), datetime.now(UTC)
+    await audit(
+        session, "email_sent", user_id=user.id, conversation_id=d.conversation_id,
+        payload={"draft_id": str(d.id), "message_id": d.gmail_message_id, "thread_id": d.thread_id, "para": d.para},
+    )
+    await session.commit()
+    return _saida(d)
+
+
+@router.post("/google/drafts/{did}/descartar", response_model=RascunhoOut)
+async def descartar_rascunho(did: uuid.UUID, session: Sessao, user: Usuario) -> RascunhoOut:
+    """Descarta o Rascunho. Nada vai ao Google."""
+    d = await _do_dono(session, user, did, travar=True)
+    _pendente(d)
+    d.estado, d.decidido_em = "descartado", datetime.now(UTC)
+    await audit(
+        session, "email_draft_discarded", user_id=user.id, conversation_id=d.conversation_id,
+        payload={"draft_id": str(d.id)},
+    )
+    await session.commit()
+    return _saida(d)

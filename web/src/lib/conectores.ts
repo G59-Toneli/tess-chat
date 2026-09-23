@@ -1,4 +1,5 @@
-// Conectores (ticket 18, ADR 0010). O callback do Google volta para /conectores?conectado=1 ou ?erro=.
+// Conectores (ticket 18, ADR 0010) e Rascunho de e-mail (ticket 25, ADR 0013).
+// O callback do Google volta para /conectores?conectado=1 ou ?erro=.
 import { api } from '@/lib/api'
 
 export type Conector = {
@@ -13,10 +14,34 @@ export const listarConectores = () => api<Conector[]>('/api/connectors')
 export const urlDoGoogle = () => api<{ url: string }>('/api/connectors/google/authorize')
 export const revogarGoogle = () => api<void>('/api/connectors/google', { method: 'DELETE' })
 
+export const ESCOPO_ENVIO = 'https://www.googleapis.com/auth/gmail.send'
+
+/** Conector ligado antes do ticket 25: lê, mas não tem gmail_send até reconectar. */
+export const semEnvio = (c: Conector) => c.conectado && !c.escopos.includes(ESCOPO_ENVIO)
+
+export type EstadoRascunho = 'pendente' | 'enviado' | 'descartado'
+
+export type Rascunho = {
+  id: string
+  para: string
+  assunto: string
+  corpo: string
+  thread_id: string | null
+  em_resposta: boolean
+  estado: EstadoRascunho
+  decidido_em: string | null
+}
+
+const DRAFTS = '/api/connectors/google/drafts'
+export const lerRascunho = (id: string) => api<Rascunho>(`${DRAFTS}/${id}`)
+export const enviarRascunho = (id: string) => api<Rascunho>(`${DRAFTS}/${id}/enviar`, { method: 'POST' })
+export const descartarRascunho = (id: string) => api<Rascunho>(`${DRAFTS}/${id}/descartar`, { method: 'POST' })
+
 /** Escopo do Google para rótulo curto. */
 export function rotuloEscopo(escopo: string): string {
   if (escopo.endsWith('/gmail.readonly')) return 'Gmail (leitura)'
   if (escopo.endsWith('/drive.readonly')) return 'Drive (leitura)'
+  if (escopo.endsWith('/gmail.send')) return 'Gmail (envio com confirmação)'
   return escopo.replace('https://www.googleapis.com/auth/', '')
 }
 

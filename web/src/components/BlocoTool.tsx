@@ -4,6 +4,7 @@ import { CpuIcon, GlobeIcon, RouteIcon } from 'lucide-react'
 import { Shimmer } from '@/components/ai-elements/shimmer'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai-elements/sources'
 import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@/components/ai-elements/tool'
+import { ehRascunho, RascunhoEmail } from '@/components/RascunhoEmail'
 import { fontesDaBusca, type DecisaoRoteador, type Uso } from '@/lib/tools'
 
 // Bloco de tool call do stream (docs/UI-GUIA.md): nome, args, duração e resultado resumido.
@@ -46,6 +47,9 @@ export function LinhaRoteador({ decisao }: { decisao: DecisaoRoteador }) {
 
 export function BlocoTool({ parte, duracaoMs }: { parte: ToolUIPart; duracaoMs?: number }) {
   const nome = nomeDaTool(parte)
+  // gmail_send vira cartão com Enviar/Descartar. Erro da tool (texto) segue no bloco comum.
+  if (nome === 'gmail_send' && parte.state === 'output-available' && ehRascunho(parte.output))
+    return <RascunhoEmail saida={parte.output} />
   const fontes = nome === 'web_search' ? fontesDaBusca(parte.output) : []
   const saida = typeof parte.output === 'string' && parte.output.length > RESUMO_CHARS
     ? `${parte.output.slice(0, RESUMO_CHARS)}…`

@@ -1,7 +1,7 @@
 # 25 — Responder e-mail pelo Gmail com confirmação do Usuário
 
 **Type:** task (AFK + HITL)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 18
 **Refs:** ADR 0013 (novo), ADR 0010, ADR 0007. `api/app/conectores.py`, `api/app/tools.py`, `web/src/pages/Conectores.tsx`, componente de mensagem do chat.
 
@@ -16,8 +16,14 @@
 **HITL (Toneli):** no GCP, adicionar o escopo `.../auth/gmail.send` ao consent screen. Reconectar a conta em `/conectores`. Validar: "responde o último e-mail do X dizendo que confirmo a reunião" → rascunho na tela → Enviar → e-mail na caixa de saída, na mesma thread.
 
 **Aceite:**
-- [ ] Teste: turno com `gmail_send` ligada cria Rascunho `pendente` e não chama a API de envio (mock sem hit em `messages/send`).
-- [ ] Teste: `POST .../enviar` pelo dono chama `messages/send` com `threadId` e header `In-Reply-To` quando há original; por outro usuário devolve 404.
-- [ ] Teste: mensagem "pode enviar" no chat não muda o estado do Rascunho.
-- [ ] Eventos `email_draft_created` e `email_sent` na auditoria.
-- [ ] Screenshot dark do Rascunho com botões: `25-rascunho-email.png`.
+- [x] Teste: turno com `gmail_send` ligada cria Rascunho `pendente` e não chama a API de envio (mock sem hit em `messages/send`).
+- [x] Teste: `POST .../enviar` pelo dono chama `messages/send` com `threadId` e header `In-Reply-To` quando há original; por outro usuário devolve 404.
+- [x] Teste: mensagem "pode enviar" no chat não muda o estado do Rascunho.
+- [x] Eventos `email_draft_created` e `email_sent` na auditoria.
+- [x] Screenshot dark do Rascunho com botões: `25-rascunho-email.png`.
+
+## Answer
+AFK feito. Migração 0014 (`email_drafts` e `tools.padrao_ligada`), escopo `gmail.send`, Tool `gmail_send` que só cria Rascunho, `GET/enviar/descartar` em `/api/connectors/google/drafts/{id}` (só o dono, trava de linha contra clique duplo), `gmail_read` devolve `message_id` e `thread_id`. Front: cartão do Rascunho na mensagem com Enviar/Descartar e estado lido do servidor; `/conectores` avisa "Reconecte para enviar e-mails".
+Ressalvas: caminho `/api/connectors` em vez de `/api/conectores`; Rascunho liga-se ao `tool_call_id`, não à Mensagem (ver DECISOES-AUTONOMAS 25). Testado só com Gmail mockado; HITL do escopo no GCP no MANHA.
+REVISAR(human): `gmail_send` e `enviar_rascunho` em `conectores.py`, `estado_da_conversa` em `tools.py`.
+Screens: `25-rascunho-email.png`, `25-rascunho-descartado.png`, `25-conectores-reconectar.png`.

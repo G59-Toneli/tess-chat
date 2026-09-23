@@ -22,6 +22,8 @@ from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
 from tests.test_conversas import criar, usuario
 
 GOOGLE_TOOLS = {"gmail_search", "gmail_read", "drive_search_read"}
+LEITURA = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly"
+COM_ENVIO = f"{LEITURA} https://www.googleapis.com/auth/gmail.send"
 
 
 def b64(s: str) -> str:
@@ -31,9 +33,11 @@ def b64(s: str) -> str:
 class Google(httpx.MockTransport):
     """Token, revoke, Gmail e Drive do Google, com resposta gravada. Guarda os requests vistos."""
 
-    def __init__(self, refresh_ok: bool = True):
+    def __init__(self, refresh_ok: bool = True, escopos: str = COM_ENVIO, envio_status: int = 200):
         self.vistas: list[httpx.Request] = []
         self.refresh_ok = refresh_ok
+        self.escopos = escopos
+        self.envio_status = envio_status
         self.emitidos = 0
         super().__init__(self._responder)
 
@@ -45,7 +49,7 @@ class Google(httpx.MockTransport):
         corpo = {
             "access_token": f"acesso-{self.emitidos}",
             "expires_in": 3599,
-            "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly",
+            "scope": self.escopos,
             "token_type": "Bearer",
         }
         if form["grant_type"] == ["authorization_code"]:
@@ -69,7 +73,20 @@ class Google(httpx.MockTransport):
             ]
             corpo = {"mimeType": "text/plain", "body": {"data": b64("Segue a fatura no valor de R$ 123,45.")}}
             payload = {"headers": headers, "mimeType": "multipart/alternative", "parts": [corpo]}
-            return httpx.Response(200, json={"id": "m1", "snippet": "Segue a fatura", "payload": payload})
+            return httpx.Response(200, json={"id": "m1", "threadId": "t1", "snippet": "Segue a fatura", "payload": payload})
+        if u.path == "/gmail/v1/users/me/threads/t1":
+            antigo = [{"name": "Message-ID", "value": "<primeiro@exemplo.com>"}]
+            ultimo = [
+                {"name": "Message-ID", "value": "<fatura-set@exemplo.com>"},
+                {"name": "References", "value": "<primeiro@exemplo.com>"},
+            ]
+            msgs = [{"id": "m0", "payload": {"headers": antigo}}, {"id": "m1", "payload": {"headers": ultimo}}]
+            return httpx.Response(200, json={"id": "t1", "messages": msgs})
+        if u.path == "/gmail/v1/users/me/messages/send":
+            if self.envio_status != 200:
+                erro = {"error": {"code": self.envio_status, "message": "Request had insufficient authentication scopes."}}
+                return httpx.Response(self.envio_status, json=erro)
+            return httpx.Response(200, json={"id": "enviado-1", "threadId": "t1", "labelIds": ["SENT"]})
         if u.path == "/drive/v3/files":
             arquivos = [
                 {"id": "d1", "name": "Plano Q4", "mimeType": "application/vnd.google-apps.document"},
@@ -153,10 +170,7 @@ async def test_authorize_monta_url_do_google(client):
     assert url.netloc == "accounts.google.com"
     assert q["client_id"] == [settings.google_client_id]
     assert q["redirect_uri"] == [f"{settings.public_base_url}/api/connectors/google/callback"]
-    assert set(q["scope"][0].split()) == {
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/drive.readonly",
-    }
+    assert set(q["scope"][0].split()) == set(COM_ENVIO.split())
     assert q["access_type"] == ["offline"] and q["prompt"] == ["consent"]
     assert q["state"][0]
     assert (await client.get("/api/connectors/google/authorize")).status_code == 401
