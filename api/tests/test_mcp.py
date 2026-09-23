@@ -78,8 +78,10 @@ async def test_cadastro_lista_tools_e_guarda_header_cifrado(client, demo):
     assert len(registradas) == 2
     assert any(n.endswith("_somar") for n in registradas)
     assert any(n.endswith("_hora_atual") for n in registradas)
-    for t in srv["tools"]:
-        assert t["descricao_usuario"] == t["descricao"][:140]
+    assert {t["descricao_usuario"] for t in srv["tools"]} == {
+        "Soma dois números.",
+        "Data e hora atuais no fuso IANA informado (ex.: America/Sao_Paulo).",
+    }
     assert srv["tem_auth"] is True and "autorizacao" not in srv
     lista = (await client.get("/api/mcp-servers", headers=h)).json()
     assert [s["id"] for s in lista] == [srv["id"]]
