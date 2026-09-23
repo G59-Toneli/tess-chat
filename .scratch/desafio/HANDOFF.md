@@ -1,6 +1,6 @@
 # Handoff do orquestrador
 
-Atualizado em 2026-09-23 ~02:30 (horário local -03:00). Sessão anterior: `desafio-a7`.
+Atualizado em 2026-09-23 ~02:45 (horário local -03:00). Sessão anterior: `desafio-a7`.
 
 ## Como orquestrar (ciclo)
 1. Escolher ticket `ready-for-agent` cujos `Blocked by` estão `resolved`.
@@ -20,9 +20,10 @@ Atualizado em 2026-09-23 ~02:30 (horário local -03:00). Sessão anterior: `desa
 - Rate limit do plano Max: esperar e repetir.
 
 ## Estado dos tickets
-- **Resolvidos:** 01, 03, 04, 05, 06, 07a, 07, 07b, 08, 10, 11, 12, 13, 15.
-- **Rodando (02:30):** 06b (retry, fallback, teto de tool calls) e 09 (anexos). Ambos tocam `chat.py`; 09 em região separada.
-- **Próximos, nesta ordem:** 14 (configurações; inclui restringir toggle global a superuser) → 07c (seletor de tools na barra do input) → **suíte completa em lote** (`cd api && uv run pytest`; corrigir regressões com um agente) → 16 (deploy, HITL: precisa SSH) → 17 (MCP) → 18 (Google, HITL: precisa GOOGLE_CLIENT_ID/SECRET do wizard) → 19 (README, vídeo, guia de entrevista).
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 08, 09, 10, 11, 12, 13, 15. Tudo em `origin/main` (HEAD e237314 + docs).
+- **Rodando:** nenhum. Todos os agentes encerrados.
+- **Próximos, nesta ordem:** 14 (configurações; inclui restringir toggle global a superuser; próxima migração livre: 0011) → 09b (anexo por referência, corta custo de turnos seguintes) → 07c (seletor de tools na barra do input) → **suíte completa em lote** (`cd api && uv run pytest`; `cd web && npm run build`; corrigir regressões com um agente) → 16 (deploy, HITL: precisa SSH) → 17 (MCP) → 18 (Google, HITL: precisa GOOGLE_CLIENT_ID/SECRET do wizard) → 19 (README, vídeo, guia de entrevista).
+- 14 e 09b tocam `chat.py`: um por vez. 07c só `web/`, pode correr junto com um deles.
 - **Bloqueados em Toneli:** 02 e 16 (chaves SSH do VPS compartilhado, registro A `chat.toneli.dev.br`), 18 (rodar `docs/WIZARD-GOOGLE.md`). Ver `MANHA.md`.
 - Ticket 02 estava com outra sessão do Toneli; confirmar com ele se ainda está.
 
