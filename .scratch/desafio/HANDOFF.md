@@ -1,6 +1,6 @@
 # Handoff do orquestrador
 
-Atualizado em 2026-09-23 ~02:45 (horário local -03:00). Sessão anterior: `desafio-a7`.
+Atualizado em 2026-09-23 ~03:20 (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
 
 ## Como orquestrar (ciclo)
 1. Escolher ticket `ready-for-agent` cujos `Blocked by` estão `resolved`.
@@ -20,12 +20,13 @@ Atualizado em 2026-09-23 ~02:45 (horário local -03:00). Sessão anterior: `desa
 - Rate limit do plano Max: esperar e repetir.
 
 ## Estado dos tickets
-- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 08, 09, 10, 11, 12, 13, 15. Tudo em `origin/main`.
-- **Rodando:** nenhum. Todos os agentes encerrados.
-- **Próximos, nesta ordem:** 14 (configurações; inclui restringir toggle global a superuser; próxima migração livre: 0011) → 09b (anexo por referência, corta custo de turnos seguintes) → 07c (seletor de tools na barra do input) → **suíte completa em lote** (`cd api && uv run pytest`; `cd web && npm run build`; corrigir regressões com um agente) → 16 (deploy, HITL: precisa SSH) → 17 (MCP) → 18 (Google; parte HITL já feita: chaves no `.env`, redirect de dev testado, JSON em `C:ProjectsGoogleJsonDesafio`) → 19 (README, vídeo, guia de entrevista).
-- 14 e 09b tocam `chat.py`: um por vez. 07c só `web/`, pode correr junto com um deles.
-- **Bloqueados em Toneli:** só 02 e 16 (chaves SSH do VPS compartilhado, registro A `chat.toneli.dev.br`). O 18 está liberado para rodar assim que o 16 fechar; se o 16 atrasar, o 18 pode rodar antes com o redirect de localhost e o teste manual local. Ver `MANHA.md`.
-- Ticket 02 estava com outra sessão do Toneli; confirmar com ele se ainda está.
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 18 (parte AFK), 20, 22. Tudo em `origin/main`.
+- **Rodando:** exec-17 (MCP; migração 0013; único em `chat.py`/`tools.py`).
+- **Próximos, nesta ordem:** 21 (suíte completa em lote + regressões listadas no ticket; roda depois do 17) → 19 (README, guia de entrevista, roteiro do vídeo; lê `docs/MOTIVACOES.md`, `docs/ESTRUTURA.md`, `docs/LACUNAS.md`). 16 (deploy) quando o Toneli entregar SSH.
+- **Tickets novos desta sessão:** 20 (estrutura do repo + motivações, resolvido), 21 (suíte em lote), 22 (WORKFLOW.md reflete a prática, resolvido).
+- **Bloqueados em Toneli:** 02 e 16 (SSH do VPS, registro A). Validação manual do 18 com a conta Google está no `MANHA.md`.
+- 17 e 18 foram liberados para rodar em localhost sem esperar o 16; deploy só troca a URL base (`PUBLIC_BASE_URL`).
+- Próxima migração livre depois do 17: `0014` (conferir `ls api/migrations/versions`).
 
 ## Lacunas conhecidas
 Consolidadas em `docs/LACUNAS.md`. Ticket 19 lê. Duas pedem decisão: reserva por `count_tokens` (ADR 0004 vs código) e cobrança do turno cortado pelo teto de tools.
