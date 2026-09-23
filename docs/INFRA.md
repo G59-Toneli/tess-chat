@@ -18,6 +18,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 | Volumes | `tess-chat_pgdata`, `tess-chat_appdata` (anexos) |
 | Site nginx | `/etc/nginx/sites-available/tess-chat` + symlink em `sites-enabled` |
 | Backup | `/etc/cron.d/tess-chat`, dumps em `/opt/tess-chat/backups` (7 dias) |
+| Limpeza de anexos | mesmo cron às 03:45: `python -m app.limpeza_anexos` no container `app`, log em `/opt/tess-chat/backups/limpeza.log` (ticket 50) |
 | Deploy key | `~/.ssh/tess-deploy`, alias ssh `github-tess` em `~/.ssh/config` |
 | Commit no ar | `/opt/tess-chat/DEPLOYED_COMMIT` enquanto não há `.git`; depois `git rev-parse HEAD` |
 

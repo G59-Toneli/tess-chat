@@ -1,2 +1,3 @@
-# /etc/cron.d/tess-chat: backup diário às 03:30.
+# /etc/cron.d/tess-chat: backup diário às 03:30, limpeza de anexos órfãos às 03:45.
 30 3 * * * ubuntu /opt/tess-chat/deploy/backup.sh >> /opt/tess-chat/backups/backup.log 2>&1
+45 3 * * * ubuntu docker compose -f /opt/tess-chat/deploy/docker-compose.yml exec -T app python -m app.limpeza_anexos >> /opt/tess-chat/backups/limpeza.log 2>&1

@@ -1,7 +1,7 @@
 # 50 — Limpeza diária de arquivos de anexo órfãos
 
 **Type:** task (api/ e deploy/cron-tess-chat)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** tickets 09/09b (anexos), 48 (fork duplica arquivo), ADR 0021, `docs/INFRA.md` (disco do VPS chegou a 97% em 03/09; Postgres de produção no mesmo disco). Pedido do Toneli em 23/09.
 
@@ -26,3 +26,10 @@
 - [ ] Teste: `--dry-run` não apaga nada e não grava evento.
 - [ ] Teste: apagar uma Conversa com anexo e rodar a varredura libera o arquivo.
 - [ ] Sem chamada real a Gemini, Tavily ou Jev.
+
+## Answer
+- `app/limpeza_anexos.py`: `varrer()` apaga linhas de upload sem Mensagem há 24 h (commit antes de tocar disco) e depois todo arquivo do primeiro nível de `attachments_dir` sem linha e com mais de 1 h. Pula symlink e subpasta. Evento `attachments_swept` com `files_deleted`, `rows_deleted`, `bytes_freed`. `--dry-run` só lista.
+- Cron às 03:45 em `deploy/cron-tess-chat` (`exec -T app`, WORKDIR `/app/api`), log em `backups/limpeza.log`; linha em `docs/INFRA.md`. Orquestrador instala no VPS.
+- 6 testes passam; o de symlink fica skip no Windows (sem permissão de criar link) e roda no Linux.
+- Limite conhecido: sem cota de disco por Usuário. Entre o cascade e a varredura o arquivo fica até 24 h no disco.
+- `REVISAR(human)`: `varrer` (por que varredura e não hook; ordem linha-antes-de-arquivo).
