@@ -1,6 +1,6 @@
 # Handoff do orquestrador
 
-Atualizado em 2026-09-23 ~03:50 (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
+Atualizado em 2026-09-23 ~07:15 (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
 
 ## Como orquestrar (ciclo)
 1. Escolher ticket `ready-for-agent` cujos `Blocked by` estão `resolved`.
@@ -23,12 +23,13 @@ Atualizado em 2026-09-23 ~03:50 (horário local -03:00). Sessão atual: orquestr
 - **Tickets só de docs correm em paralelo com qualquer ticket de código** (20, 22, 24). Bom uso da fila enquanto `chat.py` está ocupado.
 
 ## Estado dos tickets
-- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 17, 18 (AFK), 19 (AFK), 20, 21, 22, 23, 24. Tudo em `origin/main`.
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 17, 18 (AFK), 19 (AFK), 20, 21, 22, 23, 24, 25 (AFK). Tudo em `origin/main`.
 - **Rodando:** nenhum. Todos os agentes encerrados.
 - **Suíte final do bloco (23/09 ~03:45, Postgres 5433 + mcp-demo 8765):** `uv run pytest` 141 passed / 0 failed; `npm run build` e `tsc --noEmit` limpos.
 - **Bloqueados em Toneli:** 02 e 16 (SSH do VPS, registro A `chat.toneli.dev.br`). Parte HITL do 18 (conectar conta Google e validar) e do 19 (gravar vídeo) no `MANHA.md`. Decisão sobre fallback OpenAI (ADR 0012 sem código) no `MANHA.md`.
 - **Próximo ticket de código:** 16 (deploy), assim que houver SSH. No deploy: `ENV=prod`, `PUBLIC_BASE_URL=https://chat.toneli.dev.br`, `CONNECTORS_KEY` própria, trocar `GITHUB_PAT` e recadastrar o GitHub em `/mcp`.
-- Próxima migração livre: `0014`.
+- Próxima migração livre: `0015`.
+- 25 (responder e-mail com confirmação, ADR 0013) foi pedido pelo Toneli às ~07:00 e fechou. HITL dele (escopo `gmail.send` no GCP, reconectar, validar) no `MANHA.md`.
 - Tickets criados nesta sessão: 20 (estrutura + motivações), 21 (suíte em lote), 22 (WORKFLOW real), 23 (resiliência MCP + SSRF), 24 (docs atualizados). Todos resolvidos.
 
 ## Lacunas conhecidas
