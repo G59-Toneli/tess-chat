@@ -31,7 +31,7 @@ async def eventos(event_type: str, **filtro) -> list[AuditEvent]:
             q = q.where(AuditEvent.user_id == filtro["user_id"])
         if "email" in filtro:
             q = q.where(AuditEvent.payload["email"].astext == filtro["email"])
-        return list((await s.scalars(q)).all())
+        return list((await s.scalars(q.order_by(AuditEvent.id))).all())
 
 
 async def test_registra_loga_e_acessa_rota_protegida(client):
