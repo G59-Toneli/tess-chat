@@ -14,6 +14,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 |---|---|
 | Código e compose | `/opt/tess-chat` (compose em `deploy/docker-compose.yml`, projeto `tess-chat`) |
 | Segredos | `/opt/tess-chat/.env` (modo 600, fora do git) |
+| Senha do Postgres | `/opt/tess-chat/.env.postgres`, só `POSTGRES_PASSWORD` (modo 600). O serviço `postgres` não lê o `.env` |
 | App | `127.0.0.1:8010` |
 | Volumes | `tess-chat_pgdata`, `tess-chat_appdata` (anexos) |
 | Site nginx | `/etc/nginx/sites-available/tess-chat` + symlink em `sites-enabled` |
