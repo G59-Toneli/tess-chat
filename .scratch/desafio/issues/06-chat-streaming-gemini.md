@@ -11,3 +11,5 @@
 - [ ] Segunda mensagem na mesma conversa vê a primeira (histórico do banco).
 - [ ] Tokens gravados na mensagem batem com o `usage_metadata` do provedor (teste com resposta gravada).
 - [ ] Erro do provedor vira evento `llm_error` e resposta 502 legível.
+
+**Do spike:** `result.usage` é propriedade. `RunUsage.output_tokens` já inclui thinking; thinking à parte em `details["thoughts_tokens"]`; cache em `cache_read_tokens`. Configurar nível de thinking explicitamente (default deu ~7 s até o primeiro token).

@@ -3,6 +3,7 @@ name = "spike"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "asyncpg>=0.31.0",
     "fastapi-users[sqlalchemy]>=15.0.5",
     "google-genai>=2.25.0",
     "mcp>=2",

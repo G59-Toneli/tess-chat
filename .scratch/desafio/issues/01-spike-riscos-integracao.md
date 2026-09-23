@@ -1,7 +1,7 @@
 # 01 — Spike: derrubar os INFERIDOs da arquitetura
 
 **Type:** task (AFK)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** —
 **Refs:** ADR 0001, 0002, 0004, 0009. `research/01`, `research/02`, `research/03`.
 
@@ -26,3 +26,6 @@
 - [ ] Cada veredito tem evidência colada (output, versão).
 - [ ] Hipóteses 4 e 5 trazem tabela com os números de tokens brutos.
 - [ ] Nenhum arquivo fora de `spike/` foi alterado.
+
+## Answer
+9/9 PASSOU. Detalhe em `spike/RESULTADO.md`. Ajustes propagados para 03, 06, 07, 08, 11, 17.

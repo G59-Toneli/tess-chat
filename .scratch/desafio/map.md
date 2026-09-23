@@ -29,6 +29,7 @@ App de chat deployado em link público, com os 10 requisitos obrigatórios funci
 - [ADR 0009](../../docs/adr/0009-registro-unico-de-tools-e-mcp-client.md) — registro único de tools; busca/fetch próprios; MCP só Streamable HTTP.
 - [ADR 0010](../../docs/adr/0010-conector-google-oauth-direto.md) — conector Google por OAuth direto, 3 tools read-only.
 - [ADR 0011](../../docs/adr/0011-deploy-compose-caddy-duckdns-oci.md) — compose + Caddy + chat.toneli.dev.br no OCI.
+- [Spike 01](../../spike/RESULTADO.md) — 9/9 hipóteses passaram; usage cumulativo por chunk, thinking separado, MCPToolset dual-era OK, Jev 9/9 em pt-BR.
 - Grilling 2026-09-23 — auth FastAPI-Users; "adicionar tools" = nativas com toggle + servidores MCP do usuário; repo `tess-chat` privado; UI em pt-BR; arquivos no disco do VPS com metadados no Postgres.
 
 ## Not yet specified

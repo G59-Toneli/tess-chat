@@ -13,3 +13,5 @@
 - [ ] Teste: soma do ledger de uma conversa = soma dos `usage_metadata` gravados × preço vigente.
 - [ ] Teste: com cap de 1 micro-USD, a chamada é recusada antes de chegar ao provedor (provedor mockado não é chamado).
 - [ ] Teste: mudança de preço com nova vigência não altera linhas antigas.
+
+**Do spike:** usage do stream é cumulativo em todo chunk: gravar o último, nunca somar. Output cobrado = candidates + thoughts; se usar `RunUsage.output_tokens`, não somar `thoughts_tokens` de novo. Reserva via `UsageLimits(count_tokens_before_request=True)`: funciona, custa um `countTokens` extra por request.

@@ -10,3 +10,5 @@
 **Aceite:**
 - [ ] Fluxo completo no browser: cadastrar, criar conversa, mandar mensagem, ver stream, recarregar e ver histórico.
 - [ ] `docker build` gera uma imagem só que serve front e API.
+
+**Do spike:** `shadcn init -b radix` (Base UI quebra o `prompt-input`). Sem `baseUrl` no tsconfig (TS 6). Envolver o app em `TooltipProvider`. Code-split só se o bundle de 1,6 MB incomodar.

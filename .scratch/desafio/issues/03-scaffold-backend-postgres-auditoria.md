@@ -1,7 +1,7 @@
 # 03 — Scaffold do backend, Postgres, migrações e auditoria
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 01
 **Refs:** ADR 0001, 0007. `CONTEXT.md`.
 
@@ -12,3 +12,5 @@
 - [ ] Teste: inserir evento e tentar `UPDATE`/`DELETE` como usuário da app falha com erro de permissão.
 - [ ] `/health` responde 200.
 - [ ] `pytest` verde.
+
+**Do spike:** Python 3.14 funciona. `asyncpg` entra como dependência explícita. Postgres do compose local na porta 5433 para não colidir.

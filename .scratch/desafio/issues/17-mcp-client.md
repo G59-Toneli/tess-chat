@@ -11,3 +11,5 @@
 - [ ] Cadastrar o servidor remoto do GitHub com PAT e perguntar "quais meus repos" gera tool_call MCP e resposta correta.
 - [ ] Servidor fora do ar no cadastro devolve erro legível, sem gravar.
 - [ ] Servidor mínimo próprio em `deploy/mcp-demo/` sobe no compose e funciona como plano B.
+
+**Do spike:** `MCPToolset` confirmado com GitHub remoto (45 tools) e servidor `mcp` 2.x local. Só era moderna exercitada. Servidor de demo usa `MCPServer` do SDK, não `FastMCP`.

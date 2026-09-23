@@ -12,3 +12,5 @@
 **Aceite:**
 - [ ] Os 10 casos do spike passam como teste de regressão (golden set).
 - [ ] Jev indisponível (429/529) → fallback `AUTO` e evento `router_fallback`, chat não quebra.
+
+**Do spike:** os 10 casos e as descrições das opções estão em `spike/`. Caso 10 (ambíguo, "resume esse PDF" sem anexo) espera confidence abaixo do limiar, não uma tool. O state leva o campo de anexos presentes.
