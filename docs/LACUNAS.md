@@ -19,6 +19,7 @@ Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta.
 - Com `web_search` desligada, o Gemini ainda pode chamar `web_fetch` numa URL do histórico. Comportamento correto pelo registro, mas pode surpreender.
 - ~~Toggle global aceita qualquer usuário logado~~. **Resolvido:** `PUT /api/tools/{nome}` exige superuser (`Admin`, `api/app/tools.py`).
 - Duração da tool só aparece durante o stream, não no histórico.
+- Servidor MCP por OAuth: cada clique em Conectar ou Reconectar faz um DCR novo, e o provedor acumula apps registrados, inclusive dos fluxos abandonados. Sem reaproveitar o `client_id` (ticket 57, ADR 0022).
 
 ## Resiliência (ADR 0012)
 - Com o 3.8 fora, cada request tenta 3 vezes antes do fallback: turno com tool fica lento.

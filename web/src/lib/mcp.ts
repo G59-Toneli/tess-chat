@@ -15,8 +15,8 @@ export type McpServidor = {
 }
 export type McpNovo = { nome: string; url: string; autorizacao: string | null }
 export type McpOAuth = { nome: string; url: string; sid?: string }
-// Caminho que o iniciar detectou (ticket 56). Só o modo oauth grava linha no banco.
-export type McpDeteccao = { modo: 'oauth'; id: string; url: string } | { modo: 'sem_auth' } | { modo: 'token' }
+// Caminho que o iniciar detectou (ticket 56). Nenhum modo grava linha; o oauth grava no callback (ticket 57).
+export type McpDeteccao = { modo: 'oauth'; url: string } | { modo: 'sem_auth' } | { modo: 'token' }
 
 // Catálogo de 1 clique: os dois aceitam registro dinâmico (DCR). Tickets 52 e 56.
 export const CATALOGO_MCP = [
@@ -55,6 +55,7 @@ const ERROS_OAUTH: Record<string, string> = {
   pkce_ausente: 'A conexão venceu ou começou em outro navegador. Tente de novo.',
   troca_falhou: 'O servidor não confirmou a conexão. Tente de novo.',
   listagem_falhou: 'Conectou, mas o servidor não listou as tools. Tente reconectar.',
+  nome_em_uso: 'Você já tem um servidor MCP com esse nome.',
 }
 
 export const textoErroOAuthMcp = (codigo: string) =>

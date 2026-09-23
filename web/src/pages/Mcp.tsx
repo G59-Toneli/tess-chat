@@ -4,7 +4,6 @@ import {
   AlertCircleIcon,
   CheckIcon,
   ChevronDownIcon,
-  ClockIcon,
   KeyRoundIcon,
   PlugIcon,
   RefreshCwIcon,
@@ -411,11 +410,6 @@ function CardServidor({
               </Badge>
             )
           )}
-          {s.estado === 'aguardando_oauth' && (
-            <Badge variant="secondary" className="font-normal">
-              <ClockIcon /> aguardando autorização
-            </Badge>
-          )}
           {s.estado === 'expirado' && (
             <Badge variant="destructive" className="font-normal">
               <TriangleAlertIcon /> conexão expirada
@@ -436,9 +430,7 @@ function CardServidor({
         {pendente && (
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <AlertCircleIcon className="mt-0.5 size-4 shrink-0" />
-            {s.estado === 'expirado'
-              ? 'A autorização venceu e não pôde ser renovada. As tools ficam fora das conversas até você reconectar.'
-              : 'A autorização não foi concluída. Reconecte para liberar as tools.'}
+            A autorização venceu e não pôde ser renovada. As tools ficam fora das conversas até você reconectar.
           </p>
         )}
         <Collapsible>

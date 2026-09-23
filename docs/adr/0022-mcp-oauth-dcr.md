@@ -14,10 +14,13 @@ O cadastro de Servidor MCP pedia URL e um header `Authorization` fixo. Servidore
 6. **O Bearer mora em `headers`.** Depois do callback e de cada refresh, `headers` recebe `Authorization: Bearer <access>`, cifrado. `_cliente`, `toolset` e `tem_auth` não mudaram. A coluna nova `oauth` guarda o resto, cifrado: `client_id`, `token_endpoint`, `refresh_token`, `expires_at`, `scope`, `resource`.
 7. **Estado do servidor.** `ok`, `aguardando_oauth` ou `expirado`. Antes do turno, `renovar` troca o token que vence em menos de 60 s. Refresh que falha grava `expirado`. Servidor fora de `ok` sai do turno (fail-closed) e o card mostra "Reconectar".
 
+*Atualizado no ticket 57:* o estado pendente mora no cookie, não no banco. O `iniciar` não grava linha. O cookie `tess_mcp_pendente` leva, cifrado com Fernet, o `code_verifier`, `nome`, `url`, `sid` (no reconectar) e o cliente do DCR. O state JWT leva `sub` e um `nonce`; o mesmo `nonce` vai no cookie, e o callback só aceita o par que bate. A linha nasce (ou muda, no reconectar) só depois da troca do code. Motivo: a linha gravada antes do consentimento sobrava como "aguardando autorização" quando o usuário fechava a tela do provedor, e o reconectar desligava o servidor antes de ele autorizar. A migração 0022 apaga os pendentes antigos sem tools. `aguardando_oauth` continua no CHECK do banco, mas nenhum código grava mais esse valor. Nome repetido recebe 409 no `iniciar`; se outro cadastro pegar o nome antes do callback, ele volta com `erro=nome_em_uso`.
+
 ### Alternativas descartadas
 - **`OAuthClientProvider` do SDK.** Roda o fluxo inteiro numa coroutine que espera o callback. Num web app isso exige `{state: Future}` em memória. É opaco e morre num restart.
 - **App registrado por provedor (HubSpot, Slack, GitHub).** Cada provedor pede cadastro manual, segredo no `.env` e redirect por ambiente. O header fixo continua cobrindo esses casos.
 - **`code_verifier` no banco.** Mesma razão do ADR 0017: o cookie vence sozinho.
+- **Linha pendente no banco com purga por job** (ticket 57). Continua gravando lixo e exige filtro em toda leitura.
 - **Client ID Metadata Document.** Mais novo na spec e ainda pouco suportado. Notion e Stripe aceitam DCR.
 
 ## Consequências

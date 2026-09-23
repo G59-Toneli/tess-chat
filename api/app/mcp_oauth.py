@@ -2,6 +2,7 @@
 
 O iniciar também detecta o caminho de uma URL qualquer: oauth, sem_auth ou token (ticket 56)."""
 
+import secrets
 import time
 import uuid
 from typing import Annotated, Any
@@ -40,8 +41,8 @@ from app.resiliencia import resumo_erro
 CALLBACK = "/api/mcp-servers/oauth/callback"
 AUD_STATE = "tess:mcp-oauth"
 VALIDADE_STATE = 600
-# code_verifier do PKCE entre o iniciar e o callback, como no Conector Google (ADR 0017).
-COOKIE_PKCE = "tess_mcp_pkce"
+# Pendente entre o iniciar e o callback: code_verifier, nome, url, sid e o cliente do DCR (ticket 57).
+COOKIE_PENDENTE = "tess_mcp_pendente"
 # Token que vence em menos que isso é renovado antes do turno.
 FOLGA_S = 60
 TIMEOUT = httpx.Timeout(15.0)
@@ -212,14 +213,14 @@ class IniciarIn(BaseModel):
 router = APIRouter(prefix="/api/mcp-servers/oauth", tags=["mcp"])
 
 
-# REVISAR(human): o app escolhe o caminho, não o usuário. sem_auth e token não gravam linha: o front
-# segue pelo POST /api/mcp-servers, que conecta e lista antes de gravar. SSRF continua 422 e rede 502.
+# REVISAR(human): o app escolhe o caminho, não o usuário. Nenhum modo grava linha: sem_auth e token
+# seguem pelo POST /api/mcp-servers; oauth só grava no callback (ticket 57). SSRF 422, rede 502.
 @router.post("/iniciar")
 async def iniciar(body: IniciarIn, session: Sessao, user: Usuario, t: Transporte) -> JSONResponse:
     """Detecta o caminho da URL. Com OAuth e DCR, registra o cliente e devolve a URL de consentimento."""
     _fernet()
     srv = await _do_usuario(session, user, body.sid) if body.sid else None
-    url = srv.url if srv else body.url
+    url, nome = (srv.url, srv.nome) if srv else (body.url, body.nome.strip())
     try:
         await validar_url(url)
         async with httpx.AsyncClient(transport=t, timeout=TIMEOUT) as http:
@@ -237,16 +238,13 @@ async def iniciar(body: IniciarIn, session: Sessao, user: Usuario, t: Transporte
         raise HTTPException(status_code=502, detail=f"Não foi possível falar com o servidor MCP. Confira a URL. ({e})") from e
     asm = descoberta[1]
     oauth["resource"] = resource_url_from_server_url(url)
-    if srv is None:
-        srv = McpServer(id=uuid.uuid4(), user_id=user.id, nome=body.nome.strip(), url=url, headers=_cifrar({}))
-        session.add(srv)
-    srv.oauth, srv.estado, srv.ativo = _cifrar(oauth), "aguardando_oauth", False
-    try:
-        await session.flush()
-    except IntegrityError as e:
-        raise HTTPException(status_code=409, detail="Você já tem um servidor MCP com esse nome") from e
+    if srv is None and await session.scalar(
+        select(McpServer.id).where(McpServer.user_id == user.id, McpServer.nome == nome)
+    ):
+        raise HTTPException(status_code=409, detail="Você já tem um servidor MCP com esse nome")
     pkce = PKCEParameters.generate()
-    state = generate_jwt({"sub": str(user.id), "sid": str(srv.id), "aud": AUD_STATE}, settings.jwt_secret, VALIDADE_STATE)
+    nonce = secrets.token_urlsafe(16)
+    state = generate_jwt({"sub": str(user.id), "nonce": nonce, "aud": AUD_STATE}, settings.jwt_secret, VALIDADE_STATE)
     params = {
         "response_type": "code",
         "client_id": oauth["client_id"],
@@ -261,12 +259,21 @@ async def iniciar(body: IniciarIn, session: Sessao, user: Usuario, t: Transporte
     autorizar = oauth["authorization_endpoint"]
     await audit(
         session, "mcp_oauth_started", user_id=user.id,
-        payload={"servidor": str(srv.id), "nome": srv.nome, "url": url, "authorization_server": str(asm.issuer)},
+        payload={"servidor": str(srv.id) if srv else None, "nome": nome, "url": url, "authorization_server": str(asm.issuer)},
     )
     await session.commit()
-    r = JSONResponse({"modo": "oauth", "id": str(srv.id), "url": f"{autorizar}{'&' if '?' in autorizar else '?'}{urlencode(params)}"})
+    r = JSONResponse({"modo": "oauth", "url": f"{autorizar}{'&' if '?' in autorizar else '?'}{urlencode(params)}"})
+    # REVISAR(human): o pendente mora no cookie, não no banco. Linha gravada antes do consentimento
+    # sobrava como "aguardando autorização" quando o usuário desistia, e o reconectar desligava o
+    # servidor antes de ele autorizar. Cifrado com Fernet: o verifier e o cliente do DCR não ficam
+    # legíveis para quem lê o cookie. httpOnly, path só do callback, mesma validade do state. O nonce
+    # também vai no state: o callback só aceita o cookie do mesmo fluxo que gerou aquele state.
+    pendente = {
+        "code_verifier": pkce.code_verifier, "nonce": nonce, "nome": nome, "url": url,
+        "sid": str(srv.id) if srv else None, "oauth": oauth,
+    }
     r.set_cookie(
-        COOKIE_PKCE, pkce.code_verifier, max_age=VALIDADE_STATE, path=CALLBACK, httponly=True, samesite="lax",
+        COOKIE_PENDENTE, _cifrar(pendente), max_age=VALIDADE_STATE, path=CALLBACK, httponly=True, samesite="lax",
         secure=settings.env == "prod",
     )
     return r
@@ -282,39 +289,55 @@ async def callback(
     code: str | None = None, state: str | None = None, error: str | None = None,
 ) -> RedirectResponse:
     """Volta do consentimento: troca o code, lista as tools e devolve o browser à tela /mcp."""
-    r = await _concluir(session, t, request.cookies.get(COOKIE_PKCE), code, state, error)
-    r.delete_cookie(COOKIE_PKCE, path=CALLBACK)
+    r = await _concluir(session, t, request.cookies.get(COOKIE_PENDENTE), code, state, error)
+    r.delete_cookie(COOKIE_PENDENTE, path=CALLBACK)
     return r
 
 
-# REVISAR(human): o state (JWT, 10 min) diz o dono e o servidor; o cookie do PKCE amarra o code ao
-# browser que abriu o iniciar. Sem cookie, nada vai ao token_endpoint. Listagem que falha com o token
-# novo deixa o servidor `expirado`, sem tools novas, com o botão Reconectar no card.
+# REVISAR(human): o state (JWT, 10 min) diz o dono e o nonce; o cookie do pendente amarra o code ao
+# browser e ao fluxo que abriu o iniciar. Sem cookie, nada vai ao token_endpoint. A linha só nasce (ou
+# muda, no reconectar) depois da troca do code. Listagem que falha com o token novo deixa o servidor
+# `expirado`, sem tools novas, com o botão Reconectar no card.
 async def _concluir(
-    session, t: httpx.AsyncBaseTransport | None, verifier: str | None,
+    session, t: httpx.AsyncBaseTransport | None, cookie: str | None,
     code: str | None, state: str | None, error: str | None,
 ) -> RedirectResponse:
     if error:
         return _voltar(erro=error)
     try:
         dados = decode_jwt(state or "", settings.jwt_secret, [AUD_STATE])
-        uid, sid = uuid.UUID(dados["sub"]), uuid.UUID(dados["sid"])
+        uid, nonce = uuid.UUID(dados["sub"]), str(dados["nonce"])
     except Exception:  # noqa: BLE001  state ausente, adulterado ou vencido
         return _voltar(erro="state_invalido")
     if not code:
         return _voltar(erro="sem_code")
-    if not verifier:
+    try:
+        pendente = _decifrar(cookie or "")
+    except Exception:  # noqa: BLE001  cookie ausente, vencido ou adulterado
         return _voltar(erro="pkce_ausente")
-    srv = await session.get(McpServer, sid)
-    if srv is None or srv.user_id != uid or srv.oauth is None:
+    if not secrets.compare_digest(str(pendente.get("nonce")), nonce):
+        return _voltar(erro="state_invalido")  # cookie de outro fluxo
+    srv = await session.get(McpServer, uuid.UUID(pendente["sid"])) if pendente["sid"] else None
+    if pendente["sid"] and (srv is None or srv.user_id != uid):
         return _voltar(erro="state_invalido")
-    oauth = _decifrar(srv.oauth)
-    form = {"grant_type": "authorization_code", "code": code, "redirect_uri": _redirect_uri(), "code_verifier": verifier}
+    oauth = pendente["oauth"]
+    form = {
+        "grant_type": "authorization_code", "code": code, "redirect_uri": _redirect_uri(),
+        "code_verifier": pendente["code_verifier"],
+    }
     try:
         token = await _pedir_token(t, oauth, form)
     except (httpx.HTTPError, ValueError):
         return _voltar(erro="troca_falhou")
+    if srv is None:
+        srv = McpServer(id=uuid.uuid4(), user_id=uid, nome=pendente["nome"], url=pendente["url"], headers=_cifrar({}))
+        session.add(srv)
     _gravar_token(srv, oauth, token)
+    try:
+        await session.flush()  # a FK das tools precisa do servidor antes
+    except IntegrityError:
+        await session.rollback()
+        return _voltar(erro="nome_em_uso")  # outro cadastro pegou o nome depois do iniciar
     base = {"servidor": str(srv.id), "nome": srv.nome, "url": srv.url}
     try:
         async with _cliente(srv.url, _decifrar(srv.headers)) as cli:

@@ -8,6 +8,8 @@ import socket
 import subprocess
 import sys
 import time
+import uuid
+from importlib import import_module
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -107,11 +109,20 @@ async def conectar(client, h, auth: AuthServer) -> str:
     q = query(r.json()["url"])
     cb = await client.get(CALLBACK, params={"code": "code-1", "state": q["state"]})
     assert cb.headers["location"].endswith("/mcp?conectado=1"), cb.headers.get("location")
-    return r.json()["id"]
+    return (await por_nome(client, h, "notion"))["id"]
 
 
 async def servidor(client, h, sid: str) -> dict:
     return next(s for s in (await client.get("/api/mcp-servers", headers=h)).json() if s["id"] == sid)
+
+
+async def por_nome(client, h, nome: str) -> dict:
+    return next(s for s in (await client.get("/api/mcp-servers", headers=h)).json() if s["nome"] == nome)
+
+
+async def linhas() -> int:
+    async with SessionLocal() as s:
+        return await s.scalar(text("SELECT count(*) FROM mcp_servers"))
 
 
 async def vencer(sid: str, header: str = "Bearer velho") -> None:
@@ -138,6 +149,7 @@ async def header_gravado(sid: str) -> str:
 
 async def test_iniciar_devolve_authorize_com_pkce_resource_e_client_id_do_dcr(client, auth):
     uid, h = await usuario(client)
+    antes = await linhas()
 
     r = await iniciar(client, h, auth.mcp_url)
 
@@ -153,10 +165,12 @@ async def test_iniciar_devolve_authorize_com_pkce_resource_e_client_id_do_dcr(cl
     [dcr] = [json.loads(v.content) for v in auth.vistas if v.url.path == "/register"]
     assert dcr["token_endpoint_auth_method"] == "none"
     assert set(dcr["grant_types"]) == {"authorization_code", "refresh_token"}
-    srv = await servidor(client, h, r.json()["id"])
-    assert srv["estado"] == "aguardando_oauth" and srv["ativo"] is False and srv["oauth"] is True
+    assert await linhas() == antes
+    assert (await client.get("/api/mcp-servers", headers=h)).json() == []
+    cookie = r.headers["set-cookie"].lower()
+    assert "httponly" in cookie and f"path={CALLBACK}" in cookie and "samesite=lax" in cookie
     [ev] = await eventos("mcp_oauth_started", user_id=uid)
-    assert ev.payload["servidor"] == r.json()["id"]
+    assert ev.payload["nome"] == "notion" and ev.payload["servidor"] is None
 
 
 async def test_servidor_sem_dcr_pede_token_e_nao_cria_linha(client, auth):
@@ -271,7 +285,7 @@ async def test_callback_liga_o_servidor_com_as_tools_do_demo(client, auth):
     desafio = base64.urlsafe_b64encode(hashlib.sha256(troca["code_verifier"].encode()).digest()).decode().rstrip("=")
     assert desafio == q["code_challenge"]
     assert troca["resource"] == auth.mcp_url and troca["client_id"] == CLIENT_ID and troca["code"] == "code-1"
-    srv = await servidor(client, h, r.json()["id"])
+    srv = await por_nome(client, h, "notion")
     assert srv["estado"] == "ok" and srv["ativo"] is True and srv["tem_auth"] is True
     assert any(t["nome"].endswith("_somar") for t in srv["tools"]) and len(srv["tools"]) == 3
     assert await header_gravado(srv["id"]) == f"Bearer {TOKEN}"
@@ -289,6 +303,19 @@ async def test_callback_sem_cookie_volta_com_pkce_ausente(client, auth):
 
     assert cb.headers["location"].endswith("/mcp?erro=pkce_ausente")
     assert not auth.formularios("authorization_code")
+    assert (await client.get("/api/mcp-servers", headers=h)).json() == []
+
+
+async def test_callback_com_cookie_de_outro_fluxo_volta_com_erro_e_nao_cria_nada(client, auth):
+    _, h = await usuario(client)
+    primeiro = query((await iniciar(client, h, auth.mcp_url)).json()["url"])
+    await iniciar(client, h, auth.mcp_url, nome="outro")  # o cookie agora é do segundo fluxo
+
+    cb = await client.get(CALLBACK, params={"code": "code-1", "state": primeiro["state"]})
+
+    assert cb.headers["location"].endswith("/mcp?erro=state_invalido")
+    assert not auth.formularios("authorization_code")
+    assert (await client.get("/api/mcp-servers", headers=h)).json() == []
 
 
 async def test_callback_com_state_adulterado_volta_com_state_invalido(client, auth):
@@ -309,7 +336,7 @@ async def test_callback_com_token_que_o_servidor_recusa_marca_expirado(client, a
     cb = await client.get(CALLBACK, params={"code": "code-1", "state": query(r.json()["url"])["state"]})
 
     assert cb.headers["location"].endswith("/mcp?erro=listagem_falhou")
-    srv = await servidor(client, h, r.json()["id"])
+    srv = await por_nome(client, h, "notion")
     assert srv["estado"] == "expirado" and srv["tools"] == []
 
 
@@ -320,9 +347,59 @@ async def test_reconectar_reaproveita_a_linha_do_servidor(client, auth):
     r = await iniciar(client, h, auth.mcp_url, sid=sid)
     await client.get(CALLBACK, params={"code": "code-2", "state": query(r.json()["url"])["state"]})
 
-    assert r.json()["id"] == sid
     lista = (await client.get("/api/mcp-servers", headers=h)).json()
     assert [s["id"] for s in lista] == [sid] and len(lista[0]["tools"]) == 3 and lista[0]["estado"] == "ok"
+
+
+async def test_reconectar_abandonado_deixa_o_servidor_como_estava(client, auth):
+    _, h = await usuario(client)
+    sid = await conectar(client, h, auth)
+    antes = await servidor(client, h, sid)
+
+    r = await iniciar(client, h, auth.mcp_url, sid=sid)  # o usuário fecha a tela do provedor
+
+    assert r.json()["modo"] == "oauth"
+    depois = await servidor(client, h, sid)
+    assert (depois["estado"], depois["ativo"]) == (antes["estado"], antes["ativo"]) == ("ok", True)
+    assert await header_gravado(sid) == f"Bearer {TOKEN}"
+
+
+async def test_nome_repetido_recebe_409_no_iniciar(client, auth):
+    _, h = await usuario(client)
+    await conectar(client, h, auth)
+
+    r = await iniciar(client, h, auth.mcp_url)
+
+    assert r.status_code == 409
+
+
+# ---------- Migração 0022 ----------
+
+
+async def test_migracao_0022_apaga_pendente_sem_tools_e_mantem_ok(client):
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+
+    uid, _ = await usuario(client)
+    pendente, ok = uuid.uuid4(), uuid.uuid4()
+    async with SessionLocal() as s:
+        for i, estado in ((pendente, "aguardando_oauth"), (ok, "ok")):
+            await s.execute(
+                text("INSERT INTO mcp_servers (id, user_id, nome, url, headers, ativo, estado) "
+                     "VALUES (:i, :u, :n, 'https://8.8.8.8/mcp', :h, false, :e)"),
+                {"i": i, "u": uid, "n": estado, "h": _cifrar({}), "e": estado},
+            )
+        await s.commit()
+        conn = await s.connection()
+
+        def rodar(sync):
+            with Operations.context(MigrationContext.configure(sync)):
+                import_module("migrations.versions.0022_mcp_sem_pendentes").upgrade()
+
+        await conn.run_sync(rodar)
+        await s.commit()
+        restam = (await s.scalars(text("SELECT id FROM mcp_servers WHERE user_id = :u"), {"u": uid})).all()
+    assert restam == [ok]
 
 
 # ---------- Turno ----------

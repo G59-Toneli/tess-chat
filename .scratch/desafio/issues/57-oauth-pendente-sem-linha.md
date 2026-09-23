@@ -1,7 +1,7 @@
 # 57 — OAuth abandonado não deixa Servidor MCP pendente
 
 **Type:** task (api/ + web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 52, 56 (resolved)
 **Refs:** ADR 0022, ticket 52, ticket 56. Achado do E2E de 23/09, pedido do Toneli.
 
@@ -31,3 +31,10 @@
 - A migração 0022 apaga uma linha pendente sem tools e mantém uma `ok`.
 - Os testes existentes de `test_mcp_oauth` e `test_mcp` continuam passando.
 - `npm run build` limpo.
+
+## Answer
+- O `iniciar` não grava linha. O pendente (verifier, nome, url, sid, cliente do DCR) vai cifrado no cookie `tess_mcp_pendente`. O state leva `sub` e `nonce`, e o callback exige o mesmo nonce no cookie.
+- O callback cria a linha (ou atualiza, com `sid`) só depois da troca do code. Reconectar abandonado deixa o servidor intacto. O badge "aguardando autorização" saiu do front.
+- A migração 0022 apaga pendentes sem tools. Ela já rodou no Postgres local (estava em 0020). O teste roda o `upgrade()` direto numa conexão.
+- Ressalva: o 409 de nome agora é um `select` no `iniciar`; corrida até o callback volta com `erro=nome_em_uso`. O screenshot usou `vite preview`, porque a API da 8000 roda código antigo (sem `estado`).
+- `REVISAR(human)`: o cookie do pendente em `iniciar` e a ordem das checagens em `_concluir` (`api/app/mcp_oauth.py`).
