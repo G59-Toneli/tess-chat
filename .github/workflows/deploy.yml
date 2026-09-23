@@ -28,6 +28,8 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://tess_app:tess_app@127.0.0.1:5433/tess
       DATABASE_URL_OWNER: postgresql+asyncpg://tess_owner:tess_owner@127.0.0.1:5433/tess
       GEMINI_PAID_API_KEY: ci-falso
+      # test_tools intercepta api.tavily.com; sem chave a tool nem tenta.
+      TAVILY_API_KEY: ci-falso
       GOOGLE_CLIENT_ID: ci-falso
       GOOGLE_CLIENT_SECRET: ci-falso
       ENV: dev
