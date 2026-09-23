@@ -18,13 +18,11 @@ App de chat deployado em link público, com os 10 requisitos obrigatórios funci
 
 ## Estado dos tickets
 
-Fonte: status em `issues/` e `LEDGER.md`. Atualizado em 23/09.
+Fonte: status em `issues/` e `LEDGER.md`. Atualizado em 23/09 ~04:00.
 
-- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07, 07a, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 20, 22.
-- **Prontos para agente:** 17 (MCP) e 18 (Google). Liberados em 23/09 para rodar em localhost; o deploy só troca a URL.
-- **Bloqueados em Toneli:** 02 e 16. Precisam das chaves SSH do VPS e do registro A `chat.toneli.dev.br` (ver `MANHA.md`).
-- **Suíte em lote (21):** dependências 09b e 20 resolvidas. O ticket ainda está `blocked`; liberar é do orquestrador.
-- **Bloqueado por ticket:** 19 (README, vídeo e guia, espera 17 e 18).
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07, 07a, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 17, 18 (AFK), 19 (AFK), 20, 21, 22, 23, 24.
+- **Bloqueados em Toneli:** 02 e 16. Precisam das chaves SSH do VPS e do registro A `chat.toneli.dev.br` (ver `MANHA.md`). Parte HITL do 18 (conectar conta Google) e do 19 (gravar vídeo) também no `MANHA.md`.
+- **Suíte final do bloco (23/09):** 141 testes verdes, build e tsc limpos.
 
 ## Decisions so far
 
@@ -48,7 +46,7 @@ Fonte: status em `issues/` e `LEDGER.md`. Atualizado em 23/09.
 - Formato exato do prompt de Resumo e valor de N turnos literais. Decide após o spike medir tokens reais.
 - Layout do painel de créditos e auditoria. Decide quando o front base existir (07).
 - Se o Roteador Jev também escolhe entre tools MCP ou só nativas. Decide após smoke test (11).
-- Conteúdo do vídeo e ordem dos fluxos na demo (19).
+- Conteúdo do vídeo e ordem dos fluxos na demo (19). Resolvido: roteiro no README.
 
 ## Out of scope
 
