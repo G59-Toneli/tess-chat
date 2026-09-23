@@ -145,3 +145,19 @@ async def test_teto_de_tool_calls_corta_o_turno(client, usar_modelo, usar_rotas,
     [ev] = await eventos("tool_limit_reached", user_id=uid)
     assert ev.payload["limite"] == 2
     assert n == 3
+
+
+async def test_os_dois_modelos_esgotam_vira_502(client, usar_modelo, usar_reserva):
+    primario, _ = falha_n_vezes(99, 503)
+    reserva, _ = falha_n_vezes(99, 503, MODELO_RESERVA)
+    usar_modelo(primario)
+    usar_reserva(reserva)
+
+    uid, h, cid, r = await turno(client)
+
+    assert r.status_code == 502
+    assert "503" in r.json()["detail"]
+    [erro] = await eventos("llm_error", user_id=uid)
+    assert erro.payload["tentativas"] == 6
+    assert len(await eventos("llm_retry", user_id=uid)) == 4
+    assert await eventos("llm_call", user_id=uid) == []

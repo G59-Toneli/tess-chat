@@ -103,8 +103,12 @@ async def _erro(
         await s.commit()
 
 
-async def _limite_de_tools(cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: UsageLimitExceeded, turno: Turno) -> None:
+async def _limite_de_tools(
+    cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: UsageLimitExceeded, turno: Turno, comp: Compactacao | None
+) -> None:
     async with SessionLocal() as s:
+        if comp:
+            await comp.auditar(s, None)
         await _auditar_tentativas(s, uid, cid, turno)
         await audit(
             s,
@@ -323,7 +327,7 @@ async def chat(
                     turno.marcar_primeiro_token()
                 yield ev
         except UsageLimitExceeded as exc:
-            await _limite_de_tools(cid, uid, nome, exc, turno)
+            await _limite_de_tools(cid, uid, nome, exc, turno, comp)
             raise
         except ERROS_PROVEDOR as exc:
             await _erro(cid, uid, nome, exc, turno, comp)
