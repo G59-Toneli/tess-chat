@@ -515,7 +515,8 @@ async def test_pdf_do_drive_nao_volta_no_turno_seguinte(client, usar_modelo):
 
     assert arquivos_vistos(pedidos[1])
     assert not arquivos_vistos(pedidos[2])
-    assert "[arquivo do Drive: guia.pdf]" in str(pedidos[2])
+    assert "[arquivo do Drive: guia.pdf." in str(pedidos[2])
+    assert "chame drive_search_read de novo" in str(pedidos[2])
     msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
     assert "data:application/pdf" not in json.dumps(msgs)
     assert [m["role"] for m in msgs].count("user") == 2  # o PDF não vira Mensagem de usuário
