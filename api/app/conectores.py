@@ -198,13 +198,18 @@ async def _token(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None) -> str:
 # ---------- Tools ----------
 
 
+# REVISAR(human): timeout repete `fn` uma vez. Seguro porque todo `fn` daqui só lê (GET).
+# Produção 23/09: `drive_search_read` estourou os 30 s uma vez e passou na chamada seguinte.
 async def _chamar(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, nome: str, fn) -> Any:
     """Abre o cliente HTTP com o token do Usuário e converte qualquer falha em texto para o modelo."""
     try:
         token = await _token(uid, t)
         headers = {"Authorization": f"Bearer {token}"}
         async with httpx.AsyncClient(transport=t, timeout=TIMEOUT, headers=headers) as http:
-            r = await fn(http)
+            try:
+                r = await fn(http)
+            except httpx.TimeoutException:
+                r = await fn(http)
             return r[:LIMITE_CHARS] if isinstance(r, str) else r
     except ConectorExpirado as e:
         return str(e)
@@ -212,6 +217,8 @@ async def _chamar(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, nome: str,
         if e.response.status_code == 401:
             return EXPIROU
         return f"{nome} falhou: HTTP {e.response.status_code}"
+    except httpx.TimeoutException as e:
+        return f"{nome} falhou: {type(e).__name__} em {e.request.url.path}, duas vezes"
     except httpx.HTTPError as e:
         return f"{nome} falhou: {type(e).__name__}"
 
