@@ -1,6 +1,6 @@
 # ADR 0004 — Crédito em micro-dólar inteiro, debitado do uso real, com Ledger somente-inserção
 
-**Status:** aceito, 2026-09-23
+**Status:** aceito, 2026-09-23. Reserva revisada pelo [ADR 0019](0019-reserva-por-estimativa-local.md).
 
 ## Contexto
 Requisito: cap de créditos com contabilização. Toneli exige número confiável: "sei que gastei X centavos".

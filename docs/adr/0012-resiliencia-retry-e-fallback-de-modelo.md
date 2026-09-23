@@ -1,6 +1,6 @@
 # ADR 0012 — Retry com backoff e fallback de modelo, tudo auditado
 
-**Status:** aceito, 2026-09-23
+**Status:** aceito, 2026-09-23. Item 2 (fallback) revisado pelo [ADR 0018](0018-fallback-so-entre-geminis.md).
 
 ## Contexto
 Gemini tem instabilidade conhecida (429, 503, timeouts). Um turno que falha sem retry quebra a demo. Toneli também quer observabilidade de agente no banco: qual tool foi escolhida e por quê, quanto custou, o que falhou.

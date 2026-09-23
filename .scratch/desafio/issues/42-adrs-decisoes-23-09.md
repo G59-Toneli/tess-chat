@@ -1,7 +1,7 @@
 # 42 — ADRs das decisões do Toneli em 23/09 (fallback, reserva, turno cortado)
 
 **Type:** task (AFK, só docs)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ADR 0012, ADR 0004, `docs/LACUNAS.md`, `README.md` (limites conhecidos), `docs/ENTREVISTA.md`, `MANHA.md`.
 
@@ -23,3 +23,10 @@
 - [ ] ADRs 0018 e 0019 escritos no formato dos existentes.
 - [ ] LACUNAS, README e ENTREVISTA atualizados.
 - [ ] Chamadas reais: nenhuma.
+
+## Answer
+- ADR 0018 (sem fallback OpenAI) e ADR 0019 (reserva por estimativa local) escritos; status do 0012 e do 0004 apontam para eles.
+- LACUNAS: reserva e OpenAI fechados citando Toneli 23/09; reboot do VPS registrado como adiado. README e ENTREVISTA (0017, 0018, 0019) atualizados.
+- Divergência: a decisão 3 diz "não cobrado", mas o código cobra o turno cortado desde o ticket 30 (`on_cancel` em `chat.py`). Docs alinhados ao código. Se o Toneli quer não cobrar, é mudança em `api/`, fora deste ticket.
+- Ressalva: comentário em `api/app/chat.py:56` ainda cita o fallback OpenAI do ADR 0012; fora do escopo (api/).
+- Sem REVISAR(human). Nenhuma chamada real.

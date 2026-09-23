@@ -3,7 +3,7 @@
 Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta. Ticket 19 lê isto para o README e o guia de entrevista. Cada item diz se já tem ticket.
 
 ## Crédito (ADR 0004)
-- **Reserva estimada localmente**, ~3 caracteres por token (INFERIDO), em vez de `count_tokens`. O spike provou que `UsageLimits(count_tokens_before_request=True)` funciona. Trade-off: uma chamada `countTokens` extra por request. Decidir: emendar o ADR ou abrir ticket para trocar. **Sem ticket.**
+- ~~Reserva estimada localmente em vez de `count_tokens`~~. **Decidido pelo Toneli em 23/09 ([ADR 0019](adr/0019-reserva-por-estimativa-local.md)):** fica a estimativa local, ~3 caracteres por token (INFERIDO). A reserva só segura crédito; o acerto usa o uso real.
 - **Duas chamadas simultâneas** do mesmo usuário podem passar juntas do cap. Corrige com lock por usuário ou `SELECT ... FOR UPDATE` na reserva. **Sem ticket.**
 - ~~Turno cortado pelo teto de tool calls não é cobrado~~ (06b). **Resolvido no ticket 30:** o Ledger recebe o uso real dos requests do turno cortado.
 - **Anexo em base64 volta ao modelo em todo turno** e infla a reserva. **Ticket 09b.**
@@ -22,9 +22,12 @@ Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta.
 
 ## Resiliência (ADR 0012)
 - Com o 3.8 fora, cada request tenta 3 vezes antes do fallback: turno com tool fica lento.
-- Sem `OPENAI_API_KEY`, a cadeia tem só os dois Gemini.
+- ~~Sem `OPENAI_API_KEY`, a cadeia tem só os dois Gemini.~~ **Decidido pelo Toneli em 23/09 ([ADR 0018](adr/0018-fallback-so-entre-geminis.md)):** sem fallback OpenAI. Queda do Google inteiro derruba o chat.
 - Preço do gemini-3.7-flash igual ao 3.8 (INFERIDO).
 - Front não sinaliza retry: acontece antes do stream abrir.
+
+## Deploy (ADR 0014)
+- **Teste de reboot do VPS adiado** pelo Toneli em 23/09. O VPS é produção do trabalho. Testado só `down` + `up` sem `-v` (ticket 16).
 
 ## Auth e demo
 - `JWT_SECRET` e `DEMO_PASSWORD` com default de dev. **Ticket 16** define no VPS.
