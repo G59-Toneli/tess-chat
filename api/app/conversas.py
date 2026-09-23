@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.audit import audit
 from app.auth import User, current_user
+from app.config import JANELAS_CONTEXTO
 from app.db import Base, get_session
 
 TITULO_PADRAO = "Nova conversa"
@@ -97,6 +98,13 @@ class MensagemOut(BaseModel):
     created_at: datetime
 
 
+class ContextoOut(BaseModel):
+    usado: int
+    limite: int
+    limiar_compactacao: int
+    modelo: str
+
+
 Sessao = Annotated[AsyncSession, Depends(get_session)]
 Usuario = Annotated[User, Depends(current_user)]
 
@@ -174,3 +182,26 @@ async def listar_mensagens(cid: uuid.UUID, session: Sessao, user: Usuario) -> li
         .order_by(Message.created_at, Message.id)
     )
     return list((await session.scalars(q)).all())
+
+
+# REVISAR(human): `usado` é o input_tokens da última resposta, o mesmo número que o gatilho da Compactação lê.
+# Assim a marca do limiar na rosca bate com o momento em que a Compactação dispara.
+@router.get("/{cid}/contexto")
+async def contexto(cid: uuid.UUID, session: Sessao, user: Usuario) -> ContextoOut:
+    """Quanto da janela de contexto o próximo turno carrega, antes da pergunta nova."""
+    from app.configuracao import resolver  # import tardio: configuracao importa este módulo
+
+    await conversa_do_usuario(session, user, cid)
+    cfg = (await resolver(session, user.id, cid))[1]
+    usado = await session.scalar(
+        select(Message.input_tokens)
+        .where(Message.conversation_id == cid, Message.role == "assistant")
+        .order_by(Message.created_at.desc(), Message.id.desc())
+        .limit(1)
+    )
+    return ContextoOut(
+        usado=usado or 0,
+        limite=JANELAS_CONTEXTO[cfg.modelo],
+        limiar_compactacao=cfg.compactacao_limiar,
+        modelo=cfg.modelo,
+    )

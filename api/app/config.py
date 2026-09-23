@@ -48,3 +48,11 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Janela de contexto (tokens de entrada) por modelo. Fonte: ai.google.dev/gemini-api/docs/models/<modelo>,
+# "Input token limit", lida em 23/09/2026. Os três confirmados na doc.
+JANELAS_CONTEXTO: dict[str, int] = {
+    "gemini-3.8-flash": 1_048_576,
+    "gemini-3.7-flash": 1_048_576,
+    "gemini-3.1-flash-lite": 1_048_576,
+}
