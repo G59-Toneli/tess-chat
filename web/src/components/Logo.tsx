@@ -1,7 +1,7 @@
 import { SparklesIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export const NOME_APP = 'Tess Chat'
+export const NOME_APP = 'T-Chat'
 
 /** Ícone do app: quadrado arredondado na cor primária. */
 export function IconeApp({ className }: { className?: string }) {
