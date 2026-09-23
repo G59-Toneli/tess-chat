@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport, type ChatStatus, type UIMessage } from 'ai'
+import { DefaultChatTransport, type ChatStatus, type FileUIPart, type UIMessage } from 'ai'
 import { toast } from 'sonner'
 import { MessageSquareIcon, WalletIcon } from 'lucide-react'
 import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
+import { AnexoNaMensagem, AnexosDoPrompt, BotaoAnexar, previews } from '@/components/Anexos'
 import { PainelTools } from '@/components/PainelTools'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
@@ -23,7 +24,17 @@ import { MarcadorCompactacao } from '@/components/MarcadorCompactacao'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useContextoApp } from '@/layout/AppLayout'
-import { authHeader, criarConversa, listarMensagens, sair, textoErroChat } from '@/lib/api'
+import {
+  ACEITOS,
+  LIMITE_ANEXO,
+  authHeader,
+  criarConversa,
+  enviarAnexo,
+  listarMensagens,
+  sair,
+  textoErroAnexo,
+  textoErroChat,
+} from '@/lib/api'
 import { hora, iniciais } from '@/lib/datas'
 import { decisoesDoRoteador, ehErroDeCap, usoPorMensagem, type MensagemComUso, type Uso } from '@/lib/tools'
 import { cn } from '@/lib/utils'
@@ -34,8 +45,24 @@ const SUGESTOES = [
   'Escreva um e-mail curto pedindo reunião na sexta.',
 ]
 
-// Texto digitado em "/" antes de a Conversa existir. O chat da nova rota consome uma vez.
-const pendentes = new Map<string, string>()
+// Texto e anexos enviados em "/" antes de a Conversa existir. O chat da nova rota consome uma vez.
+const pendentes = new Map<string, { texto: string; arquivos: FileUIPart[] }>()
+
+/** Sobe os anexos e devolve as partes que vão na Mensagem, com a URL da API. Falha: toast e lança. */
+async function subirAnexos(arquivos: FileUIPart[]): Promise<FileUIPart[]> {
+  try {
+    return await Promise.all(
+      arquivos.map(async (f) => {
+        const a = await enviarAnexo(f.url, f.filename ?? 'anexo')
+        previews.set(a.url, f.url)
+        return { type: 'file' as const, url: a.url, mediaType: a.mime_type, filename: a.filename }
+      }),
+    )
+  } catch (e) {
+    toast.error(textoErroAnexo(e))
+    throw e
+  }
+}
 
 function tituloDe(texto: string): string {
   const t = texto.trim().replace(/\s+/g, ' ')
@@ -56,12 +83,19 @@ function ChatNovo() {
   const { recarregarConversas } = useContextoApp()
   const [criando, setCriando] = useState(false)
 
-  async function comecar(texto: string) {
-    if (!texto.trim() || criando) return
+  async function comecar(texto: string, arquivos: FileUIPart[] = []) {
+    if ((!texto.trim() && arquivos.length === 0) || criando) return
     setCriando(true)
+    let partes: FileUIPart[]
     try {
-      const conv = await criarConversa(tituloDe(texto))
-      pendentes.set(conv.id, texto)
+      partes = await subirAnexos(arquivos)
+    } catch (e) {
+      setCriando(false)
+      throw e
+    }
+    try {
+      const conv = await criarConversa(tituloDe(texto) || (arquivos[0]?.filename ?? 'Anexo'))
+      pendentes.set(conv.id, { texto, arquivos: partes })
       void recarregarConversas()
       navigate(`/c/${conv.id}`)
     } catch {
@@ -187,11 +221,11 @@ function ChatConversa({
   // Envia o texto que veio de "/". O setTimeout sobrevive ao StrictMode: o cleanup do
   // useChat chama stop() e abortaria um envio feito direto no primeiro efeito.
   useEffect(() => {
-    const texto = pendentes.get(id)
-    if (texto === undefined) return
+    const pendente = pendentes.get(id)
+    if (pendente === undefined) return
     const t = setTimeout(() => {
       pendentes.delete(id)
-      void sendMessage({ text: texto })
+      void sendMessage({ text: pendente.texto, files: pendente.arquivos })
     })
     return () => clearTimeout(t)
   }, [id, sendMessage])
@@ -224,10 +258,11 @@ function ChatConversa({
   const pensando = status === 'submitted' || (status === 'streaming' && ultima?.role === 'assistant' && vazia(ultima))
   const visiveis = messages.filter((m) => m.role === 'user' || !vazia(m))
 
-  function enviar(texto: string) {
-    if (!texto.trim() || status === 'submitted' || status === 'streaming') return
+  async function enviar(texto: string, arquivos: FileUIPart[] = []) {
+    if ((!texto.trim() && arquivos.length === 0) || status === 'submitted' || status === 'streaming') return
+    const partes = await subirAnexos(arquivos)
     if (error) clearError()
-    void sendMessage({ text: texto })
+    void sendMessage({ text: texto, files: partes })
   }
 
   return (
@@ -303,16 +338,28 @@ function Entrada({
   onParar,
 }: {
   status: ChatStatus
-  onEnviar: (texto: string) => void
+  onEnviar: (texto: string, arquivos: FileUIPart[]) => Promise<void>
   onParar?: () => void
 }) {
   return (
-    <PromptInput onSubmit={({ text }: PromptInputMessage) => onEnviar(text)}>
+    <PromptInput
+      onSubmit={({ text, files }: PromptInputMessage) => onEnviar(text, files)}
+      accept={ACEITOS}
+      multiple
+      maxFileSize={LIMITE_ANEXO}
+      onError={({ code }) =>
+        toast.error(code === 'max_file_size' ? 'Arquivo acima de 20 MB.' : 'Tipo não permitido. Envie PNG, JPG, WEBP ou PDF.')
+      }
+    >
+      <AnexosDoPrompt />
       <PromptInputBody>
         <PromptInputTextarea placeholder="Digite sua mensagem..." aria-label="Mensagem" />
       </PromptInputBody>
       <PromptInputFooter>
-        <span className="px-2 text-xs text-muted-foreground">Enter envia, Shift+Enter quebra linha</span>
+        <div className="flex items-center gap-1">
+          <BotaoAnexar />
+          <span className="px-1 text-xs text-muted-foreground">Enter envia, Shift+Enter quebra linha</span>
+        </div>
         <PromptInputSubmit
           status={status}
           onStop={onParar}
@@ -380,6 +427,7 @@ function LinhaMensagem({
         <MessageContent>
           {mensagem.parts.map((p, i) => {
             if (p.type === 'text') return <MessageResponse key={i}>{p.text}</MessageResponse>
+            if (p.type === 'file') return <AnexoNaMensagem key={i} parte={p} />
             const parte = tools.find((t) => t === p)
             if (!parte) return null
             return (
