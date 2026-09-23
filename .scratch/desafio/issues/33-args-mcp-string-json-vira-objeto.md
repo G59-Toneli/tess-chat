@@ -1,7 +1,7 @@
 # 33 — Args de tool MCP: string JSON vira objeto antes de enviar
 
 **Type:** task (AFK)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 31
 **Refs:** ticket 31 (seção "Do spike": args exatos que o Gemini mandou), `api/app/tools.py` (`ComTeto.call_tool`), `api/app/mcp.py`, ADR 0009.
 
@@ -17,3 +17,10 @@
 - [ ] Teste: string comum ("Olá {mundo}") não é alterada.
 - [ ] Turno real com Stripe (máx. 2, sandbox): "cria um link de pagamento de R$ 1000 para o produto Tess Assistant" fecha com link `buy.stripe.com/test_...`. Screenshot dark `33-stripe-link.png`.
 - [ ] `uv run pytest tests/test_mcp.py tests/test_tools.py tests/test_chat.py` verde; `tsc` e `npm run build` limpos.
+
+## Answer
+
+`desembrulhar_json` em `app/tools.py`: na `Auditada.call_tool`, só para origem `mcp`, string JSON de objeto/lista vira objeto, recursivo. A validação de args saiu do `ToolManager` para o `call_tool` da `Auditada`: a 2ª falha de validação agora corta com "A tool X falhou" (`tool_falhou`) e grava `tool_call` com `erro`. O card tira o sufixo "Fix the errors and try again.". Demo ganhou a tool `tipos`.
+Turno real (2 de 2, sandbox, API nova na 8002): o 1º, com a frase do aceite, foi roteado pelo Jev para `stripe_implementation_planner`, e o modelo só explicou o passo a passo, sem `api_write`. O 2º, na mesma Conversa ("Cria você mesmo agora, via API"), fechou com `buy.stripe.com/test_6oUbJ0gKk7jB6eg5Li9oc00` (`33-stripe-link.png`). Os `api_write` foram PostProducts, PostPrices e PostPaymentLinks com `line_items: [{price, quantity}]`, sem `price_data`.
+Ressalva: não dá para provar que o desembrulho agiu nesse turno. O evento grava os args depois do desembrulho (INFERIDO: o modelo mudou de caminho, sem string aninhada). Modelo do turno: `gemini-3.1-flash-lite`, cerca de 10 requests nos 2 turnos.
+REVISAR(human): `desembrulhar_json` (regra do `{`/`[` e risco aceito).

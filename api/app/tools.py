@@ -4,7 +4,7 @@ import asyncio
 import json
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Annotated, Any
 
 import httpx
@@ -12,10 +12,11 @@ import httpx2
 import trafilatura
 from fastapi import APIRouter, Depends, HTTPException
 from mcp.types import CONNECTION_CLOSED, REQUEST_TIMEOUT
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from pydantic_ai import FunctionToolset, ModelRetry, RunContext
 from pydantic_ai.toolsets import AbstractToolset, CombinedToolset, WrapperToolset
 from pydantic_ai.toolsets.abstract import ToolsetTool
+from pydantic_core import SchemaValidator, core_schema
 from sqlalchemy import Boolean, ForeignKey, Text, and_, exists, or_, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,6 +153,34 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
     return [(t, t.ativa_global and (a if a is not None else t.padrao_ligada)) for t, a in (await session.execute(q)).all()]
 
 
+# REVISAR(human): o Gemini, com schema aberto (`parameters: object` sem propriedades, caso do Stripe),
+# manda objeto aninhado como string JSON. Só string que começa com { ou [ e passa no json.loads vira
+# objeto/lista; o resultado é percorrido de novo (string dentro de string). "Olá {mundo}" não muda.
+# Risco aceito: string legítima que é JSON válido vira objeto (ticket 33).
+def desembrulhar_json(valor: Any) -> Any:
+    if isinstance(valor, dict):
+        return {k: desembrulhar_json(v) for k, v in valor.items()}
+    if isinstance(valor, list):
+        return [desembrulhar_json(v) for v in valor]
+    if isinstance(valor, str) and valor.lstrip().startswith(("{", "[")):
+        try:
+            obj = json.loads(valor)
+        except ValueError:
+            return valor
+        return desembrulhar_json(obj) if isinstance(obj, (dict, list)) else valor
+    return valor
+
+
+# O ToolManager valida os args antes do toolset e, na 2ª falha, levanta erro que escapa do ComTeto.
+# Ele passa a aceitar tudo; a validação real roda no call_tool da Auditada (ticket 33).
+ACEITA_TUDO = SchemaValidator(core_schema.any_schema())
+
+
+def _args_invalidos(exc: ValidationError) -> ModelRetry:
+    campos = "; ".join(f"{'.'.join(map(str, e['loc'])) or 'args'}: {e['msg']}" for e in exc.errors())
+    return ModelRetry(f"Argumentos inválidos: {campos}")
+
+
 @dataclass
 class Auditada(WrapperToolset[Any]):
     """Grava um Evento tool_call por execução: nome, args, duração, tamanho do resultado ou o erro."""
@@ -161,13 +190,28 @@ class Auditada(WrapperToolset[Any]):
     origens: dict[str, str]
     fora_do_ar: list[str] = field(default_factory=list)  # nomes dos Servidores MCP que a sonda tirou do turno
     servidores: dict[str, str] = field(default_factory=dict)  # tool MCP -> nome do Servidor MCP
+    # Validador original de cada tool. Objeto compartilhado: o Pydantic AI copia o toolset a cada passo.
+    validadores: dict[str, Any] = field(default_factory=dict)
+
+    async def get_tools(self, ctx: RunContext[Any]) -> dict[str, ToolsetTool[Any]]:
+        tools = await super().get_tools(ctx)
+        self.validadores.update({nome: t.args_validator for nome, t in tools.items()})
+        return {nome: replace(t, args_validator=ACEITA_TUDO) for nome, t in tools.items()}
 
     async def call_tool(
         self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
     ) -> Any:
         t0 = time.perf_counter()
+        if self.origens.get(name) == "mcp":
+            tool_args = desembrulhar_json(tool_args)
         base = {"tool": name, "origem": self.origens.get(name), "args": tool_args}
         try:
+            validador = self.validadores.get(name)
+            if validador is not None:
+                try:
+                    tool_args = validador.validate_python(tool_args, context=ctx.validation_context)
+                except ValidationError as e:
+                    raise _args_invalidos(e) from e
             resultado = await super().call_tool(name, tool_args, ctx, tool)
         except Exception as exc:
             await self._auditar(t0, {**base, "erro": resumo_erro(exc)})

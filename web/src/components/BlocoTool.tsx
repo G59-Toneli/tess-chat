@@ -12,6 +12,8 @@ import { fontesDaBusca, type DecisaoRoteador, type Uso } from '@/lib/tools'
 // Bloco de tool call do stream (docs/UI-GUIA.md): nome, args, duração e resultado resumido.
 
 const RESUMO_CHARS = 1200
+// Sufixo que o Pydantic AI escreve para o modelo na 1ª falha. O card mostra só o motivo do servidor.
+const PARA_O_MODELO = /\s*Fix the errors and try again\.\s*$/
 const RODANDO = new Set<ToolUIPart['state']>(['input-streaming', 'input-available'])
 
 export const partesDeTool = (m: UIMessage) => m.parts.filter(isStaticToolUIPart) as ToolUIPart[]
@@ -100,7 +102,7 @@ export function BlocoTool({
         </CollapsibleTrigger>
         <ToolContent>
           <ToolInput input={parte.input} />
-          {!interrompida && <ToolOutput output={saida} errorText={parte.errorText} />}
+          {!interrompida && <ToolOutput output={saida} errorText={parte.errorText?.replace(PARA_O_MODELO, '')} />}
         </ToolContent>
       </Tool>
       {fontes.length > 0 && (
