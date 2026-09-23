@@ -1,9 +1,15 @@
 import uuid
 
+from pydantic_ai.models.function import FunctionModel
+
+from app.chat import MODELO
 from app.conectores import EmailDraft
 from app.conversas import Message
 from app.db import SessionLocal
 from tests.test_auth import eventos
+from tests.test_chat import corpo, usar_modelo  # noqa: F401
+from tests.test_chat import textos as textos_modelo
+from tests.test_credito import linhas
 from tests.test_conversas import criar, usuario
 
 
@@ -155,3 +161,128 @@ async def test_link_nao_le_rascunho_de_outra_conversa(client):
 
     corpo = (await client.get(f"/api/s/{share['id']}")).json()
     assert corpo["messages"][0]["parts"][0]["output"]["estado"] == "pendente"
+
+
+# --- Ticket 46: continuar a conversa do link (fork) ---
+
+async def fork(client, h, share_id: str) -> str:
+    resp = await client.post(f"/api/s/{share_id}/fork", headers=h)
+    assert resp.status_code == 201, resp.text
+    return resp.json()["conversation_id"]
+
+
+async def partes(client, h, cid: str) -> list[list[dict]]:
+    return [m["parts"] for m in (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()]
+
+
+async def test_fork_copia_ate_o_corte_e_nao_altera_a_do_dono(client):
+    _, hd = await usuario(client)
+    vid, hv = await usuario(client)
+    conv = await criar(client, hd, "Receita")
+    await mensagem(conv["id"], "user", "como faço bolo?")
+    await mensagem(conv["id"], "assistant", "farinha, ovo")
+    share = await compartilhar(client, hd, conv["id"])
+    await mensagem(conv["id"], "user", "depois do share")
+
+    nova = await fork(client, hv, share["id"])
+
+    copia = (await client.get(f"/api/conversations/{nova}", headers=hv)).json()
+    assert copia["title"] == "Receita (cópia)"
+    assert [p[0]["text"] for p in await partes(client, hv, nova)] == ["como faço bolo?", "farinha, ovo"]
+    assert [p[0]["text"] for p in await partes(client, hd, conv["id"])] == ["como faço bolo?", "farinha, ovo", "depois do share"]
+    assert (await client.get(f"/api/conversations/{nova}", headers=hd)).status_code == 404
+    [ev] = await eventos("share_forked", user_id=vid)
+    assert ev.conversation_id == uuid.UUID(nova)
+    assert ev.payload == {"share_id": share["id"], "conversa_origem": conv["id"], "conversa_nova": nova}
+
+
+async def test_fork_de_revogado_ou_inexistente_e_404_e_sem_login_401(client):
+    _, hd = await usuario(client)
+    _, hv = await usuario(client)
+    conv = await criar(client, hd)
+    share = await compartilhar(client, hd, conv["id"])
+    await client.delete(f"/api/shares/{share['id']}", headers=hd)
+
+    assert (await client.post(f"/api/s/{share['id']}/fork", headers=hv)).status_code == 404
+    assert (await client.post(f"/api/s/naoexiste{uuid.uuid4().hex}/fork", headers=hv)).status_code == 404
+    assert (await client.post(f"/api/s/{share['id']}/fork")).status_code == 401
+    assert (await client.get("/api/conversations", headers=hv)).json() == []
+
+
+async def test_dono_faz_fork_do_proprio_link(client):
+    _, h = await usuario(client)
+    conv = await criar(client, h, "Minha")
+    await mensagem(conv["id"], "user", "oi")
+    share = await compartilhar(client, h, conv["id"])
+
+    nova = await fork(client, h, share["id"])
+
+    assert nova != conv["id"]
+    assert [c["title"] for c in (await client.get("/api/conversations", headers=h)).json()] == ["Minha (cópia)", "Minha"]
+
+
+async def test_primeiro_turno_na_copia_ve_o_historico_e_cobra_do_visitante(client, usar_modelo):
+    vistas = []
+
+    async def stream(msgs, _info):
+        vistas.append(msgs)
+        yield "continuando"
+
+    usar_modelo(FunctionModel(stream_function=stream, model_name=MODELO))
+    did, hd = await usuario(client)
+    vid, hv = await usuario(client)
+    conv = await criar(client, hd)
+    await mensagem(conv["id"], "user", "meu nome é Ana")
+    await mensagem(conv["id"], "assistant", "oi Ana")
+    share = await compartilhar(client, hd, conv["id"])
+    nova = await fork(client, hv, share["id"])
+    assert await linhas(user_id=vid) == []
+
+    r = await client.post(f"/api/chat/{nova}", json=corpo("qual meu nome?"), headers=hv)
+    assert r.status_code == 200, r.text
+
+    assert textos_modelo(vistas[0]) == [("user", "meu nome é Ana"), ("assistant", "oi Ana"), ("user", "qual meu nome?")]
+    assert [str(l.conversation_id) for l in await linhas(user_id=vid)] == [nova]
+    assert await linhas(user_id=did) == []
+
+
+async def test_rascunho_copiado_mostra_estado_e_nao_e_enviavel_pelo_visitante(client):
+    did, hd = await usuario(client)
+    _, hv = await usuario(client)
+    conv = await criar(client, hd)
+    draft_id = await rascunho_na_conversa(did, conv["id"], "pendente")
+    share = await compartilhar(client, hd, conv["id"])
+
+    nova = await fork(client, hv, share["id"])
+
+    [[parte]] = await partes(client, hv, nova)
+    assert parte["output"]["draft_id"] == draft_id
+    assert parte["output"]["copia"] is True
+    for acao in ("enviar", "descartar"):
+        assert (await client.post(f"/api/connectors/google/drafts/{draft_id}/{acao}", headers=hv)).status_code == 404
+    assert (await client.get(f"/api/connectors/google/drafts/{draft_id}", headers=hd)).json()["estado"] == "pendente"
+
+
+async def test_rascunho_copiado_leva_o_estado_real(client):
+    did, hd = await usuario(client)
+    _, hv = await usuario(client)
+    conv = await criar(client, hd)
+    await rascunho_na_conversa(did, conv["id"], "enviado")
+    share = await compartilhar(client, hd, conv["id"])
+
+    [[parte]] = await partes(client, hv, await fork(client, hv, share["id"]))
+    assert parte["output"]["estado"] == "enviado"
+
+
+async def test_anexo_copiado_vira_texto_sem_bytes(client):
+    _, hd = await usuario(client)
+    _, hv = await usuario(client)
+    conv = await criar(client, hd)
+    arquivo = {"type": "file", "url": f"/api/attachments/{uuid.uuid4()}", "mediaType": "image/png", "filename": "foto.png"}
+    async with SessionLocal() as s:
+        s.add(Message(conversation_id=uuid.UUID(conv["id"]), role="user", parts=[arquivo, {"type": "text", "text": "veja"}]))
+        await s.commit()
+    share = await compartilhar(client, hd, conv["id"])
+
+    [copiadas] = await partes(client, hv, await fork(client, hv, share["id"]))
+    assert copiadas == [{"type": "text", "text": "[anexo: foto.png]"}, {"type": "text", "text": "veja"}]

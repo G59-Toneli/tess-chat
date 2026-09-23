@@ -1,7 +1,7 @@
 # 46 — "Continuar esta conversa" a partir do link (fork para a conta de quem está logado)
 
 **Type:** task (AFK, api/ e web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 45 (mesma página `Compartilhamento.tsx`)
 **Refs:** ADR 0008, ADR 0013, ADR 0005/0006 se tratarem de crédito e auditoria. Decisão do Toneli em 23/09.
 
@@ -22,3 +22,10 @@
 - [ ] Teste: rascunho copiado não é enviável pelo visitante.
 - [ ] Screenshot dark do botão no link e da Conversa copiada aberta.
 - [ ] ADR escrito. Sem chamada real a Gemini, Tavily ou Jev.
+
+## Answer
+`POST /api/s/{id}/fork` em `api/app/shares.py`: Conversa nova do logado, "<título> (cópia)", Mensagens até o corte, evento `share_forked`. Sem migração, sem cobrança (ADR 0020).
+Anexo vira `[anexo: nome]`; Rascunho leva o estado real e `copia: true` (card só leitura; envio pelo visitante já é 404). Tokens e modelo do dono não são copiados.
+Front: botão "Continuar esta conversa" no banner do link; deslogado vai a `/login?proximo=/s/<id>` e volta ao link (fork pede outro clique).
+Ressalva: `[anexo: nome]` sem o aviso do ADR 0016; o modelo pode descrever a imagem que não vê. A cópia não herda o Resumo da Compactação.
+REVISAR(human): `fork` em `shares.py`. Screenshots: `screens/46-link-continuar.png`, `screens/46-conversa-copiada.png`.

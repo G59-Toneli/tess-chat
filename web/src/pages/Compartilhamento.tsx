@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import type { UIMessage } from 'ai'
-import { LinkIcon } from 'lucide-react'
+import { LinkIcon, MessageSquarePlusIcon } from 'lucide-react'
 import { BlocoTool, partesDeTool } from '@/components/BlocoTool'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
 import { IconeApp, NOME_APP } from '@/components/Logo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { ErroApi, juntarTurnos, lerToken } from '@/lib/api'
 import { iniciais } from '@/lib/datas'
-import { lerSharePublico, type SharePublico } from '@/lib/shares'
+import { continuarShare, lerSharePublico, type SharePublico } from '@/lib/shares'
 import { cn } from '@/lib/utils'
 
 const fmtData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' })
@@ -53,7 +54,7 @@ export function Compartilhamento() {
           <EstadoErro mensagem="Não foi possível carregar a conversa." onTentarDeNovo={carregar} />
         )}
         {estado.tipo === 'inexistente' && <LinkIndisponivel />}
-        {estado.tipo === 'ok' && <ConversaPublica share={estado.share} />}
+        {estado.tipo === 'ok' && <ConversaPublica share={estado.share} shareId={shareId} />}
       </main>
     </div>
   )
@@ -78,17 +79,20 @@ function LinkIndisponivel() {
   )
 }
 
-function ConversaPublica({ share }: { share: SharePublico }) {
+function ConversaPublica({ share, shareId }: { share: SharePublico; shareId: string }) {
   // Mesmas partes do Chat: texto e cards de tool (com o Rascunho só leitura). Anexo e compactação ficam fora.
   const visiveis = juntarTurnos(share.messages).filter((m) => m.parts.some(desenhavel))
   return (
     <>
-      <div className="mb-6 rounded-lg border bg-muted/40 px-4 py-3">
-        <h1 className="text-xl font-semibold break-words">{share.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Compartilhada por <span className="font-medium text-foreground">{share.shared_by}</span> em{' '}
-          {fmtData.format(new Date(share.created_at))}. Somente leitura.
-        </p>
+      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold break-words">{share.title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Compartilhada por <span className="font-medium text-foreground">{share.shared_by}</span> em{' '}
+            {fmtData.format(new Date(share.created_at))}. Somente leitura.
+          </p>
+        </div>
+        <BotaoContinuar shareId={shareId} />
       </div>
       {visiveis.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Esta conversa não tinha mensagens.</p>
@@ -100,6 +104,41 @@ function ConversaPublica({ share }: { share: SharePublico }) {
         </div>
       )}
     </>
+  )
+}
+
+/** Fork (ADR 0020): cópia na conta de quem está logado. Deslogado vai ao login e volta para este link. */
+function BotaoContinuar({ shareId }: { shareId: string }) {
+  const navigate = useNavigate()
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  async function continuar() {
+    const voltar = `/login?proximo=${encodeURIComponent(`/s/${shareId}`)}`
+    if (!lerToken()) return navigate(voltar)
+    setEnviando(true)
+    setErro(null)
+    try {
+      const { conversation_id } = await continuarShare(shareId)
+      navigate(`/c/${conversation_id}`)
+    } catch (e) {
+      if (e instanceof ErroApi && e.status === 401) return navigate(voltar)
+      setErro(e instanceof ErroApi && e.status === 404 ? 'Este link foi revogado.' : 'Não foi possível copiar. Tente de novo.')
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button size="sm" disabled={enviando} onClick={() => void continuar()}>
+        {enviando ? <Spinner /> : <MessageSquarePlusIcon />} Continuar esta conversa
+      </Button>
+      {erro && (
+        <p role="alert" className="text-xs text-destructive">
+          {erro}
+        </p>
+      )}
+    </div>
   )
 }
 

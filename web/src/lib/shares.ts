@@ -17,6 +17,9 @@ export const listarShares = () => pedir<Share[]>('/api/shares')
 export const revogarShare = (id: string) => pedir<void>(`/api/shares/${id}`, { method: 'DELETE' })
 /** Público: sem token, para o link abrir igual em janela anônima. */
 export const lerSharePublico = (id: string) => pedir<SharePublico>(`/api/s/${id}`, {}, false)
+/** Cópia da conversa do link para a conta logada. Devolve o id da Conversa nova. */
+export const continuarShare = (id: string) =>
+  pedir<{ conversation_id: string }>(`/api/s/${id}/fork`, { method: 'POST' })
 
 /** Copia para a área de transferência. Falso quando o browser recusa. */
 export async function copiar(texto: string): Promise<boolean> {
