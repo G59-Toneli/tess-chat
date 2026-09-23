@@ -1,5 +1,6 @@
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { EstadoCarregando, EstadoErro, EstadoVazio } from '@/components/estados'
+import { Button } from '@/components/ui/button'
 
 /**
  * Tela placeholder até o ticket da funcionalidade.
@@ -18,6 +19,24 @@ export function Placeholder({ titulo }: { titulo: string }) {
       ) : (
         <EstadoVazio titulo="Nada por aqui ainda" descricao="Esta tela chega num próximo ticket." />
       )}
+    </div>
+  )
+}
+
+/** Rota inexistente: diz que o endereço não existe e leva de volta ao chat. */
+export function NaoEncontrada() {
+  return (
+    <div className="mx-auto max-w-4xl p-8">
+      <h1 className="mb-6 text-2xl font-semibold">Página não encontrada</h1>
+      <EstadoVazio
+        titulo="Este endereço não existe"
+        descricao="Confira o link ou volte para as suas conversas."
+        acao={
+          <Button variant="outline" asChild>
+            <Link to="/">Voltar ao chat</Link>
+          </Button>
+        }
+      />
     </div>
   )
 }

@@ -113,7 +113,7 @@ export function Creditos() {
                   </CardHeader>
                   <CardContent>
                     <ChartContainer config={config} className="h-64 w-full">
-                      <BarChart data={top5(painel.por_modelo)} layout="vertical" margin={{ left: 8, right: 24 }}>
+                      <BarChart data={top5(painel.por_modelo)} layout="vertical" margin={{ left: 8, right: 32 }}>
                         <CartesianGrid horizontal={false} />
                         <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={(v) => usdEixo(v)} />
                         <YAxis type="category" dataKey="model" tickLine={false} axisLine={false} width={150} interval={0} />
@@ -146,7 +146,7 @@ export function Creditos() {
                         <TableHead>Modelo</TableHead>
                         <TableHead className="text-right">Entrada</TableHead>
                         <TableHead className="text-right">Saída</TableHead>
-                        <TableHead className="text-right">Thinking</TableHead>
+                        <TableHead className="text-right">Raciocínio</TableHead>
                         <TableHead className="text-right">Cache</TableHead>
                         <TableHead className="text-right">Custo</TableHead>
                       </TableRow>

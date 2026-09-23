@@ -1,7 +1,7 @@
 # 27 — Scrollbar do chat e auditoria de UX do app inteiro
 
 **Type:** task (AFK, só web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 26
 **Refs:** `docs/UI-GUIA.md`, `CONTEXT.md`. Pedido do Toneli em 23/09 de manhã.
 
@@ -16,3 +16,10 @@
 - [ ] `docs/UX-AUDITORIA.md` cobre todas as telas listadas, com "corrigido" ou "proposta" em cada achado.
 - [ ] Screenshots antes/depois de cada correção visual relevante em `.scratch/desafio/screens/27-*.png`.
 - [ ] `tsc --noEmit` e `npm run build` limpos.
+
+## Answer
+- Parte 1: scrollbar global de 8 px, sem trilho e sem setas, polegar só no hover da área rolável (variável CSS, porque o Chromium não repinta `:hover::-webkit-scrollbar-thumb`). Polegar em `muted-foreground` 50%, não na borda: no dark a borda some. Screenshots `27-scrollbar*.png` (antes, dark, light, sidebar, popover).
+- Parte 2: `docs/UX-AUDITORIA.md` com 27 achados em todas as telas pedidas: 14 corrigidos (foco no input, 404, Perfil fora do menu, erro da sidebar, textos de Tools, Conectores e Roteador, filtros da Auditoria a 1280 px, MCP) e 13 propostas.
+- Propostas altas: navegação escondida no menu do avatar; botão demo que só preenche.
+- Ressalva: compactação não verificada visualmente (sem Resumo acessível no banco de dev). Estados de erro das páginas internas vieram dos tickets 13 a 17, não foram simulados aqui.
+- Nada em `api/`. Nenhum `REVISAR(human)` novo.

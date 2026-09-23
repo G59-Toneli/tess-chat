@@ -350,7 +350,7 @@ function Entrada({
     >
       <AnexosDoPrompt />
       <PromptInputBody>
-        <PromptInputTextarea placeholder="Digite sua mensagem..." aria-label="Mensagem" />
+        <PromptInputTextarea placeholder="Digite sua mensagem..." aria-label="Mensagem" autoFocus />
       </PromptInputBody>
       <PromptInputFooter>
         <div className="flex items-center gap-1">

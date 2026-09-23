@@ -10,7 +10,7 @@ import { Configuracao } from '@/pages/Configuracao'
 import { Creditos } from '@/pages/Creditos'
 import { Login } from '@/pages/Login'
 import { Mcp } from '@/pages/Mcp'
-import { Placeholder } from '@/pages/Placeholder'
+import { NaoEncontrada, Placeholder } from '@/pages/Placeholder'
 import { Tools } from '@/pages/Tools'
 
 export default function App() {
@@ -30,7 +30,7 @@ export default function App() {
         <Route path="/compartilhados" element={<Compartilhados />} />
         <Route path="/perfil" element={<Placeholder titulo="Perfil" />} />
         <Route path="/admin" element={<Admin />} />
-        <Route path="*" element={<Placeholder titulo="Página não encontrada" />} />
+        <Route path="*" element={<NaoEncontrada />} />
       </Route>
     </Routes>
   )

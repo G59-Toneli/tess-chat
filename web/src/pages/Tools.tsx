@@ -48,7 +48,9 @@ export function Tools() {
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Tools</h1>
         <p className="text-sm text-muted-foreground">
-          Desligar aqui vale para todas as conversas. Cada conversa ainda pode desligar a sua no painel lateral.
+          {admin
+            ? 'Desligar aqui vale para todas as conversas. Cada conversa ainda pode desligar a sua no botão de tools, na barra da mensagem.'
+            : 'Só a conta de administração liga ou desliga uma tool para todas as conversas. Você liga e desliga as da sua conversa no botão de tools, na barra da mensagem.'}
         </p>
       </div>
       {erro ? (
@@ -56,7 +58,7 @@ export function Tools() {
       ) : !tools ? (
         <EstadoCarregando />
       ) : tools.length === 0 ? (
-        <EstadoVazio titulo="Nenhuma tool cadastrada" descricao="As tools nativas aparecem aqui depois da migração." />
+        <EstadoVazio titulo="Nenhuma tool cadastrada" descricao="Nenhuma tool está disponível no momento." />
       ) : (
         <div className="space-y-4">
           {tools.map((t) => (

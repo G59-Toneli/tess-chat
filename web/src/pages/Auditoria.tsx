@@ -108,7 +108,7 @@ export function Auditoria() {
         {admin && (
           <Filtro rotulo="Usuário" id="f-usuario">
             <Select value={filtro.usuario || TODOS} onValueChange={(v) => mudar('usuario', v)}>
-              <SelectTrigger id="f-usuario" className="w-56">
+              <SelectTrigger id="f-usuario" className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -124,7 +124,7 @@ export function Auditoria() {
         )}
         <Filtro rotulo="Conversa" id="f-conversa">
           <Select value={filtro.conversa || TODOS} onValueChange={(v) => mudar('conversa', v)}>
-            <SelectTrigger id="f-conversa" className="w-56">
+            <SelectTrigger id="f-conversa" className="w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -142,7 +142,7 @@ export function Auditoria() {
         </Filtro>
         <Filtro rotulo="Tipo" id="f-tipo">
           <Select value={filtro.tipo || TODOS} onValueChange={(v) => mudar('tipo', v)}>
-            <SelectTrigger id="f-tipo" className="w-48">
+            <SelectTrigger id="f-tipo" className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -156,10 +156,10 @@ export function Auditoria() {
           </Select>
         </Filtro>
         <Filtro rotulo="De" id="f-de">
-          <Input id="f-de" type="date" className="w-40" value={filtro.de} onChange={(e) => mudar('de', e.target.value)} />
+          <Input id="f-de" type="date" className="w-36" value={filtro.de} onChange={(e) => mudar('de', e.target.value)} />
         </Filtro>
         <Filtro rotulo="Até" id="f-ate">
-          <Input id="f-ate" type="date" className="w-40" value={filtro.ate} onChange={(e) => mudar('ate', e.target.value)} />
+          <Input id="f-ate" type="date" className="w-36" value={filtro.ate} onChange={(e) => mudar('ate', e.target.value)} />
         </Filtro>
         {temFiltro && (
           <Button variant="ghost" onClick={() => setParams({})}>
@@ -195,7 +195,7 @@ export function Auditoria() {
                   {admin && <TableHead>Usuário</TableHead>}
                   <TableHead>Conversa</TableHead>
                   <TableHead>Modelo</TableHead>
-                  <TableHead className="text-right">Tokens</TableHead>
+                  <TableHead className="text-right">Tokens (entrada / saída)</TableHead>
                   <TableHead className="text-right">Custo</TableHead>
                   <TableHead className="text-right">Latência</TableHead>
                 </TableRow>
