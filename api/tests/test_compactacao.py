@@ -3,47 +3,23 @@
 import json
 from contextlib import asynccontextmanager
 
-import pytest
-from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
+from pydantic_ai.messages import ModelMessage, ModelRequest, ToolCallPart, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
 from pydantic_ai.usage import RequestUsage, RunUsage
 from sqlalchemy import select
 
 from app.chat import MODELO
-from app.compactacao import MODELO_RESUMO, modelo_resumo, should_compact
+from app.compactacao import MODELO_RESUMO, should_compact
 from app.config import Settings, settings
 from app.credito import CreditLedger
 from app.db import SessionLocal
-from app.main import app
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
+from tests.test_chat import corpo
 from tests.test_conversas import criar, usuario
-from tests.test_tools import Rotas, usar_rotas  # noqa: F401  (fixture)
+from tests.test_tools import Rotas
 
 LONGO = " ".join(["palavra"] * 900)
 RESUMO = "RESUMO: o usuário se chama Ana e gosta de xadrez."
-
-
-@pytest.fixture
-def limiar(monkeypatch):
-    monkeypatch.setattr(settings, "compactacao_limiar", 2_000)
-    monkeypatch.setattr(settings, "compactacao_turnos_literais", 2)
-
-
-@pytest.fixture
-def resumidor():
-    """Troca o modelo do Resumo. Guarda o texto que ele recebeu em cada chamada."""
-    entradas: list[str] = []
-
-    def responder(msgs: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
-        entradas.append(str([p.content for m in msgs for p in m.parts if isinstance(p, UserPromptPart)]))
-        from pydantic_ai.messages import TextPart
-
-        return ModelResponse(parts=[TextPart(RESUMO)])
-
-    app.dependency_overrides[modelo_resumo] = lambda: FunctionModel(responder, model_name=MODELO_RESUMO)
-    yield entradas
-    app.dependency_overrides.pop(modelo_resumo, None)
 
 
 class ComUso(FunctionModel):

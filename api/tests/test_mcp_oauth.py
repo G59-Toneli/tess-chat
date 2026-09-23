@@ -20,10 +20,10 @@ from app.main import app
 from app.mcp_oauth import CALLBACK, transporte_mcp_oauth
 from app.tools import transporte
 from tests.test_auth import eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
+from tests.test_chat import corpo
 from tests.test_conectores import modelo_que_chama, ultima_resposta
 from tests.test_conversas import criar, usuario
-from tests.test_mcp import SERVIDOR, TOKEN, demo, porta_livre  # noqa: F401  (fixture)
+from tests.test_mcp import SERVIDOR, TOKEN, porta_livre
 
 AS = "https://8.8.8.8"  # IP público literal: passa no validar_url sem DNS; o MockTransport atende
 CLIENT_ID = "cli-dcr-1"
@@ -81,7 +81,7 @@ class AuthServer:
 
 
 @pytest.fixture
-def auth(demo):  # noqa: F811
+def auth(demo):
     """O mesmo MockTransport nas rotas OAuth e no turno do chat."""
     a = AuthServer(demo)
     mt = httpx.MockTransport(a)
@@ -170,7 +170,7 @@ async def test_servidor_sem_dcr_pede_token_e_nao_cria_linha(client, auth):
     assert (await client.get("/api/mcp-servers", headers=h)).json() == []
 
 
-async def test_servidor_com_401_sem_metadata_pede_token(client, demo):  # noqa: F811
+async def test_servidor_com_401_sem_metadata_pede_token(client, demo):
     """O mcp-demo com token responde 401 sem WWW-Authenticate e 404 nos well-known."""
     _, h = await usuario(client)
 
@@ -328,7 +328,7 @@ async def test_reconectar_reaproveita_a_linha_do_servidor(client, auth):
 # ---------- Turno ----------
 
 
-async def test_token_vencido_renova_antes_do_turno_e_o_header_muda(client, auth, usar_modelo):  # noqa: F811
+async def test_token_vencido_renova_antes_do_turno_e_o_header_muda(client, auth, usar_modelo):
     uid, h = await usuario(client)
     sid = await conectar(client, h, auth)
     somar = next(t["nome"] for t in (await servidor(client, h, sid))["tools"] if t["nome"].endswith("_somar"))
@@ -346,7 +346,7 @@ async def test_token_vencido_renova_antes_do_turno_e_o_header_muda(client, auth,
     assert await eventos("mcp_oauth_refreshed", user_id=uid)
 
 
-async def test_refresh_recusado_marca_expirado_e_tira_o_servidor_do_turno(client, auth, usar_modelo):  # noqa: F811
+async def test_refresh_recusado_marca_expirado_e_tira_o_servidor_do_turno(client, auth, usar_modelo):
     uid, h = await usuario(client)
     sid = await conectar(client, h, auth)
     somar = next(t["nome"] for t in (await servidor(client, h, sid))["tools"] if t["nome"].endswith("_somar"))

@@ -18,11 +18,11 @@ from app.db import SessionLocal
 from app.main import app
 from tests.test_auditoria import demo
 from tests.test_auth import SENHA, eventos
-from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
-from tests.test_compactacao import LONGO, modelo_eco, resumidor  # noqa: F401  (fixture)
+from tests.test_chat import corpo
+from tests.test_compactacao import LONGO, modelo_eco
 from tests.test_conversas import criar, usuario
-from tests.test_roteador import CASOS, gravada, usar_jev  # noqa: F401  (fixture)
-from tests.test_tools import Rotas, modelo_que_busca, usar_rotas  # noqa: F401  (fixture)
+from tests.test_roteador import CASOS, gravada
+from tests.test_tools import Rotas, modelo_que_busca
 
 LITE = "gemini-3.1-flash-lite"
 
