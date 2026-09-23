@@ -1,4 +1,7 @@
-"""Configuração por Usuário e por Conversa. Conversa sobrepõe Usuário, que sobrepõe o default do .env (ticket 14)."""
+"""Configuração por Usuário e por Conversa. Conversa sobrepõe Usuário, que sobrepõe o default do .env (ticket 14).
+
+Configuração global: chaves que valem para a instância inteira, só admin altera.
+"""
 
 import uuid
 from datetime import datetime
@@ -6,7 +9,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import BigInteger, DateTime, ForeignKey, func, select
+from sqlalchemy import BigInteger, DateTime, ForeignKey, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
@@ -197,3 +200,44 @@ async def definir_cap(
         )
     await session.commit()
     return CapOut(user_id=uid, cap_micro_usd=body.cap_micro_usd)
+
+
+class ConfiguracaoGlobal(Base):
+    """Linha única (id = 1) com as chaves globais."""
+
+    __tablename__ = "configuracao_global"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cadastro_aberto: Mapped[bool]
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ConfiguracaoGlobalIn(BaseModel):
+    cadastro_aberto: bool
+
+
+async def cadastro_aberto(session: AsyncSession) -> bool:
+    return bool(await session.scalar(select(ConfiguracaoGlobal.cadastro_aberto).where(ConfiguracaoGlobal.id == 1)))
+
+
+async def cadastro_permitido(session: Sessao) -> None:
+    """Dependência de `/auth/register`: cadastro fechado responde 403."""
+    if not await cadastro_aberto(session):
+        raise HTTPException(status_code=403, detail="Cadastro fechado. Peça acesso ao administrador.")
+
+
+@router.put("/api/admin/configuracao")
+async def salvar_global(
+    body: ConfiguracaoGlobalIn, session: Sessao, admin: Annotated[User, Depends(current_superuser)]
+) -> ConfiguracaoGlobalIn:
+    """Configuração global. Só admin."""
+    antigo = await cadastro_aberto(session)
+    if antigo != body.cadastro_aberto:
+        q = update(ConfiguracaoGlobal).where(ConfiguracaoGlobal.id == 1)
+        await session.execute(q.values(cadastro_aberto=body.cadastro_aberto, updated_at=func.now()))
+        await audit(
+            session, "settings_changed", user_id=admin.id,
+            payload={"escopo": "global", "alteracoes": {"cadastro_aberto": {"de": antigo, "para": body.cadastro_aberto}}},
+        )
+    await session.commit()
+    return body
