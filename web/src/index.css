@@ -128,3 +128,46 @@
     @apply font-sans;
     }
 }
+/* Scrollbar fina, trilho transparente, polegar discreto do tema (ticket 27).
+   Chromium ignora ::-webkit-scrollbar quando scrollbar-color existe, e só o webkit tira as setas.
+   Por isso as propriedades padrão ficam só para quem não tem o pseudo-elemento (Firefox). */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+  /* Polegar some fora do hover da área rolável. A cor vem de variável: o Chromium não
+     reavalia :hover::-webkit-scrollbar-thumb, mas repinta quando a variável muda.
+     A borda do tema no dark é branco a 10% e some; meio muted-foreground lê nos dois temas. */
+  * {
+    --polegar: transparent;
+  }
+  *:hover {
+    --polegar: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--polegar);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+    }
+    *:hover {
+      scrollbar-color: color-mix(in oklab, var(--muted-foreground) 50%, transparent) transparent;
+    }
+  }
+}
