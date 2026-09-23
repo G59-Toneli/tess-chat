@@ -8,6 +8,7 @@ import { Compartilhamento } from '@/pages/Compartilhamento'
 import { Creditos } from '@/pages/Creditos'
 import { Login } from '@/pages/Login'
 import { Placeholder } from '@/pages/Placeholder'
+import { Tools } from '@/pages/Tools'
 
 export default function App() {
   return (
@@ -20,7 +21,7 @@ export default function App() {
         <Route path="/config" element={<Placeholder titulo="Configuração" />} />
         <Route path="/auditoria" element={<Auditoria />} />
         <Route path="/creditos" element={<Creditos />} />
-        <Route path="/tools" element={<Placeholder titulo="Tools" />} />
+        <Route path="/tools" element={<Tools />} />
         <Route path="/mcp" element={<Placeholder titulo="Servidores MCP" />} />
         <Route path="/conectores" element={<Placeholder titulo="Conectores" />} />
         <Route path="/compartilhados" element={<Compartilhados />} />

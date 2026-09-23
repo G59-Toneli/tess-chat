@@ -1,16 +1,23 @@
 """Roteador: o Jev escolhe a Tool do turno antes do Gemini, com gate de confiança (ADR 0005)."""
 
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from functools import cache
 from typing import Any
 
+from fastapi import APIRouter
+from pydantic import BaseModel
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.settings import ModelSettings, ToolChoice
+from sqlalchemy import select
 from typesafe_sdk import AsyncTypeSafeClient, Choice, RetryPolicy
 
+from app.audit import AuditEvent
 from app.config import settings
+from app.conversas import Sessao, Usuario, conversa_do_usuario
 
 # Nome na Tabela de Preço. O modelo real (ex.: jev-1.13.0) vai só no payload do evento.
 PRECO_JEV = "jev-latest"
@@ -90,3 +97,31 @@ class Gate(AbstractCapability[Any]):
             return ModelSettings(tool_choice=self.escolha) if ctx.run_step == 1 and self.escolha else ModelSettings()
 
         return por_passo
+
+
+# ---------- API ----------
+
+
+class DecisaoOut(BaseModel):
+    ts: datetime
+    tool: str
+    confidence: float
+    forcada: bool
+
+
+router = APIRouter(tags=["roteador"])
+
+
+@router.get("/api/conversations/{cid}/roteador", response_model=list[DecisaoOut])
+async def decisoes(cid: uuid.UUID, session: Sessao, user: Usuario) -> list[DecisaoOut]:
+    """Decisões do Roteador na Conversa, da mais antiga à mais nova. Lidas do evento router_decision."""
+    await conversa_do_usuario(session, user, cid)
+    q = (
+        select(AuditEvent)
+        .where(AuditEvent.conversation_id == cid, AuditEvent.event_type == "router_decision")
+        .order_by(AuditEvent.ts, AuditEvent.id)
+    )
+    return [
+        DecisaoOut(ts=e.ts, tool=e.payload["tool"], confidence=e.payload["confidence"], forcada=e.payload["forcada"])
+        for e in await session.scalars(q)
+    ]

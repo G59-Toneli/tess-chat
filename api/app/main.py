@@ -16,6 +16,7 @@ from app.conversas import router as conversas_router
 from app.credito import router as credito_router
 from app.db import get_session
 from app.estaticos import montar_estaticos
+from app.roteador import router as roteador_router
 from app.shares import router as shares_router
 from app.tools import router as tools_router
 
@@ -35,6 +36,7 @@ app.include_router(chat_router)
 app.include_router(credito_router)
 app.include_router(tools_router)
 app.include_router(shares_router)
+app.include_router(roteador_router)
 app.include_router(auditoria_router)
 
 

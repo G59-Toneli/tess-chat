@@ -207,3 +207,27 @@ async def test_web_fetch_ligada_no_chat_gera_tool_call(client, usar_modelo, usar
     [ev] = await eventos("tool_call", user_id=uid)
     assert ev.payload["tool"] == "web_fetch"
     assert ev.payload["args"] == {"url": "https://example.com"}
+
+
+async def test_toggle_global_desliga_em_toda_conversa_e_e_auditado(client):
+    uid, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    try:
+        r = await client.put("/api/tools/web_fetch", json={"ativa_global": False}, headers=h)
+        assert r.status_code == 200, r.text
+        assert r.json()["ativa_global"] is False
+        catalogo = {t["nome"]: t for t in (await client.get("/api/tools", headers=h)).json()}
+        assert catalogo["web_fetch"]["ativa_global"] is False
+        # Conversa sem toggle próprio herda o global.
+        conv = (await client.get(f"/api/conversations/{cid}/tools", headers=h)).json()
+        assert estado(conv)["web_fetch"] is False
+        [ev] = await eventos("tool_toggled_global", user_id=uid)
+        assert ev.payload == {"tool": "web_fetch", "ativa_global": False}
+    finally:
+        await client.put("/api/tools/web_fetch", json={"ativa_global": True}, headers=h)
+
+
+async def test_toggle_global_de_tool_inexistente_e_sem_login(client):
+    _, h = await usuario(client)
+    assert (await client.put("/api/tools/nao_existe", json={"ativa_global": True}, headers=h)).status_code == 404
+    assert (await client.put("/api/tools/web_fetch", json={"ativa_global": True})).status_code == 401
