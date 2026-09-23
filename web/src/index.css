@@ -48,6 +48,21 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Indicador de trabalhando (ticket 37), keyframes do Loading State do beautifului.dev. */
+@theme {
+    --animate-pixel-on: pixel-on 650ms ease-in-out infinite;
+    --animate-shimmer-text: shimmer-text 1.4s linear infinite;
+    @keyframes pixel-on {
+        0%, 100% { opacity: 0.15; }
+        18%, 42% { opacity: 1; }
+        62% { opacity: 0.15; }
+    }
+    @keyframes shimmer-text {
+        0% { background-position: 150%; }
+        100% { background-position: -50%; }
+    }
+}
+
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
