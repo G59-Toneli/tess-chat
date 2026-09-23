@@ -1,7 +1,7 @@
 # 45 — Link público mostra cards de tool e o rascunho de e-mail (só leitura)
 
 **Type:** task (AFK, web/ e, se preciso, api/app/shares.py)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ADR 0008 (compartilhamento), ADR 0013 (envio com confirmação), `docs/UI-GUIA.md`, ticket 37 (indicador). Feedback do Toneli em 23/09 com print de `/s/<id>`.
 
@@ -14,7 +14,14 @@
 - Anexos da conversa (imagem/PDF) no link: fora do escopo; manter como hoje.
 
 **Aceite:**
-- [ ] Screenshot dark 1440x900 `45-share-rascunho.png` de um link com card de tool e card de rascunho visíveis, sem botão Enviar.
-- [ ] Teste (ou checagem no Brave com API mockada) de que a página pública não faz nenhuma requisição a `/api/` fora de `/api/s/{id}`.
-- [ ] Chat logado continua com o rascunho clicável (sem regressão).
-- [ ] `tsc` e `npm run build` limpos.
+- [x] Screenshot dark 1440x900 `45-share-rascunho.png` de um link com card de tool e card de rascunho visíveis, sem botão Enviar.
+- [x] Teste (ou checagem no Brave com API mockada) de que a página pública não faz nenhuma requisição a `/api/` fora de `/api/s/{id}`.
+- [x] Chat logado continua com o rascunho clicável (sem regressão).
+- [x] `tsc` e `npm run build` limpos.
+
+## Answer
+- Página pública desenha texto e cards de tool com `BlocoTool`; o `gmail_send` vira `RascunhoEmail somenteLeitura` (sem botões, sem `lerRascunho`). Turnos juntados por `juntarTurnos` em `lib/api.ts`, extraído do Chat e usado nos dois.
+- Estado real do Rascunho: `publico()` em `shares.py` troca só `output.estado` pelo valor de `email_drafts`, e só de Rascunho da mesma Conversa. Pendente no link aparece como "Pendente", não "Aguardando você".
+- Fora: marcador de compactação (endpoint autenticado), anexos e aviso de turno interrompido.
+- Verificação: Brave com API mockada, só `GET /api/s/{id}` sai da página pública, 0 botão Enviar/Descartar; Chat logado mantém Enviar/Descartar. Screens `45-share-rascunho.png` e `45-chat-rascunho-logado.png`.
+- REVISAR(human): `_com_estado_dos_rascunhos` em `api/app/shares.py`.

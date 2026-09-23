@@ -1,7 +1,7 @@
 # 46 — "Continuar esta conversa" a partir do link (fork para a conta de quem está logado)
 
 **Type:** task (AFK, api/ e web/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 45 (mesma página `Compartilhamento.tsx`)
 **Refs:** ADR 0008, ADR 0013, ADR 0005/0006 se tratarem de crédito e auditoria. Decisão do Toneli em 23/09.
 

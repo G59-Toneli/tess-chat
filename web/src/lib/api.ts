@@ -1,4 +1,5 @@
 // Cliente da API: token JWT no localStorage, header Bearer, 401 volta para o login.
+import type { UIMessage } from 'ai'
 
 const CHAVE_TOKEN = 'token'
 
@@ -100,6 +101,20 @@ export const renomearConversa = (id: string, title: string) =>
   api<Conversa>(`/api/conversations/${id}`, { method: 'PATCH', ...json({ title }) })
 export const apagarConversa = (id: string) => api<void>(`/api/conversations/${id}`, { method: 'DELETE' })
 export const listarMensagens = (id: string) => api<MensagemApi[]>(`/api/conversations/${id}/messages`)
+
+/** Um turno com tool vira várias linhas assistant seguidas. Junto numa só, como no stream.
+ * Fica o id da última linha: é ela que tem o uso. Linhas `tool` ficam fora. */
+export function juntarTurnos(linhas: MensagemApi[]): UIMessage[] {
+  const mensagens: UIMessage[] = []
+  for (const m of linhas.filter((l) => l.role === 'user' || l.role === 'assistant')) {
+    const anterior = mensagens.at(-1)
+    const parts = m.parts as UIMessage['parts']
+    if (m.role === 'assistant' && anterior?.role === 'assistant')
+      mensagens[mensagens.length - 1] = { ...anterior, id: String(m.id), parts: [...anterior.parts, ...parts] }
+    else mensagens.push({ id: String(m.id), role: m.role as 'user' | 'assistant', parts })
+  }
+  return mensagens
+}
 
 const ERRO_PROVEDOR = 'O provedor do modelo falhou. Tente de novo.'
 

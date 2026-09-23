@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.audit import audit
 from app.auth import User, current_user
+from app.conectores import EmailDraft
 from app.conversas import Conversation, Message, conversa_do_usuario
 from app.db import Base, get_session
 
@@ -154,8 +155,41 @@ async def publico(share_id: str, session: Sessao, response: Response) -> SharePu
         # Só a parte antes do @: o link é público, o e-mail inteiro não.
         shared_by=dono.email.split("@")[0],
         created_at=share.created_at,
-        messages=[MensagemPublica.model_validate(m, from_attributes=True) for m in msgs],
+        messages=await _com_estado_dos_rascunhos(session, conv.id, msgs),
     )
+
+
+def _draft_id(parte: dict[str, Any]) -> uuid.UUID | None:
+    saida = parte.get("output")
+    if parte.get("type") != "tool-gmail_send" or not isinstance(saida, dict):
+        return None
+    try:
+        return uuid.UUID(str(saida.get("draft_id")))
+    except ValueError:
+        return None
+
+
+# REVISAR(human): a part gravada fica "pendente" para sempre; o estado real mora em email_drafts.
+# O link troca só o campo estado, e só de Rascunho da mesma Conversa: nenhum dado além do que a Mensagem já mostra.
+async def _com_estado_dos_rascunhos(
+    session: AsyncSession, cid: uuid.UUID, msgs: list[Message]
+) -> list[MensagemPublica]:
+    ids = {d for m in msgs for p in m.parts if (d := _draft_id(p))}
+    estados: dict[uuid.UUID, str] = {}
+    if ids:
+        q = select(EmailDraft.id, EmailDraft.estado).where(EmailDraft.id.in_(ids), EmailDraft.conversation_id == cid)
+        estados = {i: e for i, e in (await session.execute(q)).all()}
+
+    def parte(p: dict[str, Any]) -> dict[str, Any]:
+        d = _draft_id(p)
+        if d not in estados:
+            return p
+        return {**p, "output": {**p["output"], "estado": estados[d]}}
+
+    return [
+        MensagemPublica(id=m.id, role=m.role, parts=[parte(p) for p in m.parts], created_at=m.created_at)
+        for m in msgs
+    ]
 
 
 @router.get("/s/{share_id}", include_in_schema=False)
