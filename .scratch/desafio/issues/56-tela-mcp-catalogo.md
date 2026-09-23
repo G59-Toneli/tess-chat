@@ -1,7 +1,7 @@
 # 56 — Tela MCP: catálogo + URL única com detecção de auth
 
 **Type:** task (web/ + api/app/mcp_oauth.py)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 52 (resolved)
 **Refs:** ticket 52, ADR 0022, `docs/UI-GUIA.md`. Pedido do Toneli em 23/09, depois de validar Notion e Stripe em produção.
 
@@ -37,3 +37,9 @@ SSRF e erro de rede continuam como 422/502 com mensagem. Não crie a linha `agua
 
 ## Fora do escopo
 Linear e Atlassian no catálogo. Popup. Reaproveitar o DCR entre cliques.
+
+## Answer
+`POST /oauth/iniciar` devolve `modo` (`oauth`, `sem_auth`, `token`) e só grava linha no `oauth`; SSRF segue 422, rede e status estranho 502. Tela `/mcp` em três blocos: catálogo Notion/Stripe (Conectar, Conectado, Reconectar), "Outro servidor" só com URL (o app decide o caminho; no modo `token` expande nome e token) e "Meus servidores" como antes.
+Testes: 16/16 `test_mcp_oauth` (5 novos: token sem DCR, token com 401 sem metadata no mcp-demo, `sem_auth` com o mcp-demo aberto e POST sem header, URL fora do ar 502, URL interna 422) + 25/25 `test_mcp`. `npm run build` limpo. Screens: `56-catalogo.png`, `56-outro-servidor-token.png`.
+Ressalva: status fora de 2xx/401/403 na sonda ainda tenta os well-known; sem metadata vira 502 (DECISOES-AUTONOMAS). Notion e Stripe responderem 401 ao initialize é INFERIDO do 52, sem chamada real neste ticket. ADR 0022 item 3 ganhou nota de atualização.
+REVISAR(human): `iniciar` (escolha do modo), `_descobrir` (sonda) e `OutroServidor` no front.
