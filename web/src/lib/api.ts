@@ -102,6 +102,14 @@ export const renomearConversa = (id: string, title: string) =>
 export const apagarConversa = (id: string) => api<void>(`/api/conversations/${id}`, { method: 'DELETE' })
 export const listarMensagens = (id: string) => api<MensagemApi[]>(`/api/conversations/${id}/messages`)
 
+/** Id (do banco) da última Mensagem coberta pelo Resumo vigente, ou null sem Resumo. */
+export function lerCorte(conversaId: string): Promise<number | null> {
+  return fetch(`/api/chat/${conversaId}/compactacao`, { headers: authHeader() })
+    .then((r) => (r.ok ? r.json() : { ate_message_id: null }))
+    .then((j: { ate_message_id: number | null }) => j.ate_message_id)
+    .catch(() => null)
+}
+
 /** Um turno com tool vira várias linhas assistant seguidas. Junto numa só, como no stream.
  * Fica o id da última linha: é ela que tem o uso. Linhas `tool` ficam fora. */
 export function juntarTurnos(linhas: MensagemApi[]): UIMessage[] {
