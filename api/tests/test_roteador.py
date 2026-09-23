@@ -10,11 +10,12 @@ from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy
 
 from app.config import settings
 from app.main import app
-from app.roteador import apply_gate, cliente_jev, decidir, opcoes
+from app.roteador import Decisao, apply_gate, cliente_jev, decidir, opcoes
 from tests.test_anexos import PDF, parte, subir
 from tests.test_auth import eventos
 from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
 from tests.test_credito import linhas
+from tests.test_mcp import cadastrar, demo  # noqa: F401  (fixture)
 from tests.test_conversas import criar, usuario
 from tests.test_tools import Rotas, modelo_que_busca, usar_rotas  # noqa: F401  (fixture)
 
@@ -195,3 +196,42 @@ async def test_decisoes_da_conversa_listam_tool_e_confianca(client, usar_modelo,
 
     _, outro = await usuario(client)
     assert (await client.get(f"/api/conversations/{cid}/roteador", headers=outro)).status_code == 404
+
+
+# ---------- Origem MCP (ticket 36) ----------
+
+
+def test_gate_nao_forca_tool_mcp():
+    d = Decisao("stripe_ab12_api_search", 0.9, {}, "jev", 0, 0)
+    assert apply_gate(d, 0.7, "mcp") is None
+    assert apply_gate(Decisao("web_search", 0.9, {}, "jev", 0, 0), 0.7, "nativa") == ["web_search"]
+    assert apply_gate(Decisao("gmail_send", 0.9, {}, "jev", 0, 0), 0.7, "google") == ["gmail_send"]
+
+
+def decidiu(tool: str, confianca: float):
+    """Resposta do Jev com a Tool escolhida e a confiança dada."""
+    caso = CASOS[0]
+    resposta = {
+        **caso["response"],
+        "answers": {"tool": {"type": "choice", "choice": tool, "confidence": confianca, "probabilities": {tool: confianca}}},
+    }
+    return gravada({"status": 200, "response": resposta})
+
+
+async def test_tool_mcp_com_confianca_alta_fica_sugerida_e_o_modelo_escolhe(client, demo, usar_modelo, usar_jev):
+    uid, h = await usuario(client)
+    tools = (await cadastrar(client, h, demo)).json()["tools"]
+    somar = next(t["nome"] for t in tools if t["nome"].endswith("_somar"))
+    usar_jev(decidiu(somar, 0.9))
+    vistos: list[AgentInfo] = []
+    usar_modelo(modelo_que_busca(vistos, chamar="nada"))
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("quanto é 2 + 3?"), headers=h)
+
+    assert r.status_code == 200, r.text
+    assert [(i.model_settings or {}).get("tool_choice") for i in vistos] == [None]
+    [ev] = await eventos("router_decision", user_id=uid)
+    assert ev.payload["tool"] == somar and ev.payload["forcada"] is False
+    [d] = (await client.get(f"/api/conversations/{cid}/roteador", headers=h)).json()
+    assert d["forcada"] is False and d["sugerida"] is True

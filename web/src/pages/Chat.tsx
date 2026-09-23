@@ -414,8 +414,8 @@ function LinhaMensagem({
   const corte = interrupcaoDa(mensagem)
   const interrompidas = new Set(corte?.tool_call_ids ?? [])
   const rodando = toolRodando(mensagem) ? tools.find((p) => p.state !== 'output-available') : undefined
-  // Só decisão que forçou a Tool. Abaixo do limiar quem decidiu foi o Gemini.
-  const decisao = uso?.decisao?.forcada ? uso.decisao : undefined
+  // Decisão que forçou a Tool, ou que passou do limiar em Tool MCP (sugerida). Abaixo do limiar quem decidiu foi o Gemini.
+  const decisao = uso?.decisao?.forcada || uso?.decisao?.sugerida ? uso.decisao : undefined
   return (
     <div className={cn('flex gap-3', usuario && 'flex-row-reverse')}>
       {usuario ? (

@@ -17,7 +17,7 @@ export type ToolConversa = {
   ativa: boolean
   servidor?: string | null
 }
-export type DecisaoRoteador = { ts: string; tool: string; confidence: number; forcada: boolean }
+export type DecisaoRoteador = { ts: string; tool: string; confidence: number; forcada: boolean; sugerida: boolean }
 /** A API já devolve estes campos em /messages; o tipo base do 07 não os declara. */
 export type MensagemComUso = MensagemApi & {
   model: string | null

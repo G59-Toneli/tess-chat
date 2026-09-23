@@ -79,9 +79,11 @@ async def decidir(client: AsyncTypeSafeClient, texto: str, anexos: list[str], cr
 
 # REVISAR(human): força a Tool só se o Jev escolheu uma Tool (não `nenhuma`) com confiança >= limiar.
 # `nenhuma` com confiança alta também vira AUTO: forçar "sem tool" não ganha nada e quebra se o Jev errar.
+# Tool de origem `mcp` nunca é forçada (emenda 23/09 ao ADR 0005): o Jev não tem contexto para escolher
+# entre tools genéricas de servidor externo, e forçar errado custa o turno inteiro.
 # None é AUTO (o Gemini decide). Lista de um nome vira ANY + allowedFunctionNames no Google.
-def apply_gate(decision: Decisao | None, threshold: float) -> ToolChoice:
-    if decision is None or decision.tool == NENHUMA or decision.confidence < threshold:
+def apply_gate(decision: Decisao | None, threshold: float, origem: str | None = None) -> ToolChoice:
+    if decision is None or decision.tool == NENHUMA or decision.confidence < threshold or origem == "mcp":
         return None
     return [decision.tool]
 
@@ -107,6 +109,7 @@ class DecisaoOut(BaseModel):
     tool: str
     confidence: float
     forcada: bool
+    sugerida: bool  # passou do limiar, mas a Tool é MCP: o modelo escolheu livre
 
 
 router = APIRouter(tags=["roteador"])
@@ -122,6 +125,12 @@ async def decisoes(cid: uuid.UUID, session: Sessao, user: Usuario) -> list[Decis
         .order_by(AuditEvent.ts, AuditEvent.id)
     )
     return [
-        DecisaoOut(ts=e.ts, tool=e.payload["tool"], confidence=e.payload["confidence"], forcada=e.payload["forcada"])
+        DecisaoOut(
+            ts=e.ts,
+            tool=e.payload["tool"],
+            confidence=e.payload["confidence"],
+            forcada=e.payload["forcada"],
+            sugerida=e.payload.get("sugerida", False),
+        )
         for e in await session.scalars(q)
     ]

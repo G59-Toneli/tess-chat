@@ -55,7 +55,7 @@ export function LinhaRoteador({ decisao }: { decisao: DecisaoRoteador }) {
   return (
     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <RouteIcon className="size-3.5" />
-      Roteador escolheu {decisao.tool} · confiança {decisao.confidence.toFixed(2).replace('.', ',')}
+      Roteador {decisao.forcada ? 'escolheu' : 'sugeriu'} {decisao.tool} · confiança {decisao.confidence.toFixed(2).replace('.', ',')}
     </p>
   )
 }
