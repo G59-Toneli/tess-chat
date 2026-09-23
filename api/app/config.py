@@ -2,9 +2,11 @@
 
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+JWT_SECRET_DEV = "dev-secret-trocar-em-producao-0123456789"
 
 
 class Settings(BaseSettings):
@@ -14,7 +16,7 @@ class Settings(BaseSettings):
     # Só o Alembic usa. A aplicação roda como tess_app.
     database_url_owner: str | None = None
     # Fallback de dev. Produção define JWT_SECRET no .env (ver DECISOES-AUTONOMAS).
-    jwt_secret: str = "dev-secret-trocar-em-producao-0123456789"
+    jwt_secret: str = JWT_SECRET_DEV
     demo_password: str = "demo12345"
     # Conta que o startup marca como admin (is_superuser). A conta já precisa existir.
     admin_email: str | None = None
@@ -47,6 +49,13 @@ class Settings(BaseSettings):
     connectors_key: str | None = None
     # dev libera http:// para o servidor MCP demo (ticket 23). Produção define ENV=prod.
     env: str = "dev"
+
+    # Em prod, o boot falha com o segredo de dev ou curto: quem conhece o segredo forja o JWT de qualquer conta.
+    @model_validator(mode="after")
+    def _segredo_de_prod(self) -> "Settings":
+        if self.env == "prod" and (self.jwt_secret == JWT_SECRET_DEV or len(self.jwt_secret) < 32):
+            raise ValueError("JWT_SECRET de produção precisa ser próprio e ter 32 caracteres ou mais.")
+        return self
 
 
 settings = Settings()
