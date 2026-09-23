@@ -207,15 +207,45 @@ async def test_descartar_fecha_o_rascunho(client, google, usar_modelo):
 
 
 async def test_erro_do_gmail_mantem_pendente_com_texto_legivel(client, google, usar_modelo):
-    _, h = await usuario(client)
+    uid, h = await usuario(client)
     _, did = await rascunho(client, h, usar_modelo)
     google.envio_status = 403
 
     r = await client.post(f"{DRAFTS}/{did}/enviar", headers=h)
 
     assert r.status_code == 502
-    assert "insufficient authentication scopes" in r.json()["detail"]
+    detalhe = r.json()["detail"]
+    assert "permissão de envio" in detalhe["mensagem"] and detalhe["reconectar"] is True
+    assert "insufficient" not in detalhe["mensagem"]
     assert (await client.get(f"{DRAFTS}/{did}", headers=h)).json()["estado"] == "pendente"
+    [ev] = await eventos("email_send_failed", user_id=uid)
+    assert "insufficient authentication scopes" in ev.payload["erro"]
+
+
+async def test_envio_em_conta_sem_gmail_devolve_texto_traduzido(client, google, usar_modelo):
+    uid, h = await usuario(client)
+    _, did = await rascunho(client, h, usar_modelo)
+    google.envio_status, google.envio_erro = 400, "Mail service not enabled"
+
+    r = await client.post(f"{DRAFTS}/{did}/enviar", headers=h)
+
+    assert r.status_code == 502
+    detalhe = r.json()["detail"]
+    assert "não tem caixa Gmail" in detalhe["mensagem"] and detalhe["reconectar"] is True
+    assert "Mail service" not in detalhe["mensagem"]
+    [ev] = await eventos("email_send_failed", user_id=uid)
+    assert ev.payload["erro"] == "Mail service not enabled" and ev.payload["status"] == 400
+
+
+async def test_destinatario_invalido_nao_manda_reconectar(client, google, usar_modelo):
+    _, h = await usuario(client)
+    _, did = await rascunho(client, h, usar_modelo)
+    google.envio_status, google.envio_erro = 400, "Invalid To header"
+
+    r = await client.post(f"{DRAFTS}/{did}/enviar", headers=h)
+
+    detalhe = r.json()["detail"]
+    assert "Destinatário inválido" in detalhe["mensagem"] and detalhe["reconectar"] is False
 
 
 # ---------- gmail_read ----------

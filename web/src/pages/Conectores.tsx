@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { CheckCircle2Icon, CircleOffIcon, HardDriveIcon, Link2OffIcon, MailIcon, PlugIcon, RefreshCwIcon, SendIcon } from 'lucide-react'
+import { CheckCircle2Icon, CircleOffIcon, HardDriveIcon, Link2OffIcon, MailIcon, PlugIcon, RefreshCwIcon, SendIcon, TriangleAlertIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
 import {
@@ -54,7 +54,8 @@ export function Conectores() {
   // Volta do Google: avisa e limpa a query.
   useEffect(() => {
     const codigo = params.get('erro')
-    if (params.get('conectado')) toast.success('Google conectado. Gmail e Drive já estão nas suas conversas.', { id: 'oauth' })
+    if (params.get('sem_gmail')) toast.warning('Google conectado, mas esta conta não tem Gmail. Só o Drive funciona.', { id: 'oauth' })
+    else if (params.get('conectado')) toast.success('Google conectado. Gmail e Drive já estão nas suas conversas.', { id: 'oauth' })
     else if (codigo) toast.error(textoErroOAuth(codigo), { id: 'oauth' })
     else return
     setParams({}, { replace: true })
@@ -124,7 +125,23 @@ export function Conectores() {
                 </Badge>
               ))}
             </div>
-            {semEnvio(google) && (
+            {google.conectado && !google.gmail_disponivel && (
+              <div
+                className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3"
+                role="alert"
+              >
+                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                <div className="flex-1 space-y-1">
+                  <p className="font-medium">Esta conta não tem Gmail</p>
+                  <p className="text-muted-foreground">
+                    Esta conta Google não tem caixa Gmail (é uma conta criada com um e-mail de outro provedor). Buscar,
+                    ler e enviar e-mails não vão funcionar. Conecte uma conta @gmail.com ou Workspace com Gmail ativo. O
+                    Drive continua funcionando.
+                  </p>
+                </div>
+              </div>
+            )}
+            {semEnvio(google) && google.gmail_disponivel && (
               <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3" role="status">
                 <SendIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div className="flex-1 space-y-1">
@@ -141,6 +158,18 @@ export function Conectores() {
             )}
             {google.conectado ? (
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-muted-foreground">
+                <dt>Conta</dt>
+                <dd className="min-w-0 break-words text-foreground">
+                  {google.conta_email ? (
+                    <>
+                      Conectado como <span className="font-medium">{google.conta_email}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {google.gmail_disponivel ? 'Reconecte para ver a conta' : 'não identificada'}
+                    </span>
+                  )}
+                </dd>
                 <dt>Conectado em</dt>
                 <dd className="text-foreground">
                   {google.conectado_em ? fmtData.format(new Date(google.conectado_em)) : '—'}
@@ -163,9 +192,14 @@ export function Conectores() {
           </CardContent>
           <CardFooter className="justify-end gap-2">
             {google.conectado ? (
-              <Button variant="outline" onClick={() => setRevogando(true)}>
-                <Link2OffIcon /> Desconectar
-              </Button>
+              <>
+                <Button variant="ghost" onClick={() => void conectar()} disabled={indo}>
+                  {indo ? <Spinner /> : <RefreshCwIcon />} Reconectar
+                </Button>
+                <Button variant="outline" onClick={() => setRevogando(true)}>
+                  <Link2OffIcon /> Desconectar
+                </Button>
+              </>
             ) : (
               <Button onClick={() => void conectar()} disabled={indo}>
                 {indo ? <Spinner /> : <PlugIcon />} Conectar Google

@@ -111,6 +111,7 @@ NATIVAS = {"web_search": web_search, "web_fetch": web_fetch}
 # ativa_global=false desliga a Tool em todas as Conversas.
 # Tool de origem 'google' só existe se o dono da Conversa tem Conector Google (ticket 18).
 # gmail_send exige também o escopo gmail.send no Conector: conexão antiga não ganha a Tool (ticket 25).
+# Conta Google sem caixa Gmail (gmail_disponivel=false) perde as Tools do Gmail; Drive fica (ticket 29).
 # Tool de origem 'mcp' só existe para o dono do Servidor MCP, e só com o servidor ativo (ticket 17).
 async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tuple[Tool, bool]]:
     """Cada Tool do registro com o estado efetivo na Conversa."""
@@ -119,6 +120,7 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
         conectores.Connector.provedor == conectores.PROVEDOR,
         Conversation.id == cid,
         or_(Tool.nome != "gmail_send", conectores.Connector.escopos.any(conectores.ESCOPO_ENVIO)),
+        or_(Tool.nome.not_in(conectores.TOOLS_GMAIL), conectores.Connector.gmail_disponivel),
     )
     servidor_do_dono = exists().where(
         mcp.McpServer.id == Tool.mcp_server_id,

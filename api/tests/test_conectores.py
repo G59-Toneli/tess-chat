@@ -24,6 +24,8 @@ from tests.test_conversas import criar, usuario
 GOOGLE_TOOLS = {"gmail_search", "gmail_read", "drive_search_read"}
 LEITURA = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly"
 COM_ENVIO = f"{LEITURA} https://www.googleapis.com/auth/gmail.send"
+# Resposta real do Gmail para conta Google sem caixa Gmail (criada com e-mail de outro provedor).
+SEM_GMAIL = {"error": {"code": 400, "message": "Mail service not enabled", "status": "FAILED_PRECONDITION"}}
 
 
 def b64(s: str) -> str:
@@ -33,11 +35,20 @@ def b64(s: str) -> str:
 class Google(httpx.MockTransport):
     """Token, revoke, Gmail e Drive do Google, com resposta gravada. Guarda os requests vistos."""
 
-    def __init__(self, refresh_ok: bool = True, escopos: str = COM_ENVIO, envio_status: int = 200):
+    def __init__(
+        self,
+        refresh_ok: bool = True,
+        escopos: str = COM_ENVIO,
+        envio_status: int = 200,
+        envio_erro: str = "Request had insufficient authentication scopes.",
+        gmail_ativo: bool = True,
+    ):
         self.vistas: list[httpx.Request] = []
         self.refresh_ok = refresh_ok
         self.escopos = escopos
         self.envio_status = envio_status
+        self.envio_erro = envio_erro
+        self.gmail_ativo = gmail_ativo
         self.emitidos = 0
         super().__init__(self._responder)
 
@@ -63,6 +74,12 @@ class Google(httpx.MockTransport):
             return self._token(req)
         if u.host == "oauth2.googleapis.com" and u.path == "/revoke":
             return httpx.Response(200)
+        if u.path == "/gmail/v1/users/me/profile":
+            if not self.gmail_ativo:
+                return httpx.Response(400, json=SEM_GMAIL)
+            return httpx.Response(200, json={"emailAddress": "usuario@gmail.com", "messagesTotal": 10})
+        if u.path == "/drive/v3/about":
+            return httpx.Response(200, json={"user": {"emailAddress": "usuario@outlook.com"}})
         if u.path == "/gmail/v1/users/me/messages":
             return httpx.Response(200, json={"messages": [{"id": "m1"}]})
         if u.path == "/gmail/v1/users/me/messages/m1":
@@ -84,7 +101,7 @@ class Google(httpx.MockTransport):
             return httpx.Response(200, json={"id": "t1", "messages": msgs})
         if u.path == "/gmail/v1/users/me/messages/send":
             if self.envio_status != 200:
-                erro = {"error": {"code": self.envio_status, "message": "Request had insufficient authentication scopes."}}
+                erro = {"error": {"code": self.envio_status, "message": self.envio_erro}}
                 return httpx.Response(self.envio_status, json=erro)
             return httpx.Response(200, json={"id": "enviado-1", "threadId": "t1", "labelIds": ["SENT"]})
         if u.path == "/drive/v3/files":
@@ -196,6 +213,52 @@ async def test_callback_troca_code_e_grava_tokens_cifrados(client, google):
     assert "acesso-1" not in json.dumps(ev.payload)
 
 
+async def test_callback_grava_a_conta_vinculada(client, google):
+    uid, h = await usuario(client)
+
+    await conectar(client, h)
+
+    [c] = (await client.get("/api/connectors", headers=h)).json()
+    assert c["conta_email"] == "usuario@gmail.com"
+    assert c["gmail_disponivel"] is True
+    [ev] = await eventos("connector_linked", user_id=uid)
+    assert ev.payload["conta_email"] == "usuario@gmail.com"
+
+
+async def test_conta_sem_gmail_marca_indisponivel_e_tira_tools_do_gmail(client):
+    g = Google(gmail_ativo=False)
+    app.dependency_overrides[transporte_google] = lambda: g
+    try:
+        uid, h = await usuario(client)
+        cid = (await criar(client, h))["id"]
+        q = await autorizar(client, h)
+        r = await client.get(CALLBACK, params={"code": "code-falso", "state": q["state"][0]})
+        [c] = (await client.get("/api/connectors", headers=h)).json()
+        tools = {t["nome"] for t in (await client.get(f"/api/conversations/{cid}/tools", headers=h)).json()}
+    finally:
+        app.dependency_overrides.pop(transporte_google, None)
+
+    assert "sem_gmail=1" in r.headers["location"]
+    assert c["conectado"] is True and c["gmail_disponivel"] is False
+    assert c["conta_email"] == "usuario@outlook.com"  # veio do Drive
+    assert "drive_search_read" in tools
+    assert not {"gmail_search", "gmail_read", "gmail_send"} & tools
+    [ev] = await eventos("connector_linked", user_id=uid)
+    assert ev.payload["gmail_disponivel"] is False
+
+
+async def test_conexao_antiga_sem_conta_nao_quebra(client, google):
+    uid, h = await usuario(client)
+    await conectar(client, h)
+    async with SessionLocal() as s:
+        await s.execute(text("UPDATE connectors SET conta_email = NULL WHERE user_id = :u"), {"u": uid})
+        await s.commit()
+
+    [c] = (await client.get("/api/connectors", headers=h)).json()
+
+    assert c["conectado"] is True and c["conta_email"] is None and c["gmail_disponivel"] is True
+
+
 async def test_callback_com_state_invalido_nao_conecta(client, google):
     _, h = await usuario(client)
 
@@ -281,7 +344,7 @@ async def test_gmail_search_devolve_email_do_usuario(client, google, usar_modelo
     assert "Fatura de setembro" in resposta and "ana@exemplo.com" in resposta and "m1" in resposta
     busca = next(r for r in google.vistas if r.url.path == "/gmail/v1/users/me/messages")
     assert busca.url.params["q"] == "fatura"
-    assert set(google.bearer("gmail.googleapis.com")) == {"Bearer acesso-1"}
+    assert set(google.bearer("/users/me/messages")) == {"Bearer acesso-1"}
     [ev] = await eventos("tool_call", user_id=uid)
     assert ev.payload["tool"] == "gmail_search" and ev.payload["args"] == {"query": "fatura"}
 
@@ -329,7 +392,7 @@ async def test_token_expirado_e_renovado_sem_o_usuario_perceber(client, google, 
     assert "Fatura de setembro" in await ultima_resposta(client, h, cid)
     refresh = [parse_qs(r.content.decode()) for r in google.vistas if r.url.path == "/token"][-1]
     assert refresh["grant_type"] == ["refresh_token"] and refresh["refresh_token"] == ["refresh-1"]
-    assert set(google.bearer("gmail.googleapis.com")) == {"Bearer acesso-2"}
+    assert set(google.bearer("/users/me/messages")) == {"Bearer acesso-2"}
     [c] = (await client.get("/api/connectors", headers=h)).json()
     assert datetime.fromisoformat(c["expira_em"]) > datetime.now(UTC)
 
@@ -347,4 +410,4 @@ async def test_token_expirado_sem_refresh_valido_da_mensagem_clara(client, googl
     assert r.status_code == 200, r.text
     resposta = await ultima_resposta(client, h, cid)
     assert "expirou" in resposta and "Conectores" in resposta
-    assert google.bearer("gmail.googleapis.com") == []
+    assert google.bearer("/users/me/messages") == []
