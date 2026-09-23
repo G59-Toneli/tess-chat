@@ -37,3 +37,10 @@ Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta.
 - Sem teste unitário no front; verificação é por fluxo no browser e screenshot.
 - Bundle de 1,6 MB (streamdown). Code-split só se incomodar.
 - ~~`attachments.message_id` nulo~~. **Resolvido no ticket 09b:** `ligar_a_mensagem` (`api/app/anexos.py`) liga o anexo à Mensagem no fim do turno. Nome do PDF ao recarregar: não verificado.
+
+## Segurança (revisão final, 23/09)
+- Senha demo fixa no front: **resolvido** (rev-a1). O front não tem mais a senha, e a conta demo não é admin. Admin vem de `ADMIN_EMAIL`.
+- Corrida no Cap: duas requisições paralelas do mesmo Usuário leem o saldo antes de a outra reservar. O gasto pode passar do Cap pelo custo de um turno.
+- DNS rebinding: o MCP valida a URL só no cadastro, e o web_fetch valida antes do request. Nos dois, o httpx resolve o DNS de novo; um host que troca de IP entre as duas resoluções passa.
+- Tavily (web_search) e Jev (Roteador) ficam fora do Ledger: o custo deles não entra no Crédito nem no Cap.
+- Sem Content-Security-Policy. Risco de quebrar a SPA (Streamdown, Mermaid, estilos inline) perto do prazo. Os outros headers de segurança estão no nginx.
