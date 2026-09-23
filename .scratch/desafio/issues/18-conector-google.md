@@ -13,3 +13,5 @@
 - [ ] Conectar, perguntar "meu último e-mail sobre X" devolve resposta com dado real do Gmail.
 - [ ] "resume o arquivo Y do meu Drive" lê o arquivo.
 - [ ] Token expirado é renovado sem o usuário perceber; expirado sem refresh gera mensagem clara.
+
+**HITL concluído (23/09 ~03:00):** projeto GCP, APIs, consent screen Testing, client OAuth e test users prontos. `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no `.env`. Redirect `http://localhost:8000/api/connectors/google/callback` testado com `code=` na volta. O redirect de produção `https://chat.toneli.dev.br/...` já está cadastrado. Só falta a parte AFK.
