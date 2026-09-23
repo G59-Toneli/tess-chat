@@ -15,6 +15,7 @@ from app.conversas import router as conversas_router
 from app.credito import router as credito_router
 from app.db import get_session
 from app.estaticos import montar_estaticos
+from app.tools import router as tools_router
 
 
 @asynccontextmanager
@@ -30,6 +31,7 @@ app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix=
 app.include_router(conversas_router)
 app.include_router(chat_router)
 app.include_router(credito_router)
+app.include_router(tools_router)
 
 
 @app.get("/health")

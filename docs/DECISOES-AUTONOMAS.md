@@ -32,3 +32,10 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 08 | Modelo sem linha na Tabela de Preço responde 500. | Debitar zero. | Crédito sem preço é número falso. O teste do 06 com `FunctionModel` passou a usar o nome do modelo real. |
 | 08 | `max_tokens` = 8192 por request no chat. | Sem teto. | Sem teto a reserva não é teto real (research/02). |
 | 08 | Ledger e Tabela de Preço sem UPDATE/DELETE para tess_app; Ledger sem FK para Conversa. | FK com CASCADE. | Saldo não pode mudar quando a Conversa é apagada. |
+| 10 | Tool ativa na Conversa = `ativa_global` E toggle da Conversa. Sem linha em `conversation_tools`, herda `ativa_global` (seed: ligada). | Padrão desligado. | Demo usa busca sem clique extra. `ativa_global=false` vira chave geral. |
+| 10 | `PUT /api/conversations/{id}/tools` recebe mapa parcial `{"web_search": false}`. Nome desconhecido = 422. Emite `tool_toggled`. | Lista de objetos ou rota por tool. | Um request liga várias; corpo mínimo para o switch do front. |
+| 10 | Descrição que o modelo vê vem da coluna `tools.descricao`. A de `web_search` manda citar as URLs. | Docstring da função. | Registro único (ADR 0009); o aceite "cita a fonte" depende da instrução. |
+| 10 | Erro da tool volta como texto para o modelo, não como exceção. | Levantar exceção. | O Agent roda com `retries=0`: exceção derruba o turno. |
+| 10 | `tool_call` gravado por um `WrapperToolset` (`Auditada`), sessão própria, por execução. | Auditar dentro de cada função. | Um ponto só; o 17 (MCP) reusa. |
+| 10 | Resultado cortado em 20.000 caracteres (fetch) e 600 por resultado (busca, 5 resultados). | Sem corte. | Página grande estoura contexto e Crédito. INFERIDO ~6k tokens. |
+| 10 | HTTP das tools injetado por dependência `transporte()`; testes usam `httpx.MockTransport` com resposta gravada (Tavily real 1x, Jina real 1x). | Mockar as funções das tools. | Testa o parse e o fallback de verdade. Cliente separado por tool: header da Tavily não vaza para o Jina. |

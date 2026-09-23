@@ -1,7 +1,7 @@
 # 11 — Roteador Jev pré-chamada com gate de confiança
 
 **Type:** task (AFK + HITL)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 10
 **Refs:** ADR 0005. Spike hipótese 9. Skill `typesafe:typesafe-ai`.
 

@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from functools import cache
 from typing import Annotated, Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
@@ -26,6 +27,7 @@ from app.config import settings
 from app.conversas import Conversation, Message, conversa_do_usuario
 from app.credito import acertar, reservar
 from app.db import SessionLocal, get_session
+from app.tools import toolset_da_conversa, transporte
 
 MODELO = "gemini-3.8-flash"
 # Thinking explícito. O default do modelo deu ~7 s até o primeiro token no spike.
@@ -131,6 +133,7 @@ async def chat(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(current_user)],
     m: Annotated[Model, Depends(modelo)],
+    t: Annotated[httpx.AsyncBaseTransport | None, Depends(transporte)],
 ) -> Response:
     """Roda um turno da Conversa e devolve o stream no protocolo do AI SDK."""
     await conversa_do_usuario(session, user, cid)
@@ -149,6 +152,7 @@ async def chat(
     historico = _historico(linhas)
     uid, nome = user.id, m.model_name
     await reservar(session, uid, cid, nome, _estimar_input(linhas, novas))
+    tools = await toolset_da_conversa(session, uid, cid, t)
     await session.close()
 
     t0 = time.perf_counter()
@@ -156,7 +160,8 @@ async def chat(
     async def eventos() -> AsyncIterator[Any]:
         try:
             async for ev in adapter.run_stream_native(
-                message_history=historico, model=m, model_settings=AJUSTES, conversation_id=str(cid)
+                message_history=historico, model=m, model_settings=AJUSTES, conversation_id=str(cid),
+                toolsets=[tools],
             ):
                 yield ev
         except ModelAPIError as exc:
