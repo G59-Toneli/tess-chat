@@ -119,8 +119,8 @@ Estado em 2026-09-23. Fonte: [`docs/LACUNAS.md`](docs/LACUNAS.md) e as ressalvas
 **Pendentes com ticket**
 
 - **Deploy público (ticket 16).** Não há `deploy/docker-compose.yml`, Caddyfile nem CI no repo. Bloqueado no acesso SSH ao VPS.
-- **Servidor MCP que cai depois do cadastro derruba o turno** das Conversas do dono (ticket 23). Contorno: desligar o servidor em `/mcp`.
-- **URL de Servidor MCP livre** (ticket 23). Um usuário pode apontar para endereço interno (SSRF).
+- **Servidor MCP caído** (ticket 23, feito): antes de cada turno o app testa cada servidor por 3 s; o que não responde sai do turno com evento `mcp_server_unreachable` e aviso no chat. Ainda existe uma janela curta entre o teste e o turno.
+- **SSRF em URL de Servidor MCP** (ticket 23, feito): cadastro só aceita `https://` e rejeita host que resolve para IP privado. DNS rebinding depois do cadastro não está coberto.
 - **Conector Google validado só com Google mockado.** A validação com conta real depende do login do dono do projeto.
 
 **Crédito (ADR 0004)**
