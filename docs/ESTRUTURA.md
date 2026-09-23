@@ -2,7 +2,7 @@
 
 Mapa do repo para quem chega agora: avaliador ou o próprio Toneli antes da entrevista. Os porquês ficam em `docs/MOTIVACOES.md`. Os termos seguem o `CONTEXT.md`.
 
-Retrato de 2026-09-23, depois do ticket 14 (Configuração, commit `39ddacf`).
+Retrato de 2026-09-23, depois do ticket 23 (resiliência MCP e SSRF, commit `fc524ee`). Atualizado no ticket 24.
 
 ## Árvore comentada
 
@@ -10,15 +10,17 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 
 ```
 .
+├── README.md                 porta de entrada: o que é, arquitetura, como rodar, decisões, limites (ticket 19)
 ├── CLAUDE.md                 instruções fixas para qualquer sessão do Claude Code neste repo
 ├── CONTEXT.md                glossário do domínio: um significado por termo
 ├── DESAFIO.md                enunciado original do desafio (e-mail do CPO)
 ├── Dockerfile                multi-stage: build do front (Node) e imagem da API (Python) servindo web/dist
-├── docker-compose.yml        Postgres 17 local de desenvolvimento, porta 5433
+├── docker-compose.yml        dev local: Postgres 17 na porta 5433 e servidor MCP de demo (`mcp-demo`) na 8765
 ├── .dockerignore             tira spike/, research/, .scratch/ e segredos da imagem
 ├── .gitignore                ignora .env, data/, .venv, node_modules, dist, .playwright-mcp
 ├── .gitattributes            fim de linha LF
 ├── .env                      chaves e URLs de banco. Fora do git; o avaliador não vê
+├── .env.example              modelo versionado do .env, uma linha por campo de `Settings` (ticket 19)
 │
 ├── api/                      backend: FastAPI + Pydantic AI + SQLAlchemy async
 │   ├── README.md             como subir o banco, migrar, testar e rodar a API
@@ -27,7 +29,7 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── .python-version       Python 3.14
 │   ├── alembic.ini           config do Alembic
 │   ├── app/                  código da API: um módulo por conceito do glossário (lista abaixo)
-│   ├── migrations/           Alembic: versions/0001..0011, uma por ticket que mudou o schema
+│   ├── migrations/           Alembic: versions/0001..0013, uma por ticket que mudou o schema
 │   └── tests/                testes de integração contra o Postgres real; fixtures/ guarda respostas gravadas
 │
 ├── web/                      front: React 19 + Vite + Tailwind + shadcn + AI Elements
@@ -45,6 +47,7 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── ESTRUTURA.md          este arquivo
 │   ├── WORKFLOW.md           regras do trabalho autônomo com agentes
 │   ├── AGENT-PROMPT.md       prompt-padrão que todo agente executor segue
+│   ├── ENTREVISTA.md         guia de entrevista: perguntas prováveis por ADR e pelo workflow (ticket 19)
 │   ├── DECISOES-AUTONOMAS.md decisões que agentes tomaram sem ADR: ticket, decisão, alternativa, porquê
 │   ├── LACUNAS.md            onde o código diverge do ADR ou ficou aresta
 │   ├── UI-GUIA.md            regras de tela e verificação visual por screenshot
@@ -70,6 +73,7 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── web/                  AI Elements em Vite
 │   └── docker-compose.yml    Postgres do spike
 │
+├── deploy/mcp-demo/         servidor MCP de demo (ticket 17): `server.py` (FastMCP, Streamable HTTP) e Dockerfile. O resto de `deploy/` é do ticket 16
 ├── docker/postgres-init/     01-roles.sql: cria o papel tess_app (runtime, sem DDL)
 ├── scripts/                  wizard-google.sh: wizard interativo do OAuth Google
 ├── data/                     fora do git. attachments/ = arquivos de Anexo em dev; manual09/ = entradas do teste manual do ticket 09 (INFERIDO pelo nome)
@@ -89,7 +93,9 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | `conversas.py` | Conversas, Mensagens, Anexos (tabelas e CRUD); dono só vê o que é dele |
 | `chat.py` | o turno: histórico do banco, Compactação, reserva, Roteador, Tools, stream, persistência |
 | `credito.py` | Tabela de Preço, Ledger, Cap, reserva e acerto, painéis de Crédito |
-| `tools.py` | registro de Tools, toggle por Conversa, `web_search` e `web_fetch`, wrapper de auditoria |
+| `tools.py` | registro de Tools, toggle por Conversa, `web_search` e `web_fetch`, wrapper de auditoria. Monta o toolset do turno com as Tools do Google (só com Conector) e as MCP do dono |
+| `mcp.py` | Servidor MCP por Usuário: tabela `mcp_servers`, cadastro que conecta antes de gravar, barreira de SSRF, sonda antes do turno. Tickets 17 e 23 |
+| `conectores.py` | Conector Google: tabela `connectors`, OAuth com `state` JWT, tokens cifrados, refresh, Tools `gmail_search`, `gmail_read`, `drive_search_read`. Ticket 18 |
 | `roteador.py` | Roteador com Jev e gate de confiança |
 | `compactacao.py` | Compactação por Resumo, tabela `summaries` |
 | `resiliencia.py` | retry com backoff, fallback de modelo, métricas do turno |
@@ -104,15 +110,28 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 
 | Pasta | Papel |
 |---|---|
-| `pages/` | uma tela por rota: Chat, Login, Configuração, Tools, Créditos, Auditoria, Admin, Compartilhados, Compartilhamento (link público), Placeholder (MCP, Conectores e Perfil ainda sem tela) |
+| `pages/` | uma tela por rota: Chat, Login, Configuração (`/config`), Tools, MCP (`/mcp`), Conectores (`/conectores`), Créditos, Auditoria, Admin, Compartilhados, Compartilhamento (link público), Placeholder (Perfil e 404) |
 | `components/` | componentes nossos: `BlocoTool`, `SeletorTools`, `Anexos`, `MarcadorCompactacao`, `ItemCompartilhar`, `estados` (vazio, carregando, erro) |
 | `components/ui/` | código do registry shadcn, copiado e não escrito à mão |
 | `components/ai-elements/` | código do registry AI Elements, copiado e não escrito à mão |
 | `layout/` | `AppLayout`: barra lateral e casca das telas logadas |
-| `lib/` | cliente da API (`api.ts`, token Bearer) e helpers por tela |
+| `lib/` | cliente da API (`api.ts`, token Bearer) e helpers por tela (`mcp.ts`, `conectores.ts`, `tools.ts`...) |
 | `tema.ts` | tema dark padrão com toggle |
 
-**Ticket 14:** tela de configurações em `pages/Configuracao.tsx`.
+### Tickets depois do 14
+
+| Ticket | O que tocou | Status |
+|---|---|---|
+| 15 | painéis de Crédito e auditoria, admin | resolvido |
+| 16 | deploy no VPS com CI | bloqueado (acesso SSH) |
+| 17 | `mcp.py`, migração 0013, `pages/Mcp.tsx`, `deploy/mcp-demo/` | resolvido |
+| 18 | `conectores.py`, migração 0012, `pages/Conectores.tsx` | resolvido |
+| 19 | `README.md`, `docs/ENTREVISTA.md`, `.env.example` | resolvido (vídeo pendente no `MANHA.md`) |
+| 20 | este arquivo e `MOTIVACOES.md` | resolvido |
+| 21 | suíte completa em lote: `test_roteador.py`, `pages/Tools.tsx` | resolvido |
+| 22 | `WORKFLOW.md` e `map.md` contam a prática | resolvido |
+| 23 | Servidor MCP caído sai do turno; SSRF no cadastro. `mcp.py`, `chat.py`, `tools.py` | resolvido |
+| 24 | este arquivo e `MOTIVACOES.md` com 17, 18, 21, 23 | resolvido |
 
 ### `api/migrations/versions/`
 
@@ -128,7 +147,9 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | 0008 | 07b | `ativa_global` nas Tools |
 | 0009 | 12 | `summaries` (Resumo) |
 | 0010 | 06b | preço do `gemini-3.7-flash` (fallback) |
-| 0011 | 14 | tabela `settings`. |
+| 0011 | 14 | tabela `settings` |
+| 0012 | 18 | `connectors` (tokens cifrados); `tools.origem` aceita `google`; semeia as 3 Tools do Google |
+| 0013 | 17 | `mcp_servers` (header cifrado); `tools.mcp_server_id` com FK em cascata; `tess_app` ganha INSERT e DELETE em `tools`, limitados por RLS a `origem = 'mcp'` |
 
 ## Onde mora cada conceito do `CONTEXT.md`
 
@@ -138,9 +159,9 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | Conversa | `conversas.py` | `conversations` | `layout/AppLayout.tsx`, `pages/Chat.tsx` | — |
 | Mensagem | `conversas.py` (tabela), `chat.py` (grava no fim do turno) | `messages` | `pages/Chat.tsx` | 0001 |
 | Anexo | `anexos.py`, tabela em `conversas.py` | `attachments` + arquivo em `data/` | `components/Anexos.tsx` | — |
-| Tool | `tools.py` | `tools`, `conversation_tools` | `pages/Tools.tsx`, `components/SeletorTools.tsx`, `components/BlocoTool.tsx` | 0009 |
-| Servidor MCP | não existe ainda (ticket 17) | — | Placeholder em `/mcp` | 0009 |
-| Conector | não existe ainda (ticket 18). Só `scripts/wizard-google.sh` e `docs/WIZARD-GOOGLE.md` | — | Placeholder em `/conectores` | 0010 |
+| Tool | `tools.py` (origem `nativa`, `google` ou `mcp`) | `tools`, `conversation_tools` | `pages/Tools.tsx`, `components/SeletorTools.tsx`, `components/BlocoTool.tsx` | 0009 |
+| Servidor MCP | `mcp.py`; toolset montado em `tools.py`, sonda em `chat.py` | `mcp_servers`, `tools` com `origem = 'mcp'` | `pages/Mcp.tsx`, `components/SeletorTools.tsx` | 0009 |
+| Conector | `conectores.py`. Setup do OAuth: `scripts/wizard-google.sh` e `docs/WIZARD-GOOGLE.md` | `connectors`, `tools` com `origem = 'google'` | `pages/Conectores.tsx` | 0010 |
 | Roteador | `roteador.py`, chamado em `chat.py` | eventos `router_decision` em `audit_events` | linha "roteado para X" no Chat | 0005 |
 | Compactação | `compactacao.py`, chamado em `chat.py` | `summaries` | `components/MarcadorCompactacao.tsx` | 0006 |
 | Resumo | `compactacao.py` | `summaries` | idem | 0006 |
@@ -171,17 +192,19 @@ Funções que o agente implementou no lugar do Toneli. São as que mais caem em 
 | `anexos.py` | 2 | tipo pelos bytes, só anexo próprio vai ao modelo |
 | `auth.py` | 2 | `login_failed` por override, seed da conta demo |
 | `auditoria.py` | 1 | quem vê o quê |
-| `configuracao.py` | 1 | herança campo a campo. |
+| `configuracao.py` | 1 | herança campo a campo |
+| `mcp.py` | 3 | nome da Tool com o id do servidor, barreira de SSRF, conectar antes de gravar |
+| `conectores.py` | 3 | refresh do token, primeiro arquivo legível do Drive, `state` do OAuth em JWT |
 
 ## Sugestões
 
-Achados da revisão da estrutura. Nada foi movido: todo item quebraria referência em doc ou import. O ticket 19 decide.
+Achados da revisão da estrutura (ticket 20). Nada foi movido: todo item quebraria referência em doc ou import. Os itens 1, 2 e 8 foram resolvidos depois; o item 4 em parte.
 
-1. **`docs/WORKFLOW.md` descreve o plano, não o que rodou.** Ele fala de loop externo `claude -p` com teste como gate fora do Claude. O `HANDOFF.md` e o `LEDGER.md` mostram outra coisa: um orquestrador numa sessão do Claude Code disparando agentes em paralelo, e o próprio agente rodando os testes. Atualizar o WORKFLOW para contar a evolução. Detalhe em `MOTIVACOES.md`, seção Workflow.
-2. **`map.md` está defasado.** Ainda diz que o agente grava `BLOCKED` e para, e que três funções são HITL. Desde 23/09 o agente decide o simples, registra em `DECISOES-AUTONOMAS.md` e marca `REVISAR(human)`. A seção "Not yet specified" também já foi resolvida em parte.
+1. **`docs/WORKFLOW.md` descreve o plano, não o que rodou.** Ele fala de loop externo `claude -p` com teste como gate fora do Claude. O `HANDOFF.md` e o `LEDGER.md` mostram outra coisa: um orquestrador numa sessão do Claude Code disparando agentes em paralelo, e o próprio agente rodando os testes. Atualizar o WORKFLOW para contar a evolução. Detalhe em `MOTIVACOES.md`, seção Workflow. **Resolvido no ticket 22.**
+2. **`map.md` está defasado.** Ainda diz que o agente grava `BLOCKED` e para, e que três funções são HITL. Desde 23/09 o agente decide o simples, registra em `DECISOES-AUTONOMAS.md` e marca `REVISAR(human)`. A seção "Not yet specified" também já foi resolvida em parte. **Resolvido no ticket 22.**
 3. **`.scratch/` é o coração do fluxo de IA, mas o nome diz "descartável"** e a pasta começa com ponto (some em `ls` e em alguns navegadores de arquivo). Renomear quebra CLAUDE.md, WORKFLOW, AGENT-PROMPT, HANDOFF e tickets. Alternativa barata: o README do ticket 19 aponta para ela logo no topo.
-4. **Referências a coisas que não existem:** `spike/out/` (citado como evidência em `spike/RESULTADO.md`), `deploy/` e `docs/INFRA.md` (citados no `AGENT-PROMPT.md`), `.github/` e Caddyfile (ADR 0011). Os quatro últimos são do ticket 16. `spike/out/` precisa de correção no RESULTADO ou do commit da evidência.
+4. **Referências a coisas que não existem:** `spike/out/` (citado como evidência em `spike/RESULTADO.md`), `deploy/` e `docs/INFRA.md` (citados no `AGENT-PROMPT.md`), `.github/` e Caddyfile (ADR 0011). Os quatro últimos são do ticket 16. `spike/out/` precisa de correção no RESULTADO ou do commit da evidência. **Em parte:** `deploy/` existe desde o 17, só com `mcp-demo/`.
 5. **`LEDGER.md` não tem a coluna de turnos** que o `WORKFLOW.md` pede.
 6. **Pares de nome parecidos:** `audit.py` (escrita) e `auditoria.py` (leitura); `config.py` (`.env`) e `configuracao.py` (Configuração do domínio, tabela `settings`). A classe `Settings` de `config.py` e a tabela `settings` do ticket 14 são coisas diferentes com o mesmo nome. Não renomear agora (imports); explicar no README.
 7. **Nome do ADR 0011 cita DuckDNS**, mas a decisão final é o domínio próprio. O texto do ADR já explica; renomear o arquivo quebra o link no `map.md`.
-8. **Sem README na raiz.** O avaliador cai direto na lista de arquivos. É o ticket 19.
+8. **Sem README na raiz.** O avaliador cai direto na lista de arquivos. É o ticket 19. **Resolvido no ticket 19.**
