@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
@@ -12,6 +13,7 @@ from app.auth import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_use
 from app.chat import router as chat_router
 from app.conversas import router as conversas_router
 from app.db import get_session
+from app.estaticos import montar_estaticos
 
 
 @asynccontextmanager
@@ -33,3 +35,7 @@ async def health(session: Annotated[AsyncSession, Depends(get_session)]) -> dict
     """Responde ok se o banco responde."""
     await session.execute(text("SELECT 1"))
     return {"status": "ok"}
+
+
+# Manter no fim: catch-all do front depois de todas as rotas da API.
+montar_estaticos(app, Path(__file__).resolve().parents[2] / "web" / "dist")
