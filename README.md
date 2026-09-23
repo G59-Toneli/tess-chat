@@ -165,7 +165,7 @@ Até 5 minutos, nesta ordem. Cada passo diz onde clicar e o que mostrar em `/aud
 3. **Imagem.** Anexar uma imagem e pedir descrição. Evento `attachment_uploaded`.
 4. **PDF.** Anexar um PDF curto e pedir resumo. Na mensagem seguinte, perguntar algo do PDF: o arquivo não volta em base64, vai por referência.
 5. **Tool web.** Pedir notícia recente. Mostrar a linha "roteado para web_search" e o bloco da tool com as URLs citadas. Eventos `router_decision` e `tool_call`.
-6. **Compactação com limiar baixo.** Em `/config`, escopo da Conversa, limiar de compactação baixo (por exemplo 2.000). Voltar ao chat e mandar uma mensagem. Evento `compaction` com tokens antes e depois. Recarregar para ver o marcador.
+6. **Compactação com limiar baixo.** Em `/config`, escopo da Conversa, limiar de compactação baixo (por exemplo 2.000). Voltar ao chat e mandar uma mensagem. Evento `compaction` com tokens antes e depois. Se o evento não aparecer, baixe o limiar para 500 e mande outra mensagem. Recarregar para ver o marcador.
 7. **Cap estourando.** Em `/admin`, cap da conta demo em zero. Mandar mensagem: aviso de cap no chat. Evento `cap_reached`. **Restaurar o cap antes do próximo passo.**
 8. **Auditoria.** `/auditoria` filtrada pela Conversa: a linha do tempo do turno. `/creditos`: Ledger e gasto por dia.
 9. **Share.** Menu da Conversa, Compartilhar. Abrir o link numa janela anônima. Revogar em `/compartilhados` e recarregar a janela anônima: link indisponível, status 404. Eventos `share_created` e `share_revoked`.

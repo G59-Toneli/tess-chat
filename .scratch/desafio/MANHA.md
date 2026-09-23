@@ -24,7 +24,7 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
   3. Imagem anexada.
   4. PDF anexado; pergunta de seguimento sobre o PDF.
   5. Tool web: linha "roteado para web_search" e URLs citadas.
-  6. Compactação: limiar baixo (ex.: 2.000) em `/config`, escopo da Conversa; mandar mensagem; recarregar para ver o marcador.
+  6. Compactação: limiar baixo (ex.: 2.000) em `/config`, escopo da Conversa; mandar mensagem (sem evento `compaction`, baixe para 500 e repita); recarregar para ver o marcador.
   7. Cap: em `/admin`, cap da conta demo em zero; mandar mensagem e mostrar o aviso. **Restaure o cap antes do passo 9.**
   8. `/auditoria` filtrada pela Conversa e `/creditos`.
   9. Share: abrir em janela anônima, revogar em `/compartilhados`, recarregar e mostrar o 404.
