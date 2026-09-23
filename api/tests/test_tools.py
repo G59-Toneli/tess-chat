@@ -280,8 +280,8 @@ async def test_resultado_mcp_acima_do_teto_chega_ao_modelo_com_a_frase_de_corte(
     ts = FunctionToolset()
 
     @ts.tool_plain
-    def schema_grande() -> str:
-        return "x" * (LIMITE_CHARS_MCP + 1000)
+    def schema_grande() -> dict:
+        return {"campos": "x" * (LIMITE_CHARS_MCP + 1000), "obrigatorio": True}
 
     vistas: list[list[ModelMessage]] = []
 
@@ -297,5 +297,5 @@ async def test_resultado_mcp_acima_do_teto_chega_ao_modelo_com_a_frase_de_corte(
         await r.get_output()
 
     [ret] = retornos(vistas[-1])
-    assert ret.content.startswith("x" * LIMITE_CHARS_MCP)
+    assert ret.content.startswith('{"campos": "xxx')  # JSON, não repr do dict
     assert ret.content.endswith(f"[resultado cortado em {LIMITE_CHARS_MCP} caracteres; peça só o trecho necessário]")

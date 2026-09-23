@@ -1,6 +1,7 @@
 """Registro de Tools com toggle por Conversa, e as Tools nativas web_search e web_fetch (ADR 0009)."""
 
 import asyncio
+import json
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -172,9 +173,11 @@ class Auditada(WrapperToolset[Any]):
             await self._auditar(t0, {**base, "erro": resumo_erro(exc)})
             raise
         await self._auditar(t0, {**base, "result_chars": len(str(resultado))})
-        # Nativa já volta cortada; MCP não tinha teto (ticket 31).
-        if self.origens.get(name) == "mcp" and len(str(resultado)) > LIMITE_CHARS_MCP:
-            return cortar(str(resultado), LIMITE_CHARS_MCP)
+        # Nativa já volta cortada; MCP não tinha teto (ticket 31). Dict corta como JSON, não repr.
+        if self.origens.get(name) == "mcp":
+            texto = resultado if isinstance(resultado, str) else json.dumps(resultado, ensure_ascii=False, default=str)
+            if len(texto) > LIMITE_CHARS_MCP:
+                return cortar(texto, LIMITE_CHARS_MCP)
         return resultado
 
     async def _auditar(self, t0: float, payload: dict[str, Any]) -> None:
