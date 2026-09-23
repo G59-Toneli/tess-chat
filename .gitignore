@@ -8,3 +8,4 @@ data/
 spike/.venv/
 spike/node_modules/
 *.log
+.playwright-mcp/

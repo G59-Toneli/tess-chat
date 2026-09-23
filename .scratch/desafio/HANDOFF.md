@@ -13,7 +13,7 @@ Atualizado em 2026-09-23 ~02:45 (horário local -03:00). Sessão anterior: `desa
 ## Regras aprendidas na noite
 - **Stage é compartilhado.** Vários agentes no mesmo working tree. Commit sempre com `--only <arquivos>`. Um commit meu engoliu os arquivos do ticket 06 (ficaram em 2c738a6).
 - **`api/app/chat.py` é o gargalo.** Só um agente por vez editando o laço do Agent. Tickets que só montam prompt ou adicionam endpoint podem correr em paralelo se limitarem a região.
-- **Migrações:** informar no prompt o número da próxima (`0010` é a próxima livre após 0009; conferir `ls api/migrations/versions`). Dois agentes em paralelo não podem criar migração. Se acontecer, o commit da base entra antes no push.
+- **Migrações:** informar no prompt o número da próxima (`0011` é a próxima livre após 0010; conferir `ls api/migrations/versions`). Dois agentes em paralelo não podem criar migração. Se acontecer, o commit da base entra antes no push.
 - **Playwright MCP abre o Chrome.** Agentes contornam com `playwright-core` apontando pro executável do Brave. Porta 5173 pode estar ocupada por outro app; usar porta própria.
 - **Gemini free key** (`GEMINI_API_KEY`) não serve. Sempre `GEMINI_PAID_API_KEY`.
 - Tetos de chamada real por ticket: Gemini 2 a 4, Tavily 2 a 3, Jev ~10. Agentes às vezes estouram porque um turno faz vários requests. Aceitável, registrado.
