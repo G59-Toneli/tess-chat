@@ -57,7 +57,9 @@ SDK = 7
 # Tools MCP genéricas (Stripe) têm `parameters: object` sem propriedades: o nome dos campos só vem do *_api_details.
 INSTRUCOES = (
     "Para tools `*_api_write` e `*_api_read`, use exatamente os nomes de parâmetros devolvidos por `*_api_details`; "
-    "não invente campos."
+    "não invente campos. "
+    "Com tools `*_api_write`, prefira operações planas em cadeia (crie o recurso pai, use o id no filho) "
+    "em vez de objetos aninhados."
 )
 # retries=1: erro de tool volta ao modelo uma vez (ticket 31). A falha seguida corta o turno no ComTeto.
 agent = Agent(retries=1, instructions=INSTRUCOES)

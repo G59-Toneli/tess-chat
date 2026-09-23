@@ -11,7 +11,7 @@ from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
 
 from app.chat import MODELO
 from app.main import app
-from app.tools import transporte, web_fetch
+from app.tools import schema_para_modelo, transporte, web_fetch
 from tests.test_auth import eventos
 from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
 from tests.test_conversas import criar, usuario
@@ -346,3 +346,37 @@ async def test_args_invalidos_duas_vezes_encerram_o_turno_com_aviso(client, usar
     assert "query" in aviso["data"]["texto"]
     falhas = await eventos("tool_call", user_id=uid)
     assert len(falhas) == 2 and all("erro" in f.payload for f in falhas)
+
+
+# ---------- Schema aberto de tool MCP vira string JSON (ticket 35) ----------
+
+# Trecho real de stripe_api_write (servidor Stripe MCP, 23/09).
+STRIPE_WRITE = {
+    "type": "object",
+    "required": ["stripe_api_operation_id", "parameters"],
+    "properties": {
+        "stripe_api_operation_id": {"type": "string", "description": "Operation id."},
+        "parameters": {"type": "object", "description": "Parameters for the API call."},
+        "human_confirmation": {
+            "type": "object",
+            "properties": {"approval_token": {"type": "string", "description": "Approval token."}},
+            "description": "Confirmação humana.",
+        },
+        "itens": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+    },
+}
+
+
+def test_objeto_livre_vira_string_json_e_objeto_com_properties_fica():
+    novo = schema_para_modelo(STRIPE_WRITE)
+
+    props = novo["properties"]
+    assert props["parameters"] == {
+        "type": "string",
+        "description": "Parameters for the API call. — JSON serializado do objeto",
+    }
+    assert props["itens"]["type"] == "string"
+    assert props["human_confirmation"] == STRIPE_WRITE["properties"]["human_confirmation"]
+    assert props["stripe_api_operation_id"] == STRIPE_WRITE["properties"]["stripe_api_operation_id"]
+    assert novo["required"] == STRIPE_WRITE["required"]
+    assert STRIPE_WRITE["properties"]["parameters"]["type"] == "object"  # o registro não muda

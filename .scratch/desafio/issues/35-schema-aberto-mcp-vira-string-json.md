@@ -1,7 +1,7 @@
 # 35 — Tool MCP com objeto livre: o modelo vê string JSON, o servidor recebe objeto
 
 **Type:** task (AFK)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 33
 **Refs:** tickets 31 e 33 (seções "Do spike"), `api/app/tools.py` (`desembrulhar_json`, toolset auditado), `api/app/mcp.py` (como o `MCPToolset` entrega as tool definitions), ADR 0009. Caso real do Toneli em 23/09 12:57 (-03), servidor `stripe_16ef`.
 
@@ -19,3 +19,16 @@
 - [ ] Teste: parâmetro que já tem `properties` não é alterado.
 - [ ] Turno real com Stripe (máx. 2, sandbox), com a frase exata do Toneli: "quero cobrar um amigo meu, ele comprou de mim um celular, no valor de 1000 reais, gera o pagamento pra mim" → link `buy.stripe.com/test_...` sem erro no card. Screenshot dark `35-stripe-celular.png`.
 - [ ] `uv run pytest tests/test_mcp.py tests/test_tools.py tests/test_chat.py` verde; `tsc` e `npm run build` limpos.
+
+## Do spike
+
+Dump de `stripe_cf8f_stripe_api_write` passado por `GoogleModel.customize_request_parameters` e `_function_declaration_from_tool` (gemini-3.8-flash, banco de dev 5433):
+- O schema chega ao Gemini igual ao registro: `parameters: {"type":"object","description":"Parameters for the API call..."}`, sem `properties` e sem `additionalProperties` (o Stripe nem declara). A hipótese "additionalProperties removido" está errada no mecanismo: quem remove é o `GoogleOpenAPISchemaTransformer`, só usado na Live API. O `GoogleModel` manda `parameters_json_schema` sem mexer.
+- `tool_config` vai com `mode: VALIDATED` (perfil `google_supports_strict_tool_definition=True`). VALIDATED impõe o schema declarado no lado da API. Objeto sem propriedades declaradas só aceita objeto vazio: por isso `price_data: null` e chaves inventadas no nível de cima.
+
+## Answer
+
+`Auditada.get_tools` expõe ao modelo, só em tool MCP, o schema reescrito por `schema_para_modelo`: `object` sem `properties` (ou `array` desses) vira `string` com "JSON serializado"; objeto com `properties` só é percorrido. O `call_tool` já desembrulhava a string (33). Prompt de sistema ganhou a frase das operações planas em cadeia. 47/47 no pytest do aceite.
+Turno real (sandbox, API nova 8005, Brave): a frase do Toneli foi roteada pelo Jev para `stripe_implementation_planner` (forçada, 0,78), igual ao 33. O modelo só explicou o passo a passo, sem `api_write`. Screenshot `35-stripe-celular-planner.png`. O follow-up na mesma Conversa passou do roteador, mas o script fechou o browser antes do fim do stream. Nenhum `api_write` rodou, então o aceite do link NÃO foi cumprido.
+Ressalva: o roteamento para o planner é outro problema, fora deste ticket. O comentário acima de `INSTRUCOES` no chat.py ainda diz `parameters: object` (partição: só a frase).
+REVISAR(human): `schema_para_modelo` (regra do objeto livre e por que VALIDATED exige).

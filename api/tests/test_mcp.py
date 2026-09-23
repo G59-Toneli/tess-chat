@@ -432,3 +432,24 @@ async def test_string_json_nos_args_chega_ao_servidor_mcp_como_objeto(client, de
     assert await ultima_resposta(client, h, cid) == "Resposta: preco=dict itens=list texto=str"
     [ev] = await eventos("tool_call", user_id=uid)
     assert ev.payload["args"]["dados"]["preco"] == {"currency": "brl", "unit_amount": 100000}
+
+
+# ---------- Objeto livre exposto como string JSON (ticket 35) ----------
+
+
+async def test_objeto_livre_exposto_como_string_chega_ao_servidor_como_objeto(client, demo, usar_modelo):
+    uid, h = await usuario(client)
+    tools = (await cadastrar(client, h, demo)).json()["tools"]
+    tipos = next(t["nome"] for t in tools if t["nome"].endswith("_tipos"))
+    vistos = []
+    usar_modelo(modelo_que_chama(tipos, {"dados": '{"a": 1, "b": "x"}'}, vistos))
+    cid = (await criar(client, h))["id"]
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("ecoa os tipos"), headers=h)
+
+    assert r.status_code == 200, r.text
+    [definicao] = [t for t in vistos[0].function_tools if t.name == tipos]
+    assert definicao.parameters_json_schema["properties"]["dados"]["type"] == "string"
+    assert await ultima_resposta(client, h, cid) == "Resposta: a=int b=str"
+    [ev] = await eventos("tool_call", user_id=uid)
+    assert ev.payload["args"]["dados"] == {"a": 1, "b": "x"}
