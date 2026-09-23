@@ -122,7 +122,7 @@ async def web_fetch(url: str, t: httpx.AsyncBaseTransport | None = None) -> str:
         try:
             for _ in range(MAX_SALTOS):
                 r = await http.get(url)
-                if not r.is_redirect:
+                if not r.has_redirect_location:
                     break
                 url = str(r.url.join(r.headers["location"]))
                 if motivo := await _recusa(url):
