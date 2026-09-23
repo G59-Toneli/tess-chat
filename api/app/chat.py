@@ -39,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
 
 from app import mcp
-from app.anexos import ligar_a_mensagem, montar_anexos, partes_por_referencia, sem_bytes
+from app.anexos import ligar_a_mensagem, montar_anexos, partes_do_historico, partes_por_referencia
 from app.audit import audit
 from app.compactacao import Compactacao, com_resumo, modelo_resumo, ponto_de_corte, should_compact, ultimo_resumo
 from app.auth import User, current_user
@@ -55,6 +55,8 @@ from app.tools import ComTeto, estado_da_conversa, toolset_da_conversa, transpor
 MODELO = MODELO_PADRAO
 # Fallback do ADR 0012. Sem OPENAI_API_KEY no .env, a cadeia para aqui.
 MODELO_RESERVA = "gemini-3.7-flash"
+# Imagem no Gemini 3, media_resolution default (high). Fonte: ai.google.dev/gemini-api/docs/media-resolution.
+TOKENS_IMAGEM = 1120
 SDK = 7
 
 # Tools MCP genéricas (Stripe) têm `parameters: object` sem propriedades: o nome dos campos só vem do *_api_details.
@@ -91,17 +93,20 @@ def modelo_reserva() -> Model | None:
     return _gemini(MODELO_RESERVA)
 
 
-def _historico(linhas: list[Message]):
-    """Mensagens do banco (partes do AI SDK) para mensagens do Pydantic AI. Anexo vira texto."""
-    ui = [UIMessage(id=str(m.id), role=m.role, parts=sem_bytes(m.parts)) for m in linhas]
+async def _historico(s: AsyncSession, uid: uuid.UUID, linhas: list[Message], com_imagem: bool = True):
+    """Mensagens do banco (partes do AI SDK) para mensagens do Pydantic AI. Imagem volta com bytes."""
+    ui = [UIMessage(id=str(m.id), role=m.role, parts=await partes_do_historico(s, uid, m.parts, com_imagem)) for m in linhas]
     return VercelAIAdapter.load_messages(ui)
 
 
 # REVISAR(human): estimativa local de input para a reserva, sem chamar countTokens.
 # ~3 caracteres por token sobre o JSON das partes: conservador para pt-BR (INFERIDO).
+# Imagem soma TOKENS_IMAGEM: o JSON só tem a referência, os bytes entram depois (ADR 0016).
 def _estimar_input(linhas: list[Message], novas: list[Any]) -> int:
     chars = sum(len(str(m.parts)) for m in linhas) + sum(len(str(n.model_dump())) for n in novas)
-    return -(-chars // 3)
+    imagens = sum(1 for m in linhas for p in m.parts if str(p.get("mediaType", "")).startswith("image/"))
+    imagens += sum(1 for n in novas for p in n.parts if isinstance(p, FileUIPart) and p.media_type.startswith("image/"))
+    return -(-chars // 3) + imagens * TOKENS_IMAGEM
 
 
 async def _auditar_tentativas(s: AsyncSession, uid: uuid.UUID, cid: uuid.UUID, turno: Turno) -> None:
@@ -291,7 +296,7 @@ async def _preparar_historico(
     resumo = await ultimo_resumo(session, cid)
     efetivas = [l for l in linhas if resumo is None or l.id > resumo.ate_message_id]
     texto = resumo.texto if resumo else None
-    historico = com_resumo(texto, _historico(efetivas))
+    historico = com_resumo(texto, await _historico(session, uid, efetivas))
     anterior = next((l for l in reversed(efetivas) if l.role == "assistant"), None)
     uso = RunUsage(input_tokens=anterior.input_tokens or 0) if anterior else None
     corte = ponto_de_corte([l.role for l in efetivas], settings.compactacao_turnos_literais)
@@ -302,8 +307,8 @@ async def _preparar_historico(
         cid=cid,
         modelo=mr,
         resumo_anterior=texto,
-        antigas=_historico(efetivas[:corte]),
-        recentes=_historico(efetivas[corte:]),
+        antigas=await _historico(session, uid, efetivas[:corte], com_imagem=False),
+        recentes=await _historico(session, uid, efetivas[corte:]),
         ate_message_id=efetivas[corte - 1].id,
         tokens_antes=uso.input_tokens,
         tamanho_historico=len(historico),

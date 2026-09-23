@@ -197,8 +197,54 @@ async def test_turno_seguinte_nao_carrega_o_peso_do_anexo(client, usar_modelo, m
     assert len(enviados[0]) > 1_000_000
     assert len(enviados[1]) < 10_000
     assert "inlineData" not in enviados[1]
-    assert "[anexo: grande.pdf]" in enviados[1]
+    assert "[anexo: grande.pdf" in enviados[1]
+    assert "fora do contexto" in enviados[1]
     assert estimativas[1] < 10_000
+
+
+def gemini_gravando(enviados: list[dict]) -> GoogleModel:
+    """GoogleModel real com HTTP falso que guarda o JSON de cada request."""
+
+    def responder(req: httpx2.Request) -> httpx2.Response:
+        enviados.append(json.loads(req.content))
+        return httpx2.Response(200, content=GRAVADA.read_bytes(), headers={"content-type": "text/event-stream"})
+
+    return GoogleModel(MODELO, provider=GoogleProvider(api_key="teste", http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(responder))))
+
+
+def imagens_enviadas(req: dict) -> list[str]:
+    return [p["inlineData"]["mime_type"] for c in req["contents"] for p in c["parts"] if "inlineData" in p]
+
+
+async def test_imagem_volta_ao_modelo_no_turno_seguinte(client, usar_modelo):
+    """Bug de produção 23/09: sem a imagem no turno 2, o modelo inventava o texto dela."""
+    enviados: list[dict] = []
+    usar_modelo(gemini_gravando(enviados))
+    _, h = await usuario(client)
+    img = (await subir(client, h, "meme.png", PNG, "image/png")).json()
+    cid = (await criar(client, h))["id"]
+
+    assert (await client.post(f"/api/chat/{cid}", json=corpo("é verdade?", [parte(img)]), headers=h)).status_code == 200
+    assert (await client.post(f"/api/chat/{cid}", json=corpo("o que tá escrito?", []), headers=h)).status_code == 200
+
+    assert imagens_enviadas(enviados[1]) == ["image/png"]
+
+
+async def test_imagem_sumida_do_disco_vira_aviso(client, usar_modelo, pasta):
+    enviados: list[dict] = []
+    usar_modelo(gemini_gravando(enviados))
+    _, h = await usuario(client)
+    img = (await subir(client, h, "meme.png", PNG, "image/png")).json()
+    cid = (await criar(client, h))["id"]
+    assert (await client.post(f"/api/chat/{cid}", json=corpo("oi", [parte(img)]), headers=h)).status_code == 200
+    for f in pasta.iterdir():
+        f.unlink()
+
+    assert (await client.post(f"/api/chat/{cid}", json=corpo("e agora?", []), headers=h)).status_code == 200
+
+    assert imagens_enviadas(enviados[1]) == []
+    textos = [p.get("text", "") for c in enviados[1]["contents"] for p in c["parts"]]
+    assert any("meme.png" in t and "fora do contexto" in t for t in textos)
 
 
 async def test_recarregar_mostra_o_anexo_por_referencia(client, usar_modelo):
