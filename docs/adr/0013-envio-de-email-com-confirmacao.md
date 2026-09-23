@@ -11,7 +11,7 @@ O ADR 0010 fixou o Conector Google como somente leitura. Pedido do Toneli em 23/
 3. **Confirmação é clique, não texto.** O front renderiza o Rascunho com botões "Enviar" e "Descartar". Só `POST /api/connectors/google/drafts/{id}/enviar`, autenticado pelo dono, chama a API do Gmail. Texto "pode enviar" digitado no chat não envia nada: o modelo não tem Tool de envio final.
 4. **Resposta na thread.** Se o Usuário pediu para responder um e-mail lido por `gmail_read`, o Rascunho leva `thread_id`, `In-Reply-To` e `References` do original.
 5. **Auditoria** (ADR 0007): `email_draft_created`, `email_sent` (com `message_id` do Gmail) e `email_draft_discarded`.
-6. **Toggle.** `gmail_send` é uma Tool como as outras: nasce desligada por Conversa. O Usuário liga quando quer.
+6. **Toggle.** `gmail_send` é uma Tool como as outras e nasce ligada por Conversa. Primeira versão nascia desligada; o Toneli emendou em 23/09 (migração 0015): a trava contra envio indevido é o clique em Enviar, não o toggle, então desligar por padrão só atrapalhava a demo.
 
 ### Alternativas descartadas
 - **Enviar direto pela Tool.** Mais simples, mas o app passaria a executar ação irreversível por decisão do modelo. Recusado.
