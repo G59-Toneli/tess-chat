@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     gemini_paid_api_key: str | None = None
     # Busca da tool web_search (ticket 10). Sem chave, a tool responde indisponível.
     tavily_api_key: str | None = None
+    # Roteador Jev (ADR 0005). Sem chave, o Roteador cai em AUTO.
+    typesafe_api_key: str | None = None
+    # Limiar do gate. Vai para a Configuração no ticket 14.
+    roteador_limiar: float = 0.7
     # Crédito (ADR 0004). Linha em `caps` sobrescreve.
     cap_usuario_micro_usd: int = 2_000_000
     cap_global_micro_usd: int = 20_000_000

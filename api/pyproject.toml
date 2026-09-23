@@ -13,6 +13,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.54",
     "tavily-python>=0.8.4",
     "trafilatura>=2.2.0",
+    "typesafe-sdk>=0.7.1",
     "uvicorn[standard]>=0.53.0",
 ]
 
