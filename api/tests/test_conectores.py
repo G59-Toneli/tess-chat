@@ -1,6 +1,7 @@
 """Conector Google (ticket 18). Google fica atrás de MockTransport: OAuth, Gmail e Drive gravados."""
 
 import base64
+import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlparse
@@ -13,7 +14,7 @@ from sqlalchemy import text
 
 from app.anexos import MEDIA_PDF
 from app.chat import MODELO
-from app.conectores import CALLBACK, transporte_google
+from app.conectores import CALLBACK, COOKIE_PKCE, transporte_google
 from app.config import settings
 from app.db import SessionLocal
 from app.main import app
@@ -201,6 +202,44 @@ async def test_authorize_monta_url_do_google(client):
     assert q["access_type"] == ["offline"] and q["prompt"] == ["consent"]
     assert q["state"][0]
     assert (await client.get("/api/connectors/google/authorize")).status_code == 401
+
+
+async def test_authorize_liga_pkce_e_guarda_o_verifier_em_cookie(client):
+    _, h = await usuario(client)
+    r = await client.get("/api/connectors/google/authorize", headers=h)
+
+    q = parse_qs(urlparse(r.json()["url"]).query)
+    assert q["code_challenge_method"] == ["S256"] and q["code_challenge"][0]
+    cookie = r.headers["set-cookie"]
+    assert cookie.startswith(f"{COOKIE_PKCE}=")
+    assert "HttpOnly" in cookie and "SameSite=lax" in cookie and f"Path={CALLBACK}" in cookie
+
+
+async def test_callback_manda_o_verifier_que_bate_com_o_challenge(client, google):
+    _, h = await usuario(client)
+    q = await autorizar(client, h)
+
+    r = await client.get(CALLBACK, params={"code": "code-falso", "state": q["state"][0]})
+
+    assert r.headers["location"].endswith("/conectores?conectado=1")
+    [troca] = [r for r in google.vistas if r.url.path == "/token"]
+    verifier = parse_qs(troca.content.decode())["code_verifier"][0]
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    assert challenge == q["code_challenge"][0]
+    assert COOKIE_PKCE not in client.cookies
+
+
+async def test_callback_sem_cookie_pkce_nao_chama_o_google(client, google):
+    _, h = await usuario(client)
+    q = await autorizar(client, h)
+    client.cookies.clear()
+
+    r = await client.get(CALLBACK, params={"code": "code-falso", "state": q["state"][0]})
+
+    assert "/conectores?erro=pkce_ausente" in r.headers["location"]
+    assert google.vistas == []
+    [c] = (await client.get("/api/connectors", headers=h)).json()
+    assert c["conectado"] is False
 
 
 async def test_callback_troca_code_e_grava_tokens_cifrados(client, google):
@@ -557,3 +596,5 @@ async def test_token_expirado_sem_refresh_valido_da_mensagem_clara(client, googl
     resposta = await ultima_resposta(client, h, cid)
     assert "expirou" in resposta and "Conectores" in resposta
     assert google.bearer("/users/me/messages") == []
+    [ev] = await eventos("connector_refresh_failed", user_id=uid)
+    assert "invalid_grant" in ev.payload["erro"]

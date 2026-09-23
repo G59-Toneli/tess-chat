@@ -9,6 +9,9 @@ dependencies = [
     "cryptography>=50.0.1",
     "fastapi>=0.141.1",
     "fastapi-users[sqlalchemy]>=15.0.5",
+    "google-auth>=2.58.0",
+    "google-auth-oauthlib>=1.4.1",
+    "httpx>=0.28.1",
     "pydantic-ai-slim[google,mcp]==2.47.0",
     "pydantic-settings>=2.15.0",
     "sqlalchemy[asyncio]>=2.0.54",
@@ -20,7 +23,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
 ]

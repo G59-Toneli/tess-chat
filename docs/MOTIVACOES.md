@@ -125,7 +125,7 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 
 | Decisão | Por quê | Fonte |
 |---|---|---|
-| **`httpx` direto nas REST do Google**, não `google-api-python-client` | A lib do Google é síncrona (httplib2) e não passa pelo `transporte()` injetável. Com `httpx`, o teste usa `httpx.MockTransport` igual às outras Tools. O ADR 0010 fica igual: muda a biblioteca, não a decisão. | `DECISOES-AUTONOMAS.md` (18) |
+| **Auth pelas libs oficiais (`google-auth`, `google-auth-oauthlib`) com PKCE; Gmail e Drive em `httpx`** | O `Flow` e o `Credentials` dão troca de code, refresh e PKCE prontos e mantidos pelo Google. O `google-api-python-client` caiu: maintenance mode, sobre httplib2 deprecated, síncrono. Não existe cliente oficial async para Gmail e Drive. Duas pontes (`app/google_transporte.py`) passam as libs pelo mesmo `httpx.MockTransport` dos testes. | [ADR 0017](adr/0017-auth-google-com-libs-oficiais-e-pkce.md) |
 | **Tokens cifrados com Fernet**, chave `CONNECTORS_KEY` no `.env` | Token do Google em claro no banco vaza com um dump. Fernet é padrão e a chave fica fora do banco. Custo: trocar a chave obriga o usuário a reconectar. | idem |
 | **Origem `google` no registro de Tools** | O filtro "só aparece com Conector" sai de uma coluna, sem lista de nomes no código. O glossário ainda diz só `nativa` ou `mcp`. | idem, migração 0012 |
 | **Filtro de Conector em `estado_da_conversa`** | Um ponto só cobre o toolset do turno, a lista de Tools da Conversa e as opções do Roteador. Zero edição em `chat.py`. | idem |

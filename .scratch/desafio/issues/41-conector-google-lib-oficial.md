@@ -1,7 +1,7 @@
 # 41 — Conector Google com as libs oficiais de auth (google-auth + google-auth-oauthlib) e PKCE
 
 **Type:** task (AFK, só api/ e docs/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ADR 0010 (cita a lib do Google, código usa httpx), `docs/DECISOES-AUTONOMAS.md` (entrada do httpx no ticket 18), `docs/MOTIVACOES.md` (seção do conector), `MANHA.md` (item "ADR 0010 vs código").
 
@@ -34,3 +34,9 @@ Escrever ADR 0017 revisando o 0010 com isso e os links: https://github.com/googl
 - [ ] Teste: refresh com `invalid_grant` gera `connector_refresh_failed` e a tool devolve o texto de "expirou".
 - [ ] ADR 0017 escrito.
 - [ ] Chamadas reais: Gemini 0, Google 0.
+
+## Answer
+Auth do Google agora usa `Flow` (google-auth-oauthlib) e `Credentials` (google-auth), com PKCE: `code_verifier` no cookie httpOnly `tess_google_pkce`, callback sem cookie volta `?erro=pkce_ausente` sem chamar o Google. Gmail, Drive e revoke seguem em httpx. `app/google_transporte.py` tem `RequestHttpx` e `AdaptadorRequests`: o mesmo `MockTransport` vê o `/token` do refresh e do callback. ADR 0017 escrito; 0010 aponta para ele.
+Ressalvas: `OAUTHLIB_RELAX_TOKEN_SCOPE=1` no processo (sem ele, escopo parcial ou extra quebra a troca; `test_email` com escopo só de leitura pegou isso). `creds.expired` renova 3m45s antes (era 60 s). Falha de rede no refresh também vira "expirou", como no 18. Payload de `connector_refresh_failed` troca `status` por `erro`.
+`test_mcp::test_erro_da_tool_mcp_volta_ao_modelo_que_tenta_de_novo` falhou 1 vez em 5 execuções, passou nas outras e no baseline: intermitente, sem relação com o Google.
+REVISAR(human): `_token`, `autorizar` (state + PKCE) e `_trocar` (par cookie/PKCE do callback).

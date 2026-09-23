@@ -1,6 +1,6 @@
 # ADR 0010 — Conector Google Drive e Gmail por OAuth direto, não por MCP sidecar
 
-**Status:** aceito, 2026-09-23
+**Status:** aceito, 2026-09-23. Biblioteca revisada pelo [ADR 0017](0017-auth-google-com-libs-oficiais-e-pkce.md).
 
 ## Contexto
 MCP oficial do Google é Developer Preview com programa fechado. App em modo Testing só autoriza test users listados. Token expira em 7 dias.
