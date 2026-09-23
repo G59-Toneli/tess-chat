@@ -39,3 +39,11 @@ export const definirCap = (usuario: string, cap_micro_usd: number) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cap_micro_usd }),
   })
+
+/** Configuração global da instância. Só admin. */
+export const salvarCadastroAberto = (cadastro_aberto: boolean) =>
+  api<{ cadastro_aberto: boolean }>('/api/admin/configuracao', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cadastro_aberto }),
+  })

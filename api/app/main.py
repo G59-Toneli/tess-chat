@@ -24,6 +24,7 @@ from app.auth import (
 )
 from app.chat import router as chat_router
 from app.conectores import router as conectores_router
+from app.configuracao import cadastro_aberto, cadastro_permitido
 from app.configuracao import router as configuracao_router
 from app.conversas import router as conversas_router
 from app.credito import router as credito_router
@@ -45,7 +46,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"])
-app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+    dependencies=[Depends(cadastro_permitido)],
+)
 app.include_router(conversas_router)
 app.include_router(chat_router)
 app.include_router(credito_router)
@@ -74,9 +80,9 @@ async def eu(user: Annotated[User, Depends(current_user)]) -> User:
 
 
 @app.get("/api/config-publica")
-async def config_publica() -> dict[str, bool | str]:
+async def config_publica(session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, bool | str]:
     """Config que o front lê sem login. Decidida em runtime: a mesma imagem serve dev e prod."""
-    return {"env": settings.env}
+    return {"env": settings.env, "cadastro_aberto": await cadastro_aberto(session)}
 
 
 # Manter no fim: catch-all do front depois de todas as rotas da API.

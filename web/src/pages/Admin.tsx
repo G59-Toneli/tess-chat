@@ -9,10 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useContextoApp } from '@/layout/AppLayout'
-import { definirCap } from '@/lib/configuracao'
+import { configPublica } from '@/lib/api'
+import { definirCap, salvarCadastroAberto } from '@/lib/configuracao'
 import { painelCredito, usd, usuariosAdmin, type Saldo, type UsuarioAdmin } from '@/lib/painel'
 import { Resumo } from '@/pages/Creditos'
 
@@ -53,6 +55,7 @@ function PainelAdmin() {
       ) : (
         <div className="flex flex-col gap-6">
           <Resumo saldo={dados.saldo} global />
+          <CardCadastro />
           <Card>
             <CardHeader>
               <CardTitle>Usuários</CardTitle>
@@ -115,6 +118,50 @@ function PainelAdmin() {
       )}
       <DialogCap usuario={editando} fechar={() => setEditando(null)} recarregar={carregar} />
     </div>
+  )
+}
+
+/** Toggle global do cadastro. Fechado, /auth/register responde 403 e o Login esconde "Criar conta". */
+function CardCadastro() {
+  const [aberto, setAberto] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    configPublica()
+      .then((c) => setAberto(c.cadastro_aberto))
+      .catch(() => setAberto(null))
+  }, [])
+
+  async function alternar(v: boolean) {
+    setAberto(v)
+    try {
+      setAberto((await salvarCadastroAberto(v)).cadastro_aberto)
+      toast.success(v ? 'Cadastro aberto.' : 'Cadastro fechado. Só contas existentes entram.')
+    } catch {
+      setAberto(!v)
+      toast.error('Não foi possível alterar o cadastro. Tente de novo.')
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1.5">
+          <CardTitle>Cadastro</CardTitle>
+          <CardDescription>Aberto, qualquer pessoa cria conta na tela de login. Fechado, só contas existentes entram.</CardDescription>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Label htmlFor="cadastro-aberto" className="text-sm text-muted-foreground">
+            {aberto ? 'Aberto' : 'Fechado'}
+          </Label>
+          <Switch
+            id="cadastro-aberto"
+            checked={aberto ?? false}
+            disabled={aberto === null}
+            onCheckedChange={(v) => void alternar(v)}
+          />
+        </div>
+      </CardHeader>
+    </Card>
   )
 }
 
