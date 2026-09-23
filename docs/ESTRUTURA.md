@@ -103,6 +103,7 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | `conectores.py` | Conector Google: tabela `connectors`, OAuth com `state` JWT e PKCE, tokens cifrados, refresh, Tools `gmail_search`, `gmail_read`, `gmail_send` (Rascunho, ADR 0013), `drive_search_read`. Ticket 18 |
 | `google_transporte.py` | pontes das libs de auth do Google para o transporte httpx injetável (ADR 0017) |
 | `mcp_oauth.py` | Servidor MCP por OAuth: descoberta, DCR, PKCE, troca de code e refresh. Ticket 52, ADR 0022 |
+| `rede.py` | barreira de SSRF comum a MCP e `web_fetch`: todo IP resolvido precisa ser público |
 | `limpeza_anexos.py` | varredura diária de arquivos de Anexo órfãos, rodada pelo cron do VPS. Ticket 50 |
 | `roteador.py` | Roteador com Jev e gate de confiança |
 | `compactacao.py` | Compactação por Resumo, tabela `summaries` |
@@ -168,6 +169,7 @@ Tickets 25 a 54: uma linha por execução em `.scratch/desafio/LEDGER.md`.
 | 0018 | 30 | teto de tool calls na Configuração |
 | 0019 | 42 | descrição de `drive_search_read` com PDF e recentes volta ao banco |
 | 0020 | 52 | credencial OAuth cifrada e estado da conexão em `mcp_servers` (ADR 0022) |
+| 0021 | revisão | `configuracao_global`: linha única com `cadastro_aberto` |
 
 ## Onde mora cada conceito do `CONTEXT.md`
 
