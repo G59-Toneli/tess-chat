@@ -1,7 +1,7 @@
 # 05 — Conversas e Mensagens persistidas
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 04
 **Refs:** `CONTEXT.md` (Conversa, Mensagem, Anexo).
 

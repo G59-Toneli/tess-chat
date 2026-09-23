@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 import app.audit  # noqa: F401  registra os modelos no metadata
+import app.auth  # noqa: F401
 from app.config import settings
 from app.db import Base
 
