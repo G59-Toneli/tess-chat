@@ -20,7 +20,7 @@ Vale para todo ticket que toca `web/`. Meta do Toneli: tela bonita, clara e vis�
 | Rota | Conteúdo |
 |---|---|
 | `/login` | e-mail + senha, alternar cadastro, conta demo em destaque |
-| `/` e `/c/:id` | sidebar de conversas (buscar, nova, renomear, apagar), chat, painel lateral de tools ativas da conversa |
+| `/` e `/c/:id` | sidebar de conversas (buscar, nova, renomear, apagar), chat, seletor de tools da conversa em popover na barra do input |
 | `/s/:shareId` | conversa pública read-only, banner "compartilhada por", sem sidebar |
 | `/config` | modelo, nível de thinking, limiar de compactação, limiar do roteador, tema |
 | `/tools` | tools nativas e MCP: ligar/desligar global, ver schema |
