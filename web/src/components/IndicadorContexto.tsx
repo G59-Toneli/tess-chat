@@ -13,16 +13,8 @@ const CIRCUNFERENCIA = 2 * Math.PI * RAIO
 
 const COR = { normal: 'text-muted-foreground', alerta: 'text-amber-500', critico: 'text-destructive' }
 
-/** Ponto no círculo de raio r, na fração f da volta, a partir do topo em sentido horário. */
-function ponto(f: number, r: number) {
-  const a = f * 2 * Math.PI - Math.PI / 2
-  return { x: CENTRO + r * Math.cos(a), y: CENTRO + r * Math.sin(a) }
-}
-
 function Rosca({ contexto }: { contexto: Contexto | null }) {
   const f = contexto ? fracao(contexto) : 0
-  const marca = contexto && contexto.limite > 0 ? contexto.limiar_compactacao / contexto.limite : null
-  const [de, ate] = marca !== null && marca < 1 ? [ponto(marca, RAIO - 2.5), ponto(marca, RAIO + 2.5)] : [null, null]
   return (
     <svg width={TAMANHO} height={TAMANHO} viewBox={`0 0 ${TAMANHO} ${TAMANHO}`} aria-hidden className={COR[faixa(f)]}>
       <circle cx={CENTRO} cy={CENTRO} r={RAIO} fill="none" strokeWidth={TRACO} className="stroke-border" />
@@ -40,14 +32,11 @@ function Rosca({ contexto }: { contexto: Contexto | null }) {
           className="transition-[stroke-dasharray] duration-500 ease-out motion-reduce:transition-none"
         />
       )}
-      {de && ate && (
-        <line x1={de.x} y1={de.y} x2={ate.x} y2={ate.y} strokeWidth={1} strokeLinecap="round" className="stroke-foreground/70" />
-      )}
     </svg>
   )
 }
 
-/** Rosca na barra do input: quanto da janela de contexto o próximo turno carrega. Atualiza ao fim do turno e ao trocar de Conversa. */
+/** Rosca na barra do input: quanto falta para a Compactação, pelo contexto que o próximo turno carrega. Atualiza ao fim do turno e ao trocar de Conversa. */
 export function IndicadorContexto({ conversaId, status }: { conversaId?: string; status: ChatStatus }) {
   const [contexto, setContexto] = useState<Contexto | null>(null)
   const [erro, setErro] = useState(false)
