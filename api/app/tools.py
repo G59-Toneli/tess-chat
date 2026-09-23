@@ -288,8 +288,7 @@ async def toolset_da_conversa(
         if tool.nome in NATIVAS:
             ts.add_function(_ligar(tool.nome, t), name=tool.nome, description=tool.descricao)
         elif tool.nome in conectores.TOOLS:
-            desc = conectores.DESCRICOES.get(tool.nome, tool.descricao)
-            ts.add_function(conectores.ligar(tool.nome, uid, t, cid), name=tool.nome, description=desc)
+            ts.add_function(conectores.ligar(tool.nome, uid, t, cid), name=tool.nome, description=tool.descricao)
         elif tool.mcp_server_id is not None:
             por_servidor.setdefault(tool.mcp_server_id, set()).add(tool.nome)
     servidores = (await session.scalars(select(mcp.McpServer).where(mcp.McpServer.id.in_(por_servidor)))).all()

@@ -106,6 +106,15 @@ async def test_catalogo_devolve_descricao_para_o_usuario(client):
     assert na_conversa["web_search"]["descricao_usuario"] == por_nome["web_search"]["descricao_usuario"]
 
 
+async def test_catalogo_descreve_pdf_e_recentes_do_drive(client):
+    """A tela vê o que drive_search_read faz desde os tickets 38 e 39 (ticket 42)."""
+    _, h = await usuario(client)
+    por_nome = {t["nome"]: t for t in (await client.get("/api/tools", headers=h)).json()}
+
+    drive = por_nome["drive_search_read"]["descricao_usuario"]
+    assert "PDF" in drive and "recentes" in drive
+
+
 async def test_toggle_por_conversa_e_auditado(client):
     uid, h = await usuario(client)
     c1 = (await criar(client, h))["id"]

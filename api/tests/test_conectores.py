@@ -406,7 +406,7 @@ async def test_drive_query_vazia_lista_recentes_com_datas(client, google, usar_m
     assert "Plano Q4" in resposta and "foto.png" in resposta
     assert "criado 20/09/2026 09:00" in resposta and "modificado 23/09/2026 10:05" in resposta
     [drive] = [t for t in vistos[0].function_tools if t.name == "drive_search_read"]
-    assert "vazia" in drive.description
+    assert "vazia" in drive.description and "recentes" in drive.description  # lida do banco (ticket 42)
 
 
 def arquivos_vistos(msgs: list[ModelMessage]) -> list[BinaryContent]:

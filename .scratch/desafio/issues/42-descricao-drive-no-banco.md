@@ -1,7 +1,7 @@
 # 42 — Descrição de `drive_search_read` volta a ter uma fonte só (banco)
 
 **Type:** task (AFK, só api/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ticket 39 (`conectores.DESCRICOES`), migrações 0012 (registro das tools do Google) e 0016 (`descricao_usuario`).
 
@@ -15,7 +15,13 @@
 - Tirar a linha do ticket 39 em DECISOES-AUTONOMAS ou marcar como superada pelo 40.
 
 **Aceite:**
-- [ ] Teste: depois das migrações, o toolset entrega ao modelo a descrição que menciona query vazia e recentes, lida do banco.
-- [ ] Teste: a API que a tela usa para listar tools devolve a `descricao_usuario` nova de `drive_search_read`.
-- [ ] `alembic upgrade head` e `downgrade -1` limpos no Postgres local.
-- [ ] Sem chamada real a Gemini, Tavily ou Jev.
+- [x] Teste: depois das migrações, o toolset entrega ao modelo a descrição que menciona query vazia e recentes, lida do banco.
+- [x] Teste: a API que a tela usa para listar tools devolve a `descricao_usuario` nova de `drive_search_read`.
+- [x] `alembic upgrade head` e `downgrade -1` limpos no Postgres local.
+- [x] Sem chamada real a Gemini, Tavily ou Jev.
+
+## Answer
+- Migração 0019 grava em `tools` a `descricao` que estava em `conectores.DESCRICOES` e uma `descricao_usuario` nova com PDF e recentes; `downgrade` volta os textos da 0012 e da 0016.
+- `conectores.DESCRICOES` saiu; `toolset_da_conversa` usa `tool.descricao` para as Tools do Google, como as outras. Tela, Roteador e modelo leem a mesma fonte.
+- Não havia seed em código fora das migrações. `roteador.DESCRICOES` intocado.
+- Linha do ticket 39 em DECISOES-AUTONOMAS marcada como superada. Nada `REVISAR(human)`.

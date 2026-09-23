@@ -54,15 +54,6 @@ MARCADOR_PDF = "[arquivo do Drive: {nome}]"
 CAMPOS_DRIVE = "files(id,name,mimeType,createdTime,modifiedTime,size)"
 RECENTES = 10
 FUSO = ZoneInfo("America/Sao_Paulo")
-# Descrição que o modelo vê. Sobrepõe a do registro (migração 0012) sem migração nova (ticket 39).
-DESCRICOES = {
-    "drive_search_read": (
-        "Busca arquivos no Google Drive do usuário pelo nome ou conteúdo e devolve o texto do arquivo mais "
-        "relevante (Docs, Sheets, Slides, texto ou PDF), mais a lista dos outros achados com data de criação "
-        "e de modificação. Com query vazia, lista os 10 arquivos modificados mais recentemente, com as datas, "
-        "sem ler conteúdo: use para 'últimos arquivos', 'recentes', 'de hoje'."
-    ),
-}
 TIMEOUT = httpx.Timeout(30.0)
 EXPIROU = (
     "A conexão com o Google expirou e não pôde ser renovada. "
