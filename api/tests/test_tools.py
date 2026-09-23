@@ -40,6 +40,20 @@ class Rotas(httpx.MockTransport):
         return httpx.Response(200, text=HTML, headers={"content-type": "text/html; charset=utf-8"})
 
 
+# DNS falso: nenhum teste depende de rede. `postgres` é o nome do banco na rede do compose.
+DNS = {"postgres": "172.18.0.2", "interno.test": "10.0.0.5"}
+
+
+@pytest.fixture(autouse=True)
+def dns_falso(monkeypatch):
+    from app import rede
+
+    async def resolver(host: str, _porta: int) -> list[str]:
+        return [DNS.get(host, "93.184.216.34")]
+
+    monkeypatch.setattr(rede, "resolver_ips", resolver)
+
+
 @pytest.fixture
 def usar_rotas():
     def trocar(t):
@@ -217,6 +231,44 @@ async def test_web_fetch_cai_no_trafilatura_quando_jina_falha():
     assert "Sove a massa por dez minutos" in texto
     assert "<p>" not in texto and "rastreio" not in texto and "Início" not in texto
     assert [r.url.host for r in t.vistas] == ["r.jina.ai", "site.test"]
+
+
+@pytest.mark.parametrize(
+    "url", ["http://127.0.0.1/", "http://169.254.169.254/latest/meta-data/", "http://postgres:5432/", "file:///etc/passwd"]
+)
+async def test_web_fetch_recusa_endereco_interno_sem_request(url):
+    t = Rotas()
+    texto = await web_fetch(url, t)
+    assert texto.startswith("web_fetch recusado")
+    assert t.vistas == []
+
+
+async def test_web_fetch_recusa_redirect_de_url_publica_para_ip_interno():
+    def responder(req: httpx.Request) -> httpx.Response:
+        if req.url.host == "r.jina.ai":
+            return httpx.Response(503)
+        if req.url.host == "publico.test":
+            return httpx.Response(302, headers={"location": "http://interno.test/admin"})
+        return httpx.Response(200, text="segredo interno")
+
+    vistas: list[str] = []
+    t = httpx.MockTransport(lambda req: vistas.append(req.url.host) or responder(req))
+    texto = await web_fetch("https://publico.test/x", t)
+
+    assert texto.startswith("web_fetch recusado") and "10.0.0.5" in texto
+    assert vistas == ["r.jina.ai", "publico.test"]
+
+
+async def test_web_fetch_segue_redirect_entre_urls_publicas():
+    def responder(req: httpx.Request) -> httpx.Response:
+        if req.url.host == "r.jina.ai":
+            return httpx.Response(503)
+        if req.url.path == "/velho":
+            return httpx.Response(301, headers={"location": "/pao"})
+        return httpx.Response(200, text=HTML, headers={"content-type": "text/html; charset=utf-8"})
+
+    texto = await web_fetch("https://site.test/velho", httpx.MockTransport(responder))
+    assert "Sove a massa por dez minutos" in texto
 
 
 async def test_web_fetch_ligada_no_chat_gera_tool_call(client, usar_modelo, usar_rotas):

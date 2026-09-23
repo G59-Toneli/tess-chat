@@ -6,6 +6,7 @@ import time
 import uuid
 from dataclasses import dataclass, field, replace
 from typing import Annotated, Any
+from urllib.parse import urlsplit
 
 import httpx
 import httpx2
@@ -29,6 +30,7 @@ from app.config import settings
 from app.auth import User, current_superuser
 from app.conversas import Conversation, Sessao, Usuario, conversa_do_usuario
 from app.db import Base, SessionLocal
+from app.rede import ip_interno
 from app.resiliencia import TIMEOUTS, resumo_erro
 
 # Teto do texto que volta ao modelo por chamada (~6k tokens, INFERIDO).
@@ -37,6 +39,8 @@ LIMITE_CHARS = 20_000
 LIMITE_CHARS_MCP = 40_000
 TRECHO_BUSCA = 600
 TIMEOUT = httpx.Timeout(30.0)
+# Redirects que o web_fetch segue, validando cada salto.
+MAX_SALTOS = 5
 
 
 class Tool(Base):
@@ -86,11 +90,29 @@ async def web_search(query: str, t: httpx.AsyncBaseTransport | None = None) -> s
     return "\n\n".join(blocos) or "Nenhum resultado."
 
 
+async def _recusa(url: str) -> str | None:
+    """Motivo para não buscar a URL, em texto para o modelo, ou None. Só http(s) para endereço público."""
+    partes = urlsplit(url)
+    if partes.scheme not in ("http", "https") or not partes.hostname:
+        return f"web_fetch recusado: só URL http:// ou https:// ({url})."
+    try:
+        interno = await ip_interno(partes.hostname, partes.port or (443 if partes.scheme == "https" else 80))
+    except OSError:
+        return f"web_fetch falhou: não consegui resolver {partes.hostname}."
+    if interno:
+        return f"web_fetch recusado: {url} aponta para um endereço interno ({interno})."
+    return None
+
+
 # REVISAR(human): Jina Reader primeiro; qualquer falha (status != 200, corpo vazio, erro de rede)
 # cai no GET direto da URL + trafilatura. Texto cortado em LIMITE_CHARS para não estourar o contexto.
+# SSRF: o GET direto sai do container, então a URL inicial e cada salto de redirect passam por
+# `_recusa` (redirect seguido à mão, até MAX_SALTOS). Ressalva: o httpx resolve o DNS de novo (rebinding).
 async def web_fetch(url: str, t: httpx.AsyncBaseTransport | None = None) -> str:
     """Baixa a URL e devolve o texto limpo."""
-    async with httpx.AsyncClient(transport=t, timeout=TIMEOUT, follow_redirects=True) as http:
+    if motivo := await _recusa(url):
+        return motivo
+    async with httpx.AsyncClient(transport=t, timeout=TIMEOUT) as http:
         try:
             r = await http.get(f"https://r.jina.ai/{url}")
             if r.status_code == 200 and r.text.strip():
@@ -98,7 +120,15 @@ async def web_fetch(url: str, t: httpx.AsyncBaseTransport | None = None) -> str:
         except httpx.HTTPError:
             pass
         try:
-            r = await http.get(url)
+            for _ in range(MAX_SALTOS):
+                r = await http.get(url)
+                if not r.is_redirect:
+                    break
+                url = str(r.url.join(r.headers["location"]))
+                if motivo := await _recusa(url):
+                    return motivo
+            else:
+                return f"web_fetch falhou: mais de {MAX_SALTOS} redirecionamentos."
             r.raise_for_status()
         except httpx.HTTPError as e:
             return f"web_fetch falhou: {type(e).__name__}"
