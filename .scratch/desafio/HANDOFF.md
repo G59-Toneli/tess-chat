@@ -31,7 +31,7 @@ Atualizado em 2026-09-23 ~13:40. Sessão encerrada a pedido do Toneli; retomar a
 
 ## Estado dos tickets
 - **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 (AFK), 20 a 37. Tudo em `origin/main` e em produção.
-- **CI ligado (23/09 ~13:00):** push na `main` → GitHub Actions → ssh com chave própria do CI (`<chave-do-ci>`, só no VPS e nos secrets) → `deploy.sh`. Deploy key read-only cadastrada; `/opt/tess-chat` é clone git. Não precisa mais de `git archive`.
+- **CI ligado (23/09 ~13:00):** push na `main` → GitHub Actions → ssh com chave própria do CI (`<omitido>`, só no VPS e nos secrets) → `deploy.sh`. Deploy key read-only cadastrada; `/opt/tess-chat` é clone git. Não precisa mais de `git archive`.
 - **Stripe MCP validado com a frase do Toneli** depois dos tickets 35 e 36 e de voltar o modelo da conta demo ao padrão (um agente tinha deixado flash-lite na conta; flash-lite escolhe mal a tool).
 - **Regra nova:** agente NÃO altera a Configuração da conta demo (modelo, limiares) sem reverter no fim do ticket.
 - **Produção:** https://chat.toneli.dev.br no ar (VPS compartilhado, nginx do host + certbot, ADR 0014). Deploy manual: `git archive HEAD | ssh ... tar -x -C /opt/tess-chat` e `bash /opt/tess-chat/deploy/deploy.sh` (runbook em `docs/INFRA.md`). CI funcionando.
@@ -42,7 +42,7 @@ Atualizado em 2026-09-23 ~13:40. Sessão encerrada a pedido do Toneli; retomar a
 - **Bloqueados em Toneli:** 02 e 16 (SSH do VPS, registro A `chat.toneli.dev.br`). Parte HITL do 18 (conectar conta Google e validar) e do 19 (gravar vídeo) no `MANHA.md`. Decisão sobre fallback OpenAI (ADR 0012 sem código) no `MANHA.md`.
 - **Próximo ticket de código:** 16 (deploy), assim que houver SSH. No deploy: `ENV=prod`, `PUBLIC_BASE_URL=https://chat.toneli.dev.br`, `CONNECTORS_KEY` própria, trocar `GITHUB_PAT` e recadastrar o GitHub em `/mcp`.
 - Próxima migração livre: `0019`.
-- **Acesso ao VPS:** chave em `<chave>` (origem `<pasta-de-acesso>`, leia `LEIA.txt` antes de qualquer comando). Chave do CI em `<chave-do-ci>`. Stack em `/opt/tess-chat`, app em `127.0.0.1:8010`, nginx do host com certbot. VPS é produção compartilhada: nunca tocar em nada fora de `/opt/tess-chat` e do site nginx `tess-chat`.
+- **Acesso ao VPS:** chave em `<omitido>` (origem `<omitido>`, leia `LEIA.txt` antes de qualquer comando). Chave do CI em `<omitido>`. Stack em `/opt/tess-chat`, app em `127.0.0.1:8010`, nginx do host com certbot. VPS é produção compartilhada: nunca tocar em nada fora de `/opt/tess-chat` e do site nginx `tess-chat`.
 - **Candidatos a próximo passo (não abertos como ticket):** propostas restantes em `docs/UX-AUDITORIA.md`; tela `/mcp` ainda mostra a descrição técnica das tools; tempo do indicador de trabalhando zera a cada espera (37); tools de leitura do Gmail ainda devolvem erro cru ao modelo (29); teste de timeout MCP de 15 s ausente (30).
 - 25 (responder e-mail com confirmação, ADR 0013) foi pedido pelo Toneli às ~07:00 e fechou. HITL dele (escopo `gmail.send` no GCP, reconectar, validar) no `MANHA.md`.
 - Tickets criados nesta sessão: 20 (estrutura + motivações), 21 (suíte em lote), 22 (WORKFLOW real), 23 (resiliência MCP + SSRF), 24 (docs atualizados). Todos resolvidos.
