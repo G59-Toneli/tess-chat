@@ -23,3 +23,6 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 07a | Catch-all da SPA em `app/estaticos.py`, chamado na última linha de `main.py`. `/api/*` sem rota devolve 404, não HTML. Sem `web/dist`, não monta nada. | `StaticFiles(html=True)` montado em `/`. | `StaticFiles` não faz fallback de rota do front para `index.html`. Testes da API rodam sem build do front. |
 | 07a | Tema dark padrão com toggle próprio (classe `dark` no `<html>` + `localStorage`). | `next-themes`. | Duas funções bastam. Uma dependência a menos. |
 | 07a | Sem Evento de auditoria. | Emitir evento em acesso ao front. | Ticket não tem ação relevante do domínio: só serve arquivo estático e tela mock. |
+| 07a | `loader` do AI Elements não existe no registry. Carregando usa `Spinner` + `Skeleton` do shadcn. | Escrever loader próprio. | Componentes prontos do shadcn, sem código novo. |
+| 07a | Placeholders simulam estados por `?estado=carregando\|erro`; vazio é o padrão. Componentes em `web/src/components/estados.tsx`. | Estado só quando a API existir. | Guia exige estados visíveis; os tickets seguintes reusam os componentes. |
+| 07a | Brave lançado pelo `executablePath` dentro do Playwright MCP (confirmado por `navigator.brave`). | Mudar a config do MCP. | Config do harness não é deste ticket. |

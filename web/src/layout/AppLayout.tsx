@@ -20,6 +20,9 @@ const itensMenu = [
   { to: '/conectores', rotulo: 'Conectores' },
   { to: '/creditos', rotulo: 'Créditos' },
   { to: '/auditoria', rotulo: 'Auditoria' },
+  { to: '/compartilhados', rotulo: 'Compartilhados' },
+  { to: '/perfil', rotulo: 'Perfil' },
+  { to: '/admin', rotulo: 'Administração' },
 ]
 
 /** Layout base: sidebar de Conversas, header com menu do Usuário, conteúdo. */
@@ -36,6 +39,9 @@ export function AppLayout() {
           </Button>
         </div>
         <nav className="flex-1 overflow-y-auto px-2" aria-label="Conversas">
+          {conversasMock.length === 0 && (
+            <p className="px-3 py-2 text-sm text-muted-foreground">Nenhuma conversa ainda. Clique em Nova conversa.</p>
+          )}
           {conversasMock.map((c) => (
             <NavLink
               key={c.id}
