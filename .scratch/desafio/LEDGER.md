@@ -8,3 +8,4 @@
 | 06 | (ver ticket) | (ver ticket) | aceite OK; arquivos entraram no commit 2c738a6 por colisão de stage | 2c738a6 |
 | 07a | 2026-09-22T22:27:37-03:00 | 2026-09-22T22:42:32-03:00 | PASSOU: build sem erro de tipo; 5/5 pytest test_estaticos; docker build + run responde / (HTML) e /health; 10 rotas navegáveis no Playwright, dark 1440x900 | feat(07a) |
 | 07a | 2026-09-22T22:45:40-03:00 | 2026-09-22T22:45:40-03:00 | PASSOU (rodada 2, UI-GUIA): +/compartilhados /perfil /admin, estados vazio/carregando/erro, login com cadastro e demo; 15 screenshots no Brave dark 1440x900; build limpo; docker ok | feat(07a) |
+| 08 | 2026-09-22T22:40:00-03:00 | 2026-09-22T22:48:19-03:00 | PASSOU 12/12 pytest test_credito + test_chat (soma do Ledger = usageMetadata × preço, cap 1 µUSD sem chamar provedor, nova vigência preserva linhas); mutação da reserva e do arredondamento pega | feat(08) |

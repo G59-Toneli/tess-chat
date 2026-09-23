@@ -24,11 +24,14 @@ from app.audit import audit
 from app.auth import User, current_user
 from app.config import settings
 from app.conversas import Conversation, Message, conversa_do_usuario
+from app.credito import acertar, reservar
 from app.db import SessionLocal, get_session
 
 MODELO = "gemini-3.8-flash"
 # Thinking explícito. O default do modelo deu ~7 s até o primeiro token no spike.
-AJUSTES = GoogleModelSettings(google_thinking_config={"thinking_level": "low"})
+AJUSTES = GoogleModelSettings(
+    google_thinking_config={"thinking_level": "low"}, max_tokens=settings.max_output_tokens
+)
 SDK = 7
 
 agent = Agent(retries=0)
@@ -49,6 +52,13 @@ def _historico(linhas: list[Message]):
     """Mensagens do banco (partes do AI SDK) para mensagens do Pydantic AI."""
     ui = [UIMessage(id=str(m.id), role=m.role, parts=m.parts) for m in linhas]
     return VercelAIAdapter.load_messages(ui)
+
+
+# REVISAR(human): estimativa local de input para a reserva, sem chamar countTokens.
+# ~3 caracteres por token sobre o JSON das partes: conservador para pt-BR (INFERIDO).
+def _estimar_input(linhas: list[Message], novas: list[Any]) -> int:
+    chars = sum(len(str(m.parts)) for m in linhas) + sum(len(str(n.model_dump())) for n in novas)
+    return -(-chars // 3)
 
 
 async def _erro(cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: Exception, t0: float) -> None:
@@ -89,6 +99,7 @@ async def _persistir(
         await s.flush()
         conv = await s.get(Conversation, cid)
         conv.updated_at = func.now()
+        custo = await acertar(s, uid, cid, ultima.id, nome, uso)
         await audit(s, "message_sent", user_id=uid, conversation_id=cid, payload={"message_id": linhas[0].id})
         await audit(
             s,
@@ -98,6 +109,7 @@ async def _persistir(
             model=nome,
             input_tokens=uso.input_tokens,
             output_tokens=uso.output_tokens,
+            cost_micro_usd=custo,
             latency_ms=latencia,
             payload={
                 "thinking_tokens": uso.details.get("thoughts_tokens"),
@@ -133,10 +145,13 @@ async def chat(
     adapter.run_input.messages = novas
 
     q = select(Message).where(Message.conversation_id == cid).order_by(Message.created_at, Message.id)
-    historico = _historico(list((await session.scalars(q)).all()))
+    linhas = list((await session.scalars(q)).all())
+    historico = _historico(linhas)
+    uid, nome = user.id, m.model_name
+    await reservar(session, uid, cid, nome, _estimar_input(linhas, novas))
     await session.close()
 
-    uid, nome, t0 = user.id, m.model_name, time.perf_counter()
+    t0 = time.perf_counter()
 
     async def eventos() -> AsyncIterator[Any]:
         try:

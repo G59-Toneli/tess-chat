@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_users, garantir_conta_demo
 from app.chat import router as chat_router
 from app.conversas import router as conversas_router
+from app.credito import router as credito_router
 from app.db import get_session
 from app.estaticos import montar_estaticos
 
@@ -28,6 +29,7 @@ app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), pref
 app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 app.include_router(conversas_router)
 app.include_router(chat_router)
+app.include_router(credito_router)
 
 
 @app.get("/health")
