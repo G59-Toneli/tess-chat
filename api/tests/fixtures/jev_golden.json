@@ -1,0 +1,463 @@
+{
+ "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+ "casos": [
+  {
+   "texto": "Qual foi o resultado do jogo do Flamengo ontem?",
+   "anexos": [],
+   "esperado": "web_search",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Qual foi o resultado do jogo do Flamengo ontem?",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "web_search",
+      "confidence": 1.0,
+      "probabilities": {
+       "web_search": 1.0,
+       "web_fetch": 0.0,
+       "ler_pdf": 0.0,
+       "nenhuma": 0.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 452,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Quanto está o dólar hoje?",
+   "anexos": [],
+   "esperado": "web_search",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Quanto está o dólar hoje?",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "web_search",
+      "confidence": 1.0,
+      "probabilities": {
+       "nenhuma": 0.0,
+       "ler_pdf": 0.0,
+       "web_search": 1.0,
+       "web_fetch": 0.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 449,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Quais as novidades do Python 3.15 que saíram essa semana?",
+   "anexos": [],
+   "esperado": "web_search",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Quais as novidades do Python 3.15 que saíram essa semana?",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "web_search",
+      "confidence": 1.0,
+      "probabilities": {
+       "ler_pdf": 0.0,
+       "nenhuma": 0.0,
+       "web_fetch": 0.0,
+       "web_search": 1.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 460,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Resume pra mim esse artigo: https://pt.wikipedia.org/wiki/Cabo_Frio",
+   "anexos": [],
+   "esperado": "web_fetch",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Resume pra mim esse artigo: https://pt.wikipedia.org/wiki/Cabo_Frio",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "web_fetch",
+      "confidence": 0.99,
+      "probabilities": {
+       "nenhuma": 0.01,
+       "ler_pdf": 0.0,
+       "web_search": 0.0,
+       "web_fetch": 0.99
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 458,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "O que diz a página https://docs.python.org/3/whatsnew/3.14.html sobre o GIL?",
+   "anexos": [],
+   "esperado": "web_fetch",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "O que diz a página https://docs.python.org/3/whatsnew/3.14.html sobre o GIL?",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "web_fetch",
+      "confidence": 1.0,
+      "probabilities": {
+       "ler_pdf": 0.0,
+       "web_fetch": 1.0,
+       "nenhuma": 0.0,
+       "web_search": 0.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 469,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Me faz um resumo desse contrato que eu te mandei.",
+   "anexos": [
+    "contrato_locacao.pdf"
+   ],
+   "esperado": "ler_pdf",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Me faz um resumo desse contrato que eu te mandei.",
+     "anexos_na_mensagem": [
+      "contrato_locacao.pdf"
+     ]
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "ler_pdf",
+      "confidence": 1.0,
+      "probabilities": {
+       "ler_pdf": 1.0,
+       "web_fetch": 0.0,
+       "nenhuma": 0.0,
+       "web_search": 0.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 460,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Qual o valor total da nota fiscal em anexo?",
+   "anexos": [
+    "nf_setembro.pdf"
+   ],
+   "esperado": "ler_pdf",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Qual o valor total da nota fiscal em anexo?",
+     "anexos_na_mensagem": [
+      "nf_setembro.pdf"
+     ]
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "ler_pdf",
+      "confidence": 1.0,
+      "probabilities": {
+       "web_search": 0.0,
+       "nenhuma": 0.0,
+       "ler_pdf": 1.0,
+       "web_fetch": 0.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 458,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Bom dia! Tudo certo por aí?",
+   "anexos": [],
+   "esperado": "nenhuma",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Bom dia! Tudo certo por aí?",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "nenhuma",
+      "confidence": 1.0,
+      "probabilities": {
+       "ler_pdf": 0.0,
+       "web_search": 0.0,
+       "web_fetch": 0.0,
+       "nenhuma": 1.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 450,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Me explica a diferença entre lista e tupla em Python.",
+   "anexos": [],
+   "esperado": "nenhuma",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Me explica a diferença entre lista e tupla em Python.",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "nenhuma",
+      "confidence": 1.0,
+      "probabilities": {
+       "ler_pdf": 0.0,
+       "nenhuma": 1.0,
+       "web_fetch": 0.0,
+       "web_search": 0.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 454,
+     "output_tokens": 50
+    }
+   }
+  },
+  {
+   "texto": "Resume esse PDF pra mim.",
+   "anexos": [],
+   "esperado": "ambiguo",
+   "request": {
+    "state": {
+     "mensagem_do_usuario": "Resume esse PDF pra mim.",
+     "anexos_na_mensagem": "nenhum"
+    },
+    "model": "jev-latest",
+    "questions": {
+     "tool": {
+      "type": "choice",
+      "instructions": "Qual ferramenta o assistente deve usar para atender esta mensagem do usuario?",
+      "criteria": {
+       "web_search": "Buscar informacao atual ou factual na internet (noticias, precos, cotacoes, eventos recentes).",
+       "web_fetch": "Ler o conteudo de uma URL especifica que o usuario forneceu na mensagem.",
+       "ler_pdf": "Ler um arquivo PDF que o usuario anexou nesta mensagem.",
+       "nenhuma": "Responder direto, sem ferramenta: conversa, opiniao, explicacao, calculo ou texto criativo."
+      }
+     }
+    }
+   },
+   "status": 200,
+   "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+     "tool": {
+      "type": "choice",
+      "choice": "nenhuma",
+      "confidence": 0.47,
+      "probabilities": {
+       "web_fetch": 0.0,
+       "ler_pdf": 0.4,
+       "nenhuma": 0.6,
+       "web_search": 0.0
+      }
+     }
+    },
+    "usage": {
+     "input_tokens": 448,
+     "output_tokens": 50
+    }
+   }
+  }
+ ]
+}

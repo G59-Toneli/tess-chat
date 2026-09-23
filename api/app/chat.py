@@ -17,9 +17,11 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
-from pydantic_ai.ui.vercel_ai.request_types import UIMessage
+from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, TextUIPart, UIMessage
+from pydantic_ai.usage import RunUsage
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
 
 from app.audit import audit
 from app.auth import User, current_user
@@ -27,7 +29,8 @@ from app.config import settings
 from app.conversas import Conversation, Message, conversa_do_usuario
 from app.credito import acertar, reservar
 from app.db import SessionLocal, get_session
-from app.tools import toolset_da_conversa, transporte
+from app.roteador import PRECO_JEV, Gate, apply_gate, cliente_jev, decidir, opcoes
+from app.tools import estado_da_conversa, toolset_da_conversa, transporte
 
 MODELO = "gemini-3.8-flash"
 # Thinking explícito. O default do modelo deu ~7 s até o primeiro token no spike.
@@ -75,6 +78,54 @@ async def _erro(cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: Exception, t0: f
             payload={"erro": type(exc).__name__, "status": getattr(exc, "status_code", None), "msg": str(exc)[:500]},
         )
         await s.commit()
+
+
+async def _rotear(
+    session: AsyncSession, jev: AsyncTypeSafeClient | None, uid: uuid.UUID, cid: uuid.UUID, nova: UIMessage
+) -> Gate:
+    """Roteador antes do Gemini. Qualquer falha do Jev vira AUTO com evento router_fallback."""
+    texto = "\n".join(p.text for p in nova.parts if isinstance(p, TextUIPart))
+    anexos = [p.filename or p.media_type for p in nova.parts if isinstance(p, FileUIPart)]
+    ativas = [(t.nome, t.descricao) for t, a in await estado_da_conversa(session, cid) if a]
+    t0 = time.perf_counter()
+    try:
+        if jev is None:
+            raise TypeSafeError("TYPESAFE_API_KEY ausente")
+        d = await decidir(jev, texto, anexos, opcoes(ativas))
+    except TypeSafeError as exc:
+        await audit(
+            session,
+            "router_fallback",
+            user_id=uid,
+            conversation_id=cid,
+            model=PRECO_JEV,
+            latency_ms=int((time.perf_counter() - t0) * 1000),
+            payload={"erro": type(exc).__name__, "status": getattr(exc, "status", None), "msg": str(exc)[:500]},
+        )
+        return Gate(None)
+    escolha = apply_gate(d, settings.roteador_limiar)
+    uso = RunUsage(input_tokens=d.input_tokens, output_tokens=d.output_tokens)
+    custo = await acertar(session, uid, cid, None, PRECO_JEV, uso)
+    await audit(
+        session,
+        "router_decision",
+        user_id=uid,
+        conversation_id=cid,
+        model=PRECO_JEV,
+        input_tokens=d.input_tokens,
+        output_tokens=d.output_tokens,
+        cost_micro_usd=custo,
+        latency_ms=int((time.perf_counter() - t0) * 1000),
+        payload={
+            "tool": d.tool,
+            "confidence": d.confidence,
+            "distribution": d.distribution,
+            "limiar": settings.roteador_limiar,
+            "forcada": escolha is not None,
+            "modelo_real": d.modelo,
+        },
+    )
+    return Gate(escolha)
 
 
 # REVISAR(human): grava usuário e assistente juntos, só no fim do turno com sucesso.
@@ -134,6 +185,7 @@ async def chat(
     user: Annotated[User, Depends(current_user)],
     m: Annotated[Model, Depends(modelo)],
     t: Annotated[httpx.AsyncBaseTransport | None, Depends(transporte)],
+    jev: Annotated[AsyncTypeSafeClient | None, Depends(cliente_jev)],
 ) -> Response:
     """Roda um turno da Conversa e devolve o stream no protocolo do AI SDK."""
     await conversa_do_usuario(session, user, cid)
@@ -153,6 +205,8 @@ async def chat(
     uid, nome = user.id, m.model_name
     await reservar(session, uid, cid, nome, _estimar_input(linhas, novas))
     tools = await toolset_da_conversa(session, uid, cid, t)
+    gate = await _rotear(session, jev, uid, cid, novas[0])
+    await session.commit()
     await session.close()
 
     t0 = time.perf_counter()
@@ -161,7 +215,7 @@ async def chat(
         try:
             async for ev in adapter.run_stream_native(
                 message_history=historico, model=m, model_settings=AJUSTES, conversation_id=str(cid),
-                toolsets=[tools],
+                toolsets=[tools], capabilities=[gate],
             ):
                 yield ev
         except ModelAPIError as exc:

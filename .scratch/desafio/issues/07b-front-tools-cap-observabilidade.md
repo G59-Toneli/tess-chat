@@ -1,7 +1,7 @@
 # 07b — Front: tool calls visíveis, cap, painel de tools, roteador
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 07, 10, 11
 **Refs:** ADR 0004, 0005, 0009. `docs/UI-GUIA.md`.
 

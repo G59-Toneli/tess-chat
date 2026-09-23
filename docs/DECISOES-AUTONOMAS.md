@@ -55,3 +55,9 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 13 | Cada clique em Compartilhar cria um link novo com corte novo. Links antigos continuam até revogar. `DELETE /api/shares/{id}`; revogar de novo = 404. | Reaproveitar o link ativo da Conversa. | Mais simples; o corte de cada link fica fiel ao momento em que foi criado. |
 | 13 | Link criado aparece num toast (sonner) com cópia automática e ação Copiar. | Dialog com o link. | O conteúdo do DropdownMenu desmonta ao fechar; dialog exigiria estado no `AppLayout` (arquivo do 07). |
 | 13 | View pública mostra só partes `text` de Mensagens user/assistant; Mensagens `tool` ficam fora. | Mostrar blocos de tool. | Read-only para leitor externo; resultado bruto de tool polui e pode ter dado de terceiro. |
+| 11 | Módulo `app/roteador.py`, não `app/router.py`. | `router.py`. | Termo do glossário; `router` já é o nome dos `APIRouter` nos módulos. |
+| 11 | `nenhuma` com confiança alta vira AUTO, não `tool_choice='none'`. | Forçar `none`. | Forçar "sem tool" não ganha nada e quebra o turno se o Jev errar. |
+| 11 | Cliente Jev sem retry (`max_retries=0`) e timeout 5 s. Qualquer `TypeSafeError` vira AUTO. | Retry padrão do SDK (2 tentativas, backoff até 5 s). | Roteador é opcional; retry só atrasa o primeiro token. Retry geral é do 06b. |
+| 11 | Descrições das opções ficam no módulo (texto do spike). Tool sem descrição no módulo (MCP) usa a do registro. | Usar sempre a descrição do registro. | Texto validado no spike; golden set confere o mesmo texto. |
+| 11 | Conftest desliga o Jev em todos os testes (fixture autouse); `test_roteador` troca por resposta gravada. | Stub com resposta `nenhuma`. | Stub com uso real somaria débito do Jev e quebraria os asserts exatos de `test_credito`. |
+| 11 | Roteador roda depois da reserva do Cap: 402 não gasta Jev. Sem reserva própria para o Jev. | Reservar o Jev também. | ~19 µUSD por turno, desprezível perto da reserva do Gemini. |
