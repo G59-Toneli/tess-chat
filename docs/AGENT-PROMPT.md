@@ -22,7 +22,7 @@ Você executa UM ticket do projeto `C:\Projects\desafio` (repo git, branch `main
 
 ## Ao terminar
 1. `git fetch && git status`. Se `origin/main` avançou: `git pull --rebase`.
-2. `git add` só dos seus arquivos. Commit: `feat(NN): <slug>` com última linha `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, usando `-c user.email="tonelicdtsoftware@outlook.com" -c user.name="Toneli"`. Não faça push.
+2. Vários agentes dividem o mesmo index. Antes de commitar: `git diff --cached --name-only` deve listar só os seus arquivos; se houver outros, `git restore --staged <arquivo>` neles (não descarte o conteúdo). Então `git add` dos seus e commit com `git commit --only <seus arquivos>`. Commit: `feat(NN): <slug>` com última linha `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, usando `-c user.email="tonelicdtsoftware@outlook.com" -c user.name="Toneli"`. Não faça push.
 3. No ticket: `**Status:** resolved` e uma seção `## Answer` de 3 a 6 linhas: o que foi feito, ressalvas, o que ficou `REVISAR(human)`.
 4. Nos tickets que só dependiam deste: `**Status:** ready-for-agent`.
 5. Linha em `.scratch/desafio/LEDGER.md`: `| NN | início | fim | resultado | feat(NN) |`.
