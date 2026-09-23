@@ -12,19 +12,30 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from pydantic_ai import Agent
 from pydantic_ai.agent import AgentRunResult
-from pydantic_ai.messages import ModelResponse, PartDeltaEvent, PartStartEvent
-from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
+from pydantic_ai.messages import (
+    INTERRUPTED_TOOL_RETURN_CONTENT,
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    PartDeltaEvent,
+    PartStartEvent,
+    RetryPromptPart,
+    ToolCallPart,
+    ToolReturnPart,
+)
+from pydantic_ai.exceptions import ModelHTTPError, RunCancelled
 from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, TextUIPart, UIMessage
-from pydantic_ai.ui.vercel_ai.response_types import BaseChunk, TextDeltaChunk, TextEndChunk, TextStartChunk
-from pydantic_ai.usage import RunUsage, UsageLimits
+from pydantic_ai.ui.vercel_ai.response_types import BaseChunk, DataChunk, TextDeltaChunk, TextEndChunk, TextStartChunk
+from pydantic_ai.usage import RunUsage
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
 
+from app import mcp
 from app.anexos import ligar_a_mensagem, montar_anexos, partes_por_referencia, sem_bytes
 from app.audit import audit
 from app.compactacao import Compactacao, com_resumo, modelo_resumo, ponto_de_corte, should_compact, ultimo_resumo
@@ -36,7 +47,7 @@ from app.credito import acertar, reservar
 from app.db import SessionLocal, get_session
 from app.resiliencia import ERROS_PROVEDOR, Turno, cadeia, causa, resumo_erro
 from app.roteador import PRECO_JEV, Gate, apply_gate, cliente_jev, decidir, opcoes
-from app.tools import estado_da_conversa, toolset_da_conversa, transporte
+from app.tools import ComTeto, estado_da_conversa, toolset_da_conversa, transporte
 
 MODELO = MODELO_PADRAO
 # Fallback do ADR 0012. Sem OPENAI_API_KEY no .env, a cadeia para aqui.
@@ -109,25 +120,6 @@ async def _erro(
         await s.commit()
 
 
-async def _limite_de_tools(
-    cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: UsageLimitExceeded, turno: Turno, comp: Compactacao | None
-) -> None:
-    async with SessionLocal() as s:
-        if comp:
-            await comp.auditar(s, None)
-        await _auditar_tentativas(s, uid, cid, turno)
-        await audit(
-            s,
-            "tool_limit_reached",
-            user_id=uid,
-            conversation_id=cid,
-            model=turno.respondido or nome,
-            latency_ms=int((time.perf_counter() - turno.t0) * 1000),
-            payload={"limite": settings.tool_calls_limit, "msg": str(exc)[:500]},
-        )
-        await s.commit()
-
-
 async def _rotear(
     session: AsyncSession,
     jev: AsyncTypeSafeClient | None,
@@ -183,23 +175,25 @@ async def _rotear(
 
 # REVISAR(human): grava usuário e assistente juntos, só no fim do turno com sucesso.
 # Turno que falha não deixa mensagem órfã no histórico. Uso vai na mensagem do assistente.
+# Turno cortado (ticket 30) grava o mesmo par, com o aviso na Mensagem do assistente e o uso real.
 async def _persistir(
     cid: uuid.UUID,
     uid: uuid.UUID,
     turno: Turno,
-    result: AgentRunResult[Any],
+    todas: list[ModelMessage],
+    uso: RunUsage,
     antes: int,
     nova: UIMessage,
     comp: Compactacao | None = None,
+    interrupcao: dict[str, Any] | None = None,
 ) -> None:
     latencia = int((time.perf_counter() - turno.t0) * 1000)
-    uso = result.usage
     # Mensagem e Ledger levam o modelo que respondeu, com o preço dele.
     nome = turno.respondido or turno.pedido
-    resposta = result.response
     # new_messages() não traz a mensagem do front: o adapter a põe no message_history.
     # A Compactação encolhe o histórico do run: o índice das novas desloca junto.
-    novas = result.all_messages()[antes - (comp.removidos if comp else 0) :]
+    novas = todas[antes - (comp.removidos if comp else 0) :]
+    resposta = next(m for m in reversed(novas) if isinstance(m, ModelResponse))
     ui = VercelAIAdapter.dump_messages(novas, sdk_version=SDK)
     async with SessionLocal() as s:
         if comp:
@@ -217,6 +211,8 @@ async def _persistir(
         ultima.output_tokens = uso.output_tokens  # já inclui thinking
         ultima.thinking_tokens = uso.details.get("thoughts_tokens")
         ultima.cache_read_tokens = uso.cache_read_tokens
+        if interrupcao:
+            ultima.parts = [*ultima.parts, {"type": AVISO, "data": _aviso(interrupcao)}]
         s.add_all(linhas)
         await s.flush()
         anexos = await ligar_a_mensagem(s, uid, nova, linhas[0].id)
@@ -228,9 +224,10 @@ async def _persistir(
             s, "message_sent", user_id=uid, conversation_id=cid,
             payload={"message_id": linhas[0].id, "attachment_ids": anexos},
         )
+        # Turno cortado: o evento do corte leva o custo no lugar do llm_call (a Auditoria não soma duas vezes).
         await audit(
             s,
-            "llm_call",
+            _evento(interrupcao) if interrupcao else "llm_call",
             user_id=uid,
             conversation_id=cid,
             model=nome,
@@ -248,7 +245,8 @@ async def _persistir(
                 "modelo_real": resposta.model_name,
                 "tentativas": turno.tentativas,
                 "latencia_primeiro_token_ms": turno.primeiro_token_ms,
-                "motivo_termino": resposta.finish_reason,
+                "motivo_termino": interrupcao["motivo"] if interrupcao else resposta.finish_reason,
+                **(interrupcao or {}),
             },
         )
         await s.commit()
@@ -336,21 +334,17 @@ async def chat(
 
     turno = Turno(nome)
     modelos = cadeia(turno, [m, *([reserva] if reserva else [])])
-    limites = UsageLimits(tool_calls_limit=settings.tool_calls_limit)
+    teto = ComTeto(tools, cfg.tool_calls_limite)
 
     async def eventos() -> AsyncIterator[Any]:
         try:
             async for ev in adapter.run_stream_native(
                 message_history=historico, model=modelos, model_settings=ajustes(cfg), conversation_id=str(cid),
-                toolsets=[tools], capabilities=[gate, *([comp.capability()] if comp else [])],
-                usage_limits=limites,
+                toolsets=[teto], capabilities=[gate, *([comp.capability()] if comp else [])],
             ):
                 if isinstance(ev, (PartStartEvent, PartDeltaEvent)):
                     turno.marcar_primeiro_token()
                 yield ev
-        except UsageLimitExceeded as exc:
-            await _limite_de_tools(cid, uid, nome, exc, turno, comp)
-            raise
         except ERROS_PROVEDOR as exc:
             await _erro(cid, uid, nome, exc, turno, comp)
             raise
@@ -369,9 +363,18 @@ async def chat(
             yield ev
 
     async def ao_fim(result: AgentRunResult[Any]) -> None:
-        await _persistir(cid, uid, turno, result, len(historico), novas[0], comp)
+        await _persistir(cid, uid, turno, result.all_messages(), result.usage, len(historico), novas[0], comp)
 
-    chunks = adapter.transform_stream(todos(), on_complete=ao_fim)
+    async def ao_cancelar(cancelado: RunCancelled) -> AsyncIterator[BaseChunk]:
+        """Turno cortado pelo ComTeto: fecha a tool pendente, grava com aviso e cobra o uso real."""
+        if teto.corte.interrupcao is None:
+            return
+        todas, pendentes = _fechar_pendentes(cancelado.all_messages())
+        inter = {**teto.corte.interrupcao, "tool_call_ids": pendentes}
+        await _persistir(cid, uid, turno, todas, cancelado.usage, len(historico), novas[0], comp, inter)
+        yield DataChunk(type=AVISO, data=_aviso(inter))
+
+    chunks = adapter.transform_stream(todos(), on_complete=ao_fim, on_cancel=ao_cancelar)
     if tools.fora_do_ar:
         chunks = _com_aviso(chunks, _aviso_mcp(tools.fora_do_ar))
     return adapter.streaming_response(chunks)
@@ -391,3 +394,53 @@ async def _com_aviso(chunks: AsyncIterator[BaseChunk], texto: str) -> AsyncItera
             yield TextStartChunk(id="aviso-mcp")
             yield TextDeltaChunk(id="aviso-mcp", delta=texto)
             yield TextEndChunk(id="aviso-mcp")
+
+
+AVISO = "data-turno-interrompido"
+
+
+def _evento(interrupcao: dict[str, Any]) -> str:
+    return "tool_limit_reached" if interrupcao["motivo"] == "tool_limit_reached" else "mcp_tool_failed"
+
+
+def _aviso(i: dict[str, Any]) -> dict[str, Any]:
+    """Part que o front mostra e que fica na Mensagem. Sem o texto do erro: pode ter URL interna."""
+    if i["motivo"] == "tool_limit_reached":
+        texto = f"Turno interrompido: limite de {i['limite']} chamadas de tool."
+    elif i["motivo"] == "mcp_timeout":
+        texto = f"Turno interrompido: o servidor MCP {i['servidor']} não respondeu em {mcp.TIMEOUT_S:.0f} s."
+    else:
+        texto = f"Turno interrompido: o servidor MCP {i['servidor']} caiu no meio do turno."
+    campos = ("motivo", "limite", "servidor", "tool", "tool_call_ids")
+    return {"texto": texto, **{c: i[c] for c in campos if c in i}}
+
+
+def _fechar_pendentes(msgs: list[ModelMessage]) -> tuple[list[ModelMessage], list[str]]:
+    """Tool pedida e sem retorno vira retorno `interrupted`. Sem isso o card volta como Rodando ao recarregar."""
+    feitas = {
+        p.tool_call_id
+        for m in msgs
+        if isinstance(m, ModelRequest)
+        for p in m.parts
+        if isinstance(p, (ToolReturnPart, RetryPromptPart))
+    }
+    pendentes = [
+        p
+        for m in msgs
+        if isinstance(m, ModelResponse)
+        for p in m.parts
+        if isinstance(p, ToolCallPart) and p.tool_call_id not in feitas
+    ]
+    msgs = [m for m in msgs if not (isinstance(m, ModelRequest) and not m.parts)]
+    if pendentes:
+        retornos = [
+            ToolReturnPart(
+                tool_name=p.tool_name,
+                tool_call_id=p.tool_call_id,
+                content=INTERRUPTED_TOOL_RETURN_CONTENT,
+                outcome="interrupted",
+            )
+            for p in pendentes
+        ]
+        msgs.append(ModelRequest(parts=retornos))
+    return msgs, [p.tool_call_id for p in pendentes]

@@ -38,6 +38,7 @@ class Setting(Base):
     nivel_raciocinio: Mapped[str | None]
     compactacao_limiar: Mapped[int | None]
     roteador_limiar: Mapped[float | None]
+    tool_calls_limite: Mapped[int | None]
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -48,6 +49,7 @@ class Configuracao(BaseModel):
     nivel_raciocinio: Nivel
     compactacao_limiar: int
     roteador_limiar: float
+    tool_calls_limite: int
 
 
 class ConfiguracaoIn(BaseModel):
@@ -57,6 +59,7 @@ class ConfiguracaoIn(BaseModel):
     nivel_raciocinio: Nivel | None = None
     compactacao_limiar: int | None = Field(None, ge=1, le=1_000_000)
     roteador_limiar: float | None = Field(None, ge=0, le=1)
+    tool_calls_limite: int | None = Field(None, ge=1, le=50)
 
 
 class ConfiguracaoOut(BaseModel):
@@ -75,6 +78,7 @@ def _padrao() -> dict[str, Any]:
         "nivel_raciocinio": NIVEL_PADRAO,
         "compactacao_limiar": settings.compactacao_limiar,
         "roteador_limiar": settings.roteador_limiar,
+        "tool_calls_limite": settings.tool_calls_limit,
     }
 
 
