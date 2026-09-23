@@ -1,7 +1,7 @@
 # 04 — Auth com FastAPI-Users
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 03
 **Refs:** grilling Q9.
 
