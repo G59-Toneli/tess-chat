@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type ChatStatus, type UIMessage } from 'ai'
 import { toast } from 'sonner'
-import { MessageSquareIcon } from 'lucide-react'
+import { MessageSquareIcon, WalletIcon } from 'lucide-react'
+import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
+import { PainelTools } from '@/components/PainelTools'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
 import {
@@ -23,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { useContextoApp } from '@/layout/AppLayout'
 import { authHeader, criarConversa, listarMensagens, sair, textoErroChat } from '@/lib/api'
 import { hora, iniciais } from '@/lib/datas'
+import { decisoesDoRoteador, ehErroDeCap, usoPorMensagem, type MensagemComUso, type Uso } from '@/lib/tools'
 import { cn } from '@/lib/utils'
 
 const SUGESTOES = [
@@ -70,6 +73,7 @@ function ChatNovo() {
   return (
     <LayoutChat
       entrada={<Entrada status={criando ? 'submitted' : 'ready'} onEnviar={comecar} />}
+      painel={<PainelTools />}
     >
       <TelaVazia onEscolher={comecar} />
     </LayoutChat>
@@ -77,20 +81,34 @@ function ChatNovo() {
 }
 
 function CarregarConversa({ id }: { id: string }) {
-  const [inicial, setInicial] = useState<{ mensagens: UIMessage[]; horarios: Map<string, Date> } | null>(null)
+  const [inicial, setInicial] = useState<{
+    mensagens: UIMessage[]
+    horarios: Map<string, Date>
+    usos: Map<string, Uso>
+  } | null>(null)
   const [erro, setErro] = useState(false)
 
   const carregar = useCallback(async () => {
     setErro(false)
     try {
-      const linhas = await listarMensagens(id)
+      const [linhas, decisoes] = await Promise.all([
+        listarMensagens(id) as Promise<MensagemComUso[]>,
+        decisoesDoRoteador(id).catch(() => []),
+      ])
       const visiveis = linhas.filter((m) => m.role === 'user' || m.role === 'assistant')
+      // Um turno com tool vira várias linhas assistant seguidas. Junto numa só, como no stream.
+      // Fica o id da última linha: é ela que tem o uso.
+      const mensagens: UIMessage[] = []
+      for (const m of visiveis) {
+        const anterior = mensagens.at(-1)
+        const parts = m.parts as UIMessage['parts']
+        if (m.role === 'assistant' && anterior?.role === 'assistant')
+          mensagens[mensagens.length - 1] = { ...anterior, id: String(m.id), parts: [...anterior.parts, ...parts] }
+        else mensagens.push({ id: String(m.id), role: m.role as 'user' | 'assistant', parts })
+      }
       setInicial({
-        mensagens: visiveis.map((m) => ({
-          id: String(m.id),
-          role: m.role as 'user' | 'assistant',
-          parts: m.parts as UIMessage['parts'],
-        })),
+        usos: usoPorMensagem(linhas, decisoes),
+        mensagens,
         horarios: new Map(visiveis.map((m) => [String(m.id), new Date(m.created_at)])),
       })
     } catch {
@@ -114,11 +132,41 @@ function CarregarConversa({ id }: { id: string }) {
         <EstadoCarregando />
       </LayoutChat>
     )
-  return <ChatConversa id={id} inicial={inicial.mensagens} horarios={inicial.horarios} />
+  return <ChatConversa id={id} inicial={inicial.mensagens} horarios={inicial.horarios} usosIniciais={inicial.usos} />
 }
 
-function ChatConversa({ id, inicial, horarios }: { id: string; inicial: UIMessage[]; horarios: Map<string, Date> }) {
+function ChatConversa({
+  id,
+  inicial,
+  horarios,
+  usosIniciais,
+}: {
+  id: string
+  inicial: UIMessage[]
+  horarios: Map<string, Date>
+  usosIniciais: Map<string, Uso>
+}) {
   const { usuario, recarregarConversas } = useContextoApp()
+  const [usos, setUsos] = useState(usosIniciais)
+
+  // O stream não traz usage nem a decisão do Roteador. A API grava os dois antes do fim
+  // do stream, então no onFinish a última resposta do banco já é a deste turno.
+  const buscarUso = useCallback(
+    async (mensagemId: string) => {
+      try {
+        const [linhas, decisoes] = await Promise.all([
+          listarMensagens(id) as Promise<MensagemComUso[]>,
+          decisoesDoRoteador(id).catch(() => []),
+        ])
+        const ultima = linhas.filter((m) => m.role === 'assistant').at(-1)
+        const uso = ultima && usoPorMensagem(linhas, decisoes).get(String(ultima.id))
+        if (uso) setUsos((u) => new Map(u).set(mensagemId, uso))
+      } catch {
+        // Badge é informativo: sem ele a resposta continua visível.
+      }
+    },
+    [id],
+  )
   const transport = useMemo(
     // headers como função: lê o token na hora do envio.
     () => new DefaultChatTransport({ api: `/api/chat/${id}`, headers: () => authHeader() }),
@@ -128,8 +176,13 @@ function ChatConversa({ id, inicial, horarios }: { id: string; inicial: UIMessag
     id,
     messages: inicial,
     transport,
-    onFinish: () => void recarregarConversas(),
+    onFinish: ({ message, isError, isAbort }) => {
+      void recarregarConversas()
+      if (!isError && !isAbort) void buscarUso(message.id)
+    },
   })
+  const duracoes = useDuracoes(messages)
+  const cap = !!error && ehErroDeCap(error as Error & { statusCode?: number })
 
   // Envia o texto que veio de "/". O setTimeout sobrevive ao StrictMode: o cleanup do
   // useChat chama stop() e abortaria um envio feito direto no primeiro efeito.
@@ -147,6 +200,7 @@ function ChatConversa({ id, inicial, horarios }: { id: string; inicial: UIMessag
     if (!error) return
     const e = error as Error & { statusCode?: number }
     if (e.statusCode === 401) return sair()
+    if (ehErroDeCap(e)) return // Mensagem própria no fim da conversa, não toast.
     toast.error(textoErroChat(e), {
       id: 'erro-chat',
       action: {
@@ -165,8 +219,10 @@ function ChatConversa({ id, inicial, horarios }: { id: string; inicial: UIMessag
 
   const ultima = messages.at(-1)
   const semTexto = (m?: UIMessage) => !m?.parts.some((p) => p.type === 'text' && p.text)
-  const pensando = status === 'submitted' || (status === 'streaming' && ultima?.role === 'assistant' && semTexto(ultima))
-  const visiveis = messages.filter((m) => m.role === 'user' || !semTexto(m))
+  // Resposta só com tool (ainda sem texto) aparece: o bloco de tool é o progresso do turno.
+  const vazia = (m?: UIMessage) => semTexto(m) && (!m || partesDeTool(m).length === 0)
+  const pensando = status === 'submitted' || (status === 'streaming' && ultima?.role === 'assistant' && vazia(ultima))
+  const visiveis = messages.filter((m) => m.role === 'user' || !vazia(m))
 
   function enviar(texto: string) {
     if (!texto.trim() || status === 'submitted' || status === 'streaming') return
@@ -175,29 +231,68 @@ function ChatConversa({ id, inicial, horarios }: { id: string; inicial: UIMessag
   }
 
   return (
-    <LayoutChat entrada={<Entrada status={status} onEnviar={enviar} onParar={stop} />}>
-      {visiveis.length === 0 && !pensando ? (
+    <LayoutChat
+      entrada={<Entrada status={status} onEnviar={enviar} onParar={stop} />}
+      painel={<PainelTools conversaId={id} />}
+    >
+      {visiveis.length === 0 && !pensando && !cap ? (
         <TelaVazia onEscolher={enviar} />
       ) : (
         <>
           {visiveis.map((m) => (
-            <MarcadorCompactacao key={m.id} conversaId={id} mensagemId={m.id}><LinhaMensagem key={m.id} mensagem={m} quando={hs.current.get(m.id)} email={usuario?.email} /></MarcadorCompactacao>
+            <MarcadorCompactacao key={m.id} conversaId={id} mensagemId={m.id}><LinhaMensagem
+              key={m.id}
+              mensagem={m}
+              quando={hs.current.get(m.id)}
+              email={usuario?.email}
+              uso={usos.get(m.id)}
+              duracoes={duracoes}
+            /></MarcadorCompactacao>
           ))}
           {pensando && <Pensando />}
+          {cap && <AvisoCap />}
         </>
       )}
     </LayoutChat>
   )
 }
 
-function LayoutChat({ children, entrada }: { children: React.ReactNode; entrada?: React.ReactNode }) {
+function LayoutChat({
+  children,
+  entrada,
+  painel,
+}: {
+  children: React.ReactNode
+  entrada?: React.ReactNode
+  painel?: React.ReactNode
+}) {
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col px-4 pb-4">
-      <Conversation className="flex-1">
-        <ConversationContent className="gap-6 py-6">{children}</ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
-      {entrada}
+    <div className="flex h-full">
+      <div className="mx-auto flex h-full min-w-0 max-w-3xl flex-1 flex-col px-4 pb-4">
+        <Conversation className="flex-1">
+          <ConversationContent className="gap-6 py-6">{children}</ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
+        {entrada}
+      </div>
+      {painel}
+    </div>
+  )
+}
+
+function AvisoCap() {
+  return (
+    <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+      <WalletIcon className="mt-0.5 size-5 shrink-0 text-destructive" />
+      <div className="flex-1 space-y-1">
+        <p className="text-sm font-medium">Seu limite de crédito acabou</p>
+        <p className="text-sm text-muted-foreground">
+          A mensagem não foi enviada ao modelo. Veja o saldo e o limite em Créditos.
+        </p>
+      </div>
+      <Button asChild size="sm">
+        <Link to="/creditos">Ver créditos</Link>
+      </Button>
     </div>
   )
 }
@@ -253,8 +348,25 @@ function AvatarAssistente() {
   return <IconeApp className="size-8 rounded-full" />
 }
 
-function LinhaMensagem({ mensagem, quando, email }: { mensagem: UIMessage; quando?: Date; email?: string }) {
+function LinhaMensagem({
+  mensagem,
+  quando,
+  email,
+  uso,
+  duracoes,
+}: {
+  mensagem: UIMessage
+  quando?: Date
+  email?: string
+  uso?: Uso
+  duracoes?: Map<string, number>
+}) {
   const usuario = mensagem.role === 'user'
+  const tools = partesDeTool(mensagem)
+  const primeiraTool = tools[0]
+  const rodando = toolRodando(mensagem) ? tools.find((p) => p.state !== 'output-available') : undefined
+  // Só decisão que forçou a Tool. Abaixo do limiar quem decidiu foi o Gemini.
+  const decisao = uso?.decisao?.forcada ? uso.decisao : undefined
   return (
     <div className={cn('flex gap-3', usuario && 'flex-row-reverse')}>
       {usuario ? (
@@ -266,14 +378,28 @@ function LinhaMensagem({ mensagem, quando, email }: { mensagem: UIMessage; quand
       )}
       <Message from={mensagem.role} className="min-w-0 max-w-[85%]">
         <MessageContent>
-          {mensagem.parts.map((p, i) =>
-            p.type === 'text' ? <MessageResponse key={i}>{p.text}</MessageResponse> : null,
-          )}
+          {mensagem.parts.map((p, i) => {
+            if (p.type === 'text') return <MessageResponse key={i}>{p.text}</MessageResponse>
+            const parte = tools.find((t) => t === p)
+            if (!parte) return null
+            return (
+              <div key={i} className="space-y-1.5">
+                {decisao && parte === primeiraTool && <LinhaRoteador decisao={decisao} />}
+                <BlocoTool parte={parte} duracaoMs={duracoes?.get(parte.toolCallId)} />
+              </div>
+            )
+          })}
+          {rodando && <Buscando nome={nomeDaTool(rodando)} />}
         </MessageContent>
-        {quando && (
-          <time dateTime={quando.toISOString()} className={cn('text-xs text-muted-foreground', usuario && 'text-right')}>
-            {hora(quando)}
-          </time>
+        {(quando || uso) && (
+          <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1', usuario && 'justify-end')}>
+            {quando && (
+              <time dateTime={quando.toISOString()} className="text-xs text-muted-foreground">
+                {hora(quando)}
+              </time>
+            )}
+            {uso && !usuario && <BadgeUso uso={uso} />}
+          </div>
         )}
       </Message>
     </div>

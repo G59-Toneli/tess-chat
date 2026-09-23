@@ -177,6 +177,10 @@ class ToolOut(BaseModel):
     ativa_global: bool
 
 
+class ToolGlobalIn(BaseModel):
+    ativa_global: bool
+
+
 class ToolConversaOut(BaseModel):
     nome: str
     origem: str
@@ -192,6 +196,19 @@ async def catalogo(session: Sessao, _: Usuario) -> list[ToolOut]:
     """Todas as Tools do registro."""
     tools = (await session.scalars(select(Tool).order_by(Tool.nome))).all()
     return [ToolOut.model_validate(t, from_attributes=True) for t in tools]
+
+
+# REVISAR(human): qualquer Usuário logado alterna o global. O app ainda não tem papel de admin.
+@router.put("/api/tools/{nome}", response_model=ToolOut)
+async def alternar_global(nome: str, body: ToolGlobalIn, session: Sessao, user: Usuario) -> ToolOut:
+    """Liga e desliga a Tool em todas as Conversas."""
+    tool = await session.get(Tool, nome)
+    if tool is None:
+        raise HTTPException(status_code=404, detail="Tool inexistente")
+    tool.ativa_global = body.ativa_global
+    await audit(session, "tool_toggled_global", user_id=user.id, payload={"tool": nome, "ativa_global": body.ativa_global})
+    await session.commit()
+    return ToolOut.model_validate(tool, from_attributes=True)
 
 
 async def _lista(session: AsyncSession, cid: uuid.UUID) -> list[ToolConversaOut]:

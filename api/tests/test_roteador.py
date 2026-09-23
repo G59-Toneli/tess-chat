@@ -166,3 +166,30 @@ async def test_jev_indisponivel_cai_em_auto(client, usar_modelo, usar_rotas, usa
     assert ev.payload["status"] == status
     assert await eventos("router_decision", user_id=uid) == []
     assert await linhas(user_id=uid, model="jev-latest") == []
+
+
+# ---------- Decisões expostas ao front ----------
+
+
+async def test_decisoes_da_conversa_listam_tool_e_confianca(client, usar_modelo, usar_rotas, usar_jev):
+    caso = por_texto("Qual foi o resultado do jogo do Flamengo ontem?")
+    usar_jev(gravada(caso))
+    usar_rotas(Rotas())
+    usar_modelo(modelo_que_busca([]))
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    assert (await client.get(f"/api/conversations/{cid}/roteador", headers=h)).json() == []
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo(caso["texto"]), headers=h)
+    assert r.status_code == 200, r.text
+
+    r = await client.get(f"/api/conversations/{cid}/roteador", headers=h)
+    assert r.status_code == 200
+    [d] = r.json()
+    assert d["tool"] == "web_search"
+    assert d["confidence"] == caso["response"]["answers"]["tool"]["confidence"]
+    assert d["forcada"] is True
+    assert d["ts"]
+
+    _, outro = await usuario(client)
+    assert (await client.get(f"/api/conversations/{cid}/roteador", headers=outro)).status_code == 404
