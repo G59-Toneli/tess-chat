@@ -13,3 +13,9 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 05 | Mensagens ordenadas por `(created_at, id)`, `id` bigserial. | Só `created_at`. | `now()` é fixo na transação; o 06 grava usuário e assistente juntos. |
 | 05 | `attachments` com `user_id` e `message_id` nulo. | `message_id` obrigatório. | O 09 faz upload antes da Mensagem existir. |
 | 05 | Rotas em `/api/conversations`. | Sem prefixo `/api`. | Casa com `/api/chat` do 06 e separa da SPA do 07a. |
+| 06 | Histórico vem só do banco. Do body do `useChat` o servidor usa só a última mensagem. | Confiar no histórico que o front manda. | Aceite pede histórico do banco. O front pode mandar histórico adulterado. |
+| 06 | `messages.parts` guarda as partes do AI SDK (`dump_messages`/`load_messages` do `VercelAIAdapter`). | JSON nativo do Pydantic AI. | Casa com o `role` da tabela e com o front (07). Perde retry de tool e `provider_details` no round-trip, aceitável sem tools. |
+| 06 | Usuário e assistente gravados juntos no `on_complete`. Turno com erro não grava nada. | Gravar a mensagem do usuário antes da chamada. | Sem mensagem órfã no histórico nem duplicada no retry. |
+| 06 | Uso (`RunUsage`) só na última mensagem do assistente do turno. | Uso por `ModelResponse`. | Aceite fala de `RunUsage`. Com tools (10) o turno pode ter vários requests; o 08 decide se precisa quebrar. |
+| 06 | 502 só quando o provedor falha antes do primeiro evento. Depois disso, erro vai como chunk do AI SDK. Os dois gravam `llm_error`. | Bufferizar a resposta inteira. | Depois do primeiro byte o status 200 já foi. Bufferizar mata o streaming. |
+| 06 | Modelo injetado por dependência `modelo()`; testes trocam por `FunctionModel` ou `GoogleModel` com HTTP falso. | `agent.override`. | Override por request, sem estado global no Agent. |

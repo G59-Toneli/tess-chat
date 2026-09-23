@@ -4,3 +4,4 @@
 | 03 | 2026-09-22T22:18:47-03:00 | 2026-09-22T22:22:43-03:00 | PASSOU 6/6 pytest (compose + alembic do zero; REVOKE verificado por mutação) | feat(03) |
 | 04 | 2026-09-22T22:24:00-03:00 | 2026-09-22T22:27:52-03:00 | PASSOU 8/8 pytest test_auth (register, login JWT, /users/me 401 sem token, 3 eventos) | feat(04) |
 | 05 | 2026-09-22T22:28:40-03:00 | 2026-09-22T22:31:00-03:00 | PASSOU 7/7 pytest test_conversas (404 entre usuários, ordem, 2 eventos, cascade) | feat(05) |
+| 06 | 2026-09-22T22:33:00-03:00 | 2026-09-22T22:55:00-03:00 | PASSOU 5/5 pytest test_chat (histórico do banco, tokens = usageMetadata gravado, 502 + llm_error); manual 2 turnos Gemini | feat(06) |

@@ -40,7 +40,10 @@ class Message(Base):
     role: Mapped[str] = mapped_column(Text)  # user | assistant | tool
     parts: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     input_tokens: Mapped[int | None]
+    # Já inclui thinking (RunUsage.output_tokens).
     output_tokens: Mapped[int | None]
+    thinking_tokens: Mapped[int | None]
+    cache_read_tokens: Mapped[int | None]
     model: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -88,6 +91,8 @@ class MensagemOut(BaseModel):
     parts: list[dict[str, Any]]
     input_tokens: int | None
     output_tokens: int | None
+    thinking_tokens: int | None
+    cache_read_tokens: int | None
     model: str | None
     created_at: datetime
 

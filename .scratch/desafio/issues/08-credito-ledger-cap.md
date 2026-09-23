@@ -1,7 +1,7 @@
 # 08 — Crédito: Tabela de Preço, Ledger, reserva/acerto, cap duplo
 
 **Type:** task (AFK + HITL)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 06
 **Refs:** ADR 0004. Spike hipóteses 4 e 5.
 

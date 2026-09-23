@@ -1,7 +1,7 @@
 # 07 — Front base: login, lista de conversas, chat streaming
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 06
 **Refs:** ADR 0002. `docs/UI-GUIA.md` (obrigatório). Resultado do spike (hipótese 3).
 
