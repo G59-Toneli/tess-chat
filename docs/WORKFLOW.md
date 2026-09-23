@@ -9,10 +9,10 @@ Base: `research/04-workflow-autonomo-dev.md`.
 - Um commit por ticket, mensagem `feat(NN): <slug>`.
 - Ledger em `.scratch/desafio/LEDGER.md`: uma linha por tentativa: ticket, início, fim, resultado, commit, turnos.
 - Decisão de arquitetura não coberta por ADR: gravar `BLOCKED: <pergunta>` no ledger e encerrar. Não decidir.
-- `TODO(human)` num ticket HITL: o agente escreve testes e esqueleto, deixa o TODO, marca `waiting-human` e encerra.
+- `TODO(human)`: desde 23/09 à noite o agente implementa e marca `REVISAR(human)`. Toneli estuda depois. Nada bloqueia.
 - Rate limit do plano Max: o script espera 30 min e tenta de novo. Não é falha do ticket.
 - Limites por invocação: `--max-turns 80`, `--permission-mode auto --permission-prompts none --output-format json`.
-- Sonda: rodar tickets 01 e 03 primeiro, ler turnos e tempo, só então soltar o resto.
+- Sonda feita (01 e 03). Prompt-padrão em `docs/AGENT-PROMPT.md`. Suíte completa e golden set rodam em lote no fim de cada bloco.
 
 ## Checkpoint humano (manhã / almoço)
 1. `git log --oneline` e `LEDGER.md`.
