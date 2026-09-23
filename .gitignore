@@ -10,3 +10,4 @@ spike/node_modules/
 *.log
 .playwright-mcp/
 !.env.example
+.scratch/desafio/screens/
