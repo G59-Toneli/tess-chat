@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { MessageSquareIcon, WalletIcon } from 'lucide-react'
 import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
 import { AnexoNaMensagem, AnexosDoPrompt, BotaoAnexar, previews } from '@/components/Anexos'
-import { PainelTools } from '@/components/PainelTools'
+import { SeletorTools } from '@/components/SeletorTools'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation'
 import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message'
 import {
@@ -107,7 +107,6 @@ function ChatNovo() {
   return (
     <LayoutChat
       entrada={<Entrada status={criando ? 'submitted' : 'ready'} onEnviar={comecar} />}
-      painel={<PainelTools />}
     >
       <TelaVazia onEscolher={comecar} />
     </LayoutChat>
@@ -267,8 +266,7 @@ function ChatConversa({
 
   return (
     <LayoutChat
-      entrada={<Entrada status={status} onEnviar={enviar} onParar={stop} />}
-      painel={<PainelTools conversaId={id} />}
+      entrada={<Entrada conversaId={id} status={status} onEnviar={enviar} onParar={stop} />}
     >
       {visiveis.length === 0 && !pensando && !cap ? (
         <TelaVazia onEscolher={enviar} />
@@ -295,11 +293,9 @@ function ChatConversa({
 function LayoutChat({
   children,
   entrada,
-  painel,
 }: {
   children: React.ReactNode
   entrada?: React.ReactNode
-  painel?: React.ReactNode
 }) {
   return (
     <div className="flex h-full">
@@ -310,7 +306,6 @@ function LayoutChat({
         </Conversation>
         {entrada}
       </div>
-      {painel}
     </div>
   )
 }
@@ -333,10 +328,12 @@ function AvisoCap() {
 }
 
 function Entrada({
+  conversaId,
   status,
   onEnviar,
   onParar,
 }: {
+  conversaId?: string
   status: ChatStatus
   onEnviar: (texto: string, arquivos: FileUIPart[]) => Promise<void>
   onParar?: () => void
@@ -358,6 +355,7 @@ function Entrada({
       <PromptInputFooter>
         <div className="flex items-center gap-1">
           <BotaoAnexar />
+          <SeletorTools conversaId={conversaId} />
           <span className="px-1 text-xs text-muted-foreground">Enter envia, Shift+Enter quebra linha</span>
         </div>
         <PromptInputSubmit
