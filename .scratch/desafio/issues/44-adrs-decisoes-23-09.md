@@ -1,4 +1,4 @@
-# 42 — ADRs das decisões do Toneli em 23/09 (fallback, reserva, turno cortado)
+# 44 — ADRs das decisões do Toneli em 23/09 (fallback, reserva, turno cortado)
 
 **Type:** task (AFK, só docs)
 **Status:** resolved
@@ -16,7 +16,7 @@
 - ADR 0019 revisando o 0004 na parte da reserva (decisão 2). Status do 0004 aponta para o 0019.
 - `docs/LACUNAS.md`: fechar as duas decisões pendentes (2 e 3) citando o Toneli e a data; registrar o reboot como adiado.
 - `README.md`: o limite do fallback OpenAI vira referência ao ADR 0018.
-- `docs/ENTREVISTA.md`: pergunta + resposta curta para 0017 (conector Google com libs oficiais de auth; ticket 41 escreve o ADR em paralelo, cite pelo número e pela decisão do ticket 41), 0018 e 0019.
+- `docs/ENTREVISTA.md`: pergunta + resposta curta para 0017 (conector Google com libs oficiais de auth; ticket 43 escreve o ADR em paralelo, cite pelo número e pela decisão do ticket 41), 0018 e 0019.
 - Não tocar em `api/`, `web/` nem em `docs/adr/0017*`.
 
 **Aceite:**

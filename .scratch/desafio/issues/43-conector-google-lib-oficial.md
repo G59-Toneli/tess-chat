@@ -1,4 +1,4 @@
-# 41 — Conector Google com as libs oficiais de auth (google-auth + google-auth-oauthlib) e PKCE
+# 43 — Conector Google com as libs oficiais de auth (google-auth + google-auth-oauthlib) e PKCE
 
 **Type:** task (AFK, só api/ e docs/)
 **Status:** resolved

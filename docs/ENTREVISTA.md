@@ -162,7 +162,7 @@ Pergunta extra provável: **como responde na mesma thread?** `gmail_read` devolv
 ## ADR 0017 — Conector Google com as libs oficiais de auth
 
 **Por que trocou o `httpx` puro pelas libs do Google?**
-Decisão do ticket 41: OAuth e refresh passam para `google-auth` e `google-auth-oauthlib` (`Flow`), com PKCE ligado e `code_verifier` em cookie httpOnly. Lib oficial trata refresh, expiração e `RefreshError` do jeito que o Google documenta; eu não mantenho esse código. Fonte: ADR 0017.
+Decisão do ticket 43: OAuth e refresh passam para `google-auth` e `google-auth-oauthlib` (`Flow`), com PKCE ligado e `code_verifier` em cookie httpOnly. Lib oficial trata refresh, expiração e `RefreshError` do jeito que o Google documenta; eu não mantenho esse código. Fonte: ADR 0017.
 
 **Então por que Gmail e Drive seguem em `httpx`?**
 O `google-api-python-client` está em maintenance mode, roda sobre `google-auth-httplib2` (deprecated pelo Google) e é síncrono. Não existe cliente oficial async para Gmail e Drive. Por isso o caminho é híbrido: lib oficial na auth, `httpx` async nas APIs. Fonte: ADR 0017.
