@@ -2,7 +2,7 @@
 
 Mapa do repo para quem chega agora: avaliador ou o próprio Toneli antes da entrevista. Os porquês ficam em `docs/MOTIVACOES.md`. Os termos seguem o `CONTEXT.md`.
 
-Retrato de 2026-09-23, depois do ticket 23 (resiliência MCP e SSRF, commit `fc524ee`). Atualizado no ticket 24.
+Retrato de 2026-09-23, depois do ticket 54 (commit `b255961`). Revisado na revisão final.
 
 ## Árvore comentada
 
@@ -29,7 +29,7 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── .python-version       Python 3.14
 │   ├── alembic.ini           config do Alembic
 │   ├── app/                  código da API: um módulo por conceito do glossário (lista abaixo)
-│   ├── migrations/           Alembic: versions/0001..0013, uma por ticket que mudou o schema
+│   ├── migrations/           Alembic: versions/0001..0020, uma por ticket que mudou o schema
 │   └── tests/                testes de integração contra o Postgres real; fixtures/ guarda respostas gravadas
 │
 ├── web/                      front: React 19 + Vite + Tailwind + shadcn + AI Elements
@@ -42,7 +42,7 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   └── src/                  código do front (lista abaixo)
 │
 ├── docs/                     documentação estável
-│   ├── adr/                  12 ADRs: toda decisão de arquitetura, uma por arquivo
+│   ├── adr/                  22 ADRs: toda decisão de arquitetura, uma por arquivo
 │   ├── MOTIVACOES.md         por que cada escolha e qual alternativa caiu
 │   ├── ESTRUTURA.md          este arquivo
 │   ├── WORKFLOW.md           regras do trabalho autônomo com agentes
@@ -51,6 +51,9 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── DECISOES-AUTONOMAS.md decisões que agentes tomaram sem ADR: ticket, decisão, alternativa, porquê
 │   ├── LACUNAS.md            onde o código diverge do ADR ou ficou aresta
 │   ├── UI-GUIA.md            regras de tela e verificação visual por screenshot
+│   ├── INFRA.md              runbook do VPS, do deploy e do CI
+│   ├── MCP-RECOMENDADOS.md   servidores MCP sugeridos para cadastrar
+│   ├── UX-AUDITORIA.md       auditoria de UX das telas
 │   └── WIZARD-GOOGLE.md      passo a passo do projeto OAuth no Google (parte humana do ticket 18)
 │
 ├── .scratch/desafio/         estado vivo do trabalho com IA (planejamento e execução)
@@ -73,7 +76,8 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── web/                  AI Elements em Vite
 │   └── docker-compose.yml    Postgres do spike
 │
-├── deploy/mcp-demo/         servidor MCP de demo (ticket 17): `server.py` (FastMCP, Streamable HTTP) e Dockerfile. O resto de `deploy/` é do ticket 16
+├── deploy/                  produção (ADR 0014): `docker-compose.yml` (app, migrate, postgres), `deploy.sh`, `backup.sh`, `cron-tess-chat`, `nginx-tess-chat.conf`; `mcp-demo/` é o servidor MCP de demo (ticket 17)
+├── .github/workflows/        `deploy.yml`: testes e build em push e PR, deploy por ssh em push na main
 ├── docker/postgres-init/     01-roles.sql: cria o papel tess_app (runtime, sem DDL)
 ├── scripts/                  wizard-google.sh: wizard interativo do OAuth Google
 ├── data/                     fora do git. attachments/ = arquivos de Anexo em dev; manual09/ = entradas do teste manual do ticket 09 (INFERIDO pelo nome)
@@ -96,7 +100,10 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | `credito.py` | Tabela de Preço, Ledger, Cap, reserva e acerto, painéis de Crédito |
 | `tools.py` | registro de Tools, toggle por Conversa, `web_search` e `web_fetch`, wrapper de auditoria. Monta o toolset do turno com as Tools do Google (só com Conector) e as MCP do dono |
 | `mcp.py` | Servidor MCP por Usuário: tabela `mcp_servers`, cadastro que conecta antes de gravar, barreira de SSRF, sonda antes do turno. Tickets 17 e 23 |
-| `conectores.py` | Conector Google: tabela `connectors`, OAuth com `state` JWT, tokens cifrados, refresh, Tools `gmail_search`, `gmail_read`, `drive_search_read`. Ticket 18 |
+| `conectores.py` | Conector Google: tabela `connectors`, OAuth com `state` JWT e PKCE, tokens cifrados, refresh, Tools `gmail_search`, `gmail_read`, `gmail_send` (Rascunho, ADR 0013), `drive_search_read`. Ticket 18 |
+| `google_transporte.py` | pontes das libs de auth do Google para o transporte httpx injetável (ADR 0017) |
+| `mcp_oauth.py` | Servidor MCP por OAuth: descoberta, DCR, PKCE, troca de code e refresh. Ticket 52, ADR 0022 |
+| `limpeza_anexos.py` | varredura diária de arquivos de Anexo órfãos, rodada pelo cron do VPS. Ticket 50 |
 | `roteador.py` | Roteador com Jev e gate de confiança |
 | `compactacao.py` | Compactação por Resumo, tabela `summaries` |
 | `resiliencia.py` | retry com backoff, fallback de modelo, métricas do turno |
@@ -112,11 +119,12 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | Pasta | Papel |
 |---|---|
 | `pages/` | uma tela por rota: Chat, Login, Configuração (`/config`), Tools, MCP (`/mcp`), Conectores (`/conectores`), Créditos, Auditoria, Admin, Compartilhados, Compartilhamento (link público), Placeholder (Perfil e 404) |
-| `components/` | componentes nossos: `BlocoTool`, `SeletorTools`, `Anexos`, `MarcadorCompactacao`, `ItemCompartilhar`, `estados` (vazio, carregando, erro) |
+| `components/` | componentes nossos: `BlocoTool`, `SeletorTools`, `SeletorModelo`, `Anexos`, `MarcadorCompactacao`, `IndicadorContexto` (rosca até a Compactação), `Trabalhando` (indicador do turno), `RascunhoEmail`, `ItemCompartilhar`, `ModalLink`, `Logo`, `estados` (vazio, carregando, erro) |
 | `components/ui/` | código do registry shadcn, copiado e não escrito à mão |
-| `components/ai-elements/` | código do registry AI Elements, copiado e não escrito à mão |
+| `components/ai-elements/` | código do registry AI Elements, copiado. Ajuste nosso: `message.tsx` usa o `ModalLink` na confirmação de link externo |
 | `layout/` | `AppLayout`: barra lateral e casca das telas logadas |
 | `lib/` | cliente da API (`api.ts`, token Bearer) e helpers por tela (`mcp.ts`, `conectores.ts`, `tools.ts`...) |
+| `hooks/` | `use-mobile.ts`, do registry shadcn |
 | `tema.ts` | tema dark padrão com toggle |
 
 ### Tickets depois do 14
@@ -124,7 +132,7 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | Ticket | O que tocou | Status |
 |---|---|---|
 | 15 | painéis de Crédito e auditoria, admin | resolvido |
-| 16 | deploy no VPS com CI | bloqueado (acesso SSH) |
+| 16 | deploy no VPS com CI, `deploy/`, `.github/workflows/deploy.yml` | resolvido: no ar em https://chat.toneli.dev.br |
 | 17 | `mcp.py`, migração 0013, `pages/Mcp.tsx`, `deploy/mcp-demo/` | resolvido |
 | 18 | `conectores.py`, migração 0012, `pages/Conectores.tsx` | resolvido |
 | 19 | `README.md`, `docs/ENTREVISTA.md`, `.env.example` | resolvido (vídeo pendente no `MANHA.md`) |
@@ -133,6 +141,8 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | 22 | `WORKFLOW.md` e `map.md` contam a prática | resolvido |
 | 23 | Servidor MCP caído sai do turno; SSRF no cadastro. `mcp.py`, `chat.py`, `tools.py` | resolvido |
 | 24 | este arquivo e `MOTIVACOES.md` com 17, 18, 21, 23 | resolvido |
+
+Tickets 25 a 54: uma linha por execução em `.scratch/desafio/LEDGER.md`.
 
 ### `api/migrations/versions/`
 
@@ -151,6 +161,13 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | 0011 | 14 | tabela `settings` |
 | 0012 | 18 | `connectors` (tokens cifrados); `tools.origem` aceita `google`; semeia as 3 Tools do Google |
 | 0013 | 17 | `mcp_servers` (header cifrado); `tools.mcp_server_id` com FK em cascata; `tess_app` ganha INSERT e DELETE em `tools`, limitados por RLS a `origem = 'mcp'` |
+| 0014 | 25 | `email_drafts` (Rascunho de e-mail) e a Tool `gmail_send` (ADR 0013) |
+| 0015 | 25 | `gmail_send` nasce ligada por Conversa |
+| 0016 | 28 | descrição da Tool para o Usuário, separada da que o modelo recebe |
+| 0017 | 29 | conta Google vinculada e Gmail disponível no Conector |
+| 0018 | 30 | teto de tool calls na Configuração |
+| 0019 | 42 | descrição de `drive_search_read` com PDF e recentes volta ao banco |
+| 0020 | 52 | credencial OAuth cifrada e estado da conexão em `mcp_servers` (ADR 0022) |
 
 ## Onde mora cada conceito do `CONTEXT.md`
 
@@ -205,7 +222,7 @@ Achados da revisão da estrutura (ticket 20). Nada foi movido: todo item quebrar
 1. **`docs/WORKFLOW.md` descreve o plano, não o que rodou.** Ele fala de loop externo `claude -p` com teste como gate fora do Claude. O `HANDOFF.md` e o `LEDGER.md` mostram outra coisa: um orquestrador numa sessão do Claude Code disparando agentes em paralelo, e o próprio agente rodando os testes. Atualizar o WORKFLOW para contar a evolução. Detalhe em `MOTIVACOES.md`, seção Workflow. **Resolvido no ticket 22.**
 2. **`map.md` está defasado.** Ainda diz que o agente grava `BLOCKED` e para, e que três funções são HITL. Desde 23/09 o agente decide o simples, registra em `DECISOES-AUTONOMAS.md` e marca `REVISAR(human)`. A seção "Not yet specified" também já foi resolvida em parte. **Resolvido no ticket 22.**
 3. **`.scratch/` é o coração do fluxo de IA, mas o nome diz "descartável"** e a pasta começa com ponto (some em `ls` e em alguns navegadores de arquivo). Renomear quebra CLAUDE.md, WORKFLOW, AGENT-PROMPT, HANDOFF e tickets. Alternativa barata: o README do ticket 19 aponta para ela logo no topo.
-4. **Referências a coisas que não existem:** `spike/out/` (citado como evidência em `spike/RESULTADO.md`), `deploy/` e `docs/INFRA.md` (citados no `AGENT-PROMPT.md`), `.github/` e Caddyfile (ADR 0011). Os quatro últimos são do ticket 16. `spike/out/` precisa de correção no RESULTADO ou do commit da evidência. **Em parte:** `deploy/` existe desde o 17, só com `mcp-demo/`.
+4. **Referências a coisas que não existem:** `spike/out/` (citado como evidência em `spike/RESULTADO.md`), `deploy/` e `docs/INFRA.md` (citados no `AGENT-PROMPT.md`), `.github/` e Caddyfile (ADR 0011). Os quatro últimos são do ticket 16. `spike/out/` precisa de correção no RESULTADO ou do commit da evidência. **Em parte:** `deploy/`, `docs/INFRA.md` e `.github/` existem desde o ticket 16. O Caddy saiu (ADR 0014). Falta `spike/out/`.
 5. **`LEDGER.md` não tem a coluna de turnos** que o `WORKFLOW.md` pede.
 6. **Pares de nome parecidos:** `audit.py` (escrita) e `auditoria.py` (leitura); `config.py` (`.env`) e `configuracao.py` (Configuração do domínio, tabela `settings`). A classe `Settings` de `config.py` e a tabela `settings` do ticket 14 são coisas diferentes com o mesmo nome. Não renomear agora (imports); explicar no README.
 7. **Nome do ADR 0011 cita DuckDNS**, mas a decisão final é o domínio próprio. O texto do ADR já explica; renomear o arquivo quebra o link no `map.md`.
