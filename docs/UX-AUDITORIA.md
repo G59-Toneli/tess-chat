@@ -1,6 +1,6 @@
 # Auditoria de UX (ticket 27)
 
-Data: 23/09/2026. Ambiente: Vite em `localhost:5191` com proxy para a API em `localhost:8000` (banco de dev, Postgres `5433`). Brave headless via playwright-core, dark, 1440x900; telas largas também em 1280x800. Contas: `demo@toneli.dev.br` (admin) e `naoadmin27@teste.dev` (comum, criada para esta auditoria). Nenhuma mensagem nova enviada ao modelo.
+Data: 23/09/2026. Ambiente: Vite em `localhost:5191` com proxy para a API em `localhost:8000` (banco de dev, Postgres `5433`). Brave headless via playwright-core, dark, 1440x900; telas largas também em 1280x800. Contas: `demo@toneli.dev.br` (admin na época; hoje não é) e `naoadmin27@teste.dev` (comum, criada para esta auditoria). Nenhuma mensagem nova enviada ao modelo.
 
 Screenshots em `.scratch/desafio/screens/27-*.png`. Par antes/depois: `27-<tela>-antes.png` e `27-<tela>.png`.
 
