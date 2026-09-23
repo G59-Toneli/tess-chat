@@ -41,6 +41,7 @@ class Tool(Base):
     descricao: Mapped[str] = mapped_column(Text)
     schema: Mapped[dict[str, Any]] = mapped_column(JSONB)
     ativa_global: Mapped[bool] = mapped_column(Boolean)
+    padrao_ligada: Mapped[bool] = mapped_column(Boolean, default=True)  # estado sem toggle na Conversa
     mcp_server_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("mcp_servers.id", ondelete="CASCADE"))
 
 
@@ -105,8 +106,10 @@ NATIVAS = {"web_search": web_search, "web_fetch": web_fetch}
 
 
 # REVISAR(human): ativa = ativa_global E toggle da Conversa. Sem linha em conversation_tools,
-# o toggle herda ativa_global. ativa_global=false desliga a Tool em todas as Conversas.
+# o toggle vale padrao_ligada (true, menos gmail_send: ação irreversível nasce desligada, ADR 0013).
+# ativa_global=false desliga a Tool em todas as Conversas.
 # Tool de origem 'google' só existe se o dono da Conversa tem Conector Google (ticket 18).
+# gmail_send exige também o escopo gmail.send no Conector: conexão antiga não ganha a Tool (ticket 25).
 # Tool de origem 'mcp' só existe para o dono do Servidor MCP, e só com o servidor ativo (ticket 17).
 async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tuple[Tool, bool]]:
     """Cada Tool do registro com o estado efetivo na Conversa."""
@@ -114,6 +117,7 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
         conectores.Connector.user_id == Conversation.user_id,
         conectores.Connector.provedor == conectores.PROVEDOR,
         Conversation.id == cid,
+        or_(Tool.nome != "gmail_send", conectores.Connector.escopos.any(conectores.ESCOPO_ENVIO)),
     )
     servidor_do_dono = exists().where(
         mcp.McpServer.id == Tool.mcp_server_id,
@@ -130,7 +134,7 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
         .where(or_(Tool.origem == "nativa", and_(Tool.origem == conectores.PROVEDOR, tem_conector), servidor_do_dono))
         .order_by(Tool.nome)
     )
-    return [(t, t.ativa_global and (a if a is not None else True)) for t, a in (await session.execute(q)).all()]
+    return [(t, t.ativa_global and (a if a is not None else t.padrao_ligada)) for t, a in (await session.execute(q)).all()]
 
 
 @dataclass
@@ -176,7 +180,7 @@ async def toolset_da_conversa(
         if tool.nome in NATIVAS:
             ts.add_function(_ligar(tool.nome, t), name=tool.nome, description=tool.descricao)
         elif tool.nome in conectores.TOOLS:
-            ts.add_function(conectores.ligar(tool.nome, uid, t), name=tool.nome, description=tool.descricao)
+            ts.add_function(conectores.ligar(tool.nome, uid, t, cid), name=tool.nome, description=tool.descricao)
         elif tool.mcp_server_id is not None:
             por_servidor.setdefault(tool.mcp_server_id, set()).add(tool.nome)
     servidores = (await session.scalars(select(mcp.McpServer).where(mcp.McpServer.id.in_(por_servidor)))).all()

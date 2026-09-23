@@ -146,6 +146,19 @@ Parte do texto já foi para o browser. Repetir duplicaria. Só a abertura do str
 **Lacuna: o ADR promete OpenAI no fallback. Cadê?**
 Não está implementado. A cadeia é `gemini-3.8-flash` e depois `gemini-3.7-flash`; nada lê `OPENAI_API_KEY`. Ativar pede a chave, o modelo na cadeia e a linha de preço na Tabela de Preço. Outra aresta: com o 3.8 fora, cada request tenta 3 vezes antes de trocar, e turno com tool fica lento. Fonte: `api/app/chat.py`, LACUNAS.
 
+## ADR 0013 — Envio de e-mail só com confirmação
+
+**Por que o modelo não envia direto, se ele já decide chamar a tool?**
+E-mail enviado não volta. O modelo erra destinatário, tom e conteúdo, e o Roteador e o prompt não são trilho para ação irreversível. A tool `gmail_send` só grava um Rascunho `pendente`. O único caminho que chama `messages/send` é `POST /api/connectors/google/drafts/{id}/enviar`, autenticado pelo dono. Fonte: ADR 0013, `conectores.py`.
+
+**Por que confirmar por clique e não pelo texto "pode enviar"?**
+Confirmação por texto põe o modelo para decidir se a frase é um sim. Erro de interpretação vira e-mail enviado. Com clique, o modelo nem tem tool de envio final: um teste manda "pode enviar" no chat e confere que o Rascunho segue `pendente` e o Gmail não recebe nada. Dois cliques simultâneos também não enviam duas vezes: o endpoint trava a linha (`SELECT ... FOR UPDATE`) e o segundo recebe 409. Fonte: `test_email.py`.
+
+**O Pydantic AI tem `requires_approval` (deferred tools). Por que não usou?**
+A aprovação nativa pausa o run e exige retomar o mesmo run com o resultado, o que custa mais uma chamada ao modelo e amarra o envio ao ciclo do Agent. O Rascunho é linha no banco: sobrevive a recarregar a página, tem estado próprio (`pendente|enviado|descartado`), auditoria própria e um endpoint que qualquer tool futura com escrita externa pode copiar. Fonte: ADR 0013, seção Consequências. **INFERIDO:** a mecânica do `requires_approval` foi lida da assinatura de `add_function`, não da doc do Pydantic AI; confirme antes da entrevista.
+
+Pergunta extra provável: **como responde na mesma thread?** `gmail_read` devolve `thread_id`. Com ele, `gmail_send` lê o `Message-ID` da última mensagem da thread e grava `In-Reply-To` e `References` no Rascunho; o envio manda `threadId` e esses cabeçalhos no MIME.
+
 ## Workflow com IA
 
 **Como o projeto foi construído?**

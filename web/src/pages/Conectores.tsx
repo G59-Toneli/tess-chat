@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { CheckCircle2Icon, CircleOffIcon, HardDriveIcon, Link2OffIcon, MailIcon, PlugIcon } from 'lucide-react'
+import { CheckCircle2Icon, CircleOffIcon, HardDriveIcon, Link2OffIcon, MailIcon, PlugIcon, RefreshCwIcon, SendIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
 import {
@@ -21,15 +21,16 @@ import {
   listarConectores,
   revogarGoogle,
   rotuloEscopo,
+  semEnvio,
   textoErroOAuth,
   urlDoGoogle,
   type Conector,
 } from '@/lib/conectores'
 
 const fmtData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-const ESCOPOS_PADRAO = ['Gmail (leitura)', 'Drive (leitura)']
+const ESCOPOS_PADRAO = ['Gmail (leitura)', 'Drive (leitura)', 'Gmail (envio com confirmação)']
 
-/** /conectores: conectar e revogar o Google (Gmail e Drive, só leitura). */
+/** /conectores: conectar, reconectar e revogar o Google (Gmail e Drive; envio só com clique). */
 export function Conectores() {
   const [google, setGoogle] = useState<Conector | null>(null)
   const [erro, setErro] = useState(false)
@@ -87,8 +88,8 @@ export function Conectores() {
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Conectores</h1>
         <p className="text-sm text-muted-foreground">
-          Um conector dá ao assistente acesso de leitura a uma conta sua. As tools dele só aparecem nas conversas depois
-          de conectar.
+          Um conector dá ao assistente acesso a uma conta sua. As tools dele só aparecem nas conversas depois de
+          conectar.
         </p>
       </div>
       {erro ? (
@@ -111,18 +112,33 @@ export function Conectores() {
               )}
             </CardTitle>
             <CardDescription>
-              Buscar e ler e-mails do Gmail e arquivos do Drive. Só leitura: o assistente não envia, apaga nem altera
-              nada.
+              Buscar e ler e-mails do Gmail e arquivos do Drive. O assistente pode preparar respostas, mas um e-mail só
+              sai quando você clica em Enviar no rascunho. Nada é apagado nem alterado.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="flex flex-wrap gap-2">
               {escopos.map((e) => (
                 <Badge key={e} variant="outline" className="font-normal">
-                  {e.startsWith('Gmail') ? <MailIcon /> : <HardDriveIcon />} {e}
+                  {e.includes('envio') ? <SendIcon /> : e.startsWith('Gmail') ? <MailIcon /> : <HardDriveIcon />} {e}
                 </Badge>
               ))}
             </div>
+            {semEnvio(google) && (
+              <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3" role="status">
+                <SendIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div className="flex-1 space-y-1">
+                  <p className="font-medium">Reconecte para enviar e-mails</p>
+                  <p className="text-muted-foreground">
+                    Esta conexão é anterior ao envio. Reconecte e aceite a permissão de envio para liberar a tool{' '}
+                    <span className="font-mono">gmail_send</span>.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => void conectar()} disabled={indo}>
+                  {indo ? <Spinner /> : <RefreshCwIcon />} Reconectar
+                </Button>
+              </div>
+            )}
             {google.conectado ? (
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-muted-foreground">
                 <dt>Conectado em</dt>
@@ -139,7 +155,8 @@ export function Conectores() {
             ) : (
               <p className="text-muted-foreground">
                 Tools liberadas ao conectar: <span className="font-mono">gmail_search</span>,{' '}
-                <span className="font-mono">gmail_read</span> e <span className="font-mono">drive_search_read</span>.
+                <span className="font-mono">gmail_read</span>, <span className="font-mono">drive_search_read</span> e{' '}
+                <span className="font-mono">gmail_send</span> (desligada em cada conversa até você ligar).
               </p>
             )}
           </CardContent>
