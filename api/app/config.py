@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # Fallback de dev. Produção define JWT_SECRET no .env (ver DECISOES-AUTONOMAS).
     jwt_secret: str = "dev-secret-trocar-em-producao-0123456789"
     demo_password: str = "demo12345"
+    # Conta que o startup marca como admin (is_superuser). A conta já precisa existir.
+    admin_email: str | None = None
     # Tier pago (ADR 0003).
     gemini_paid_api_key: str | None = None
     # Busca da tool web_search (ticket 10). Sem chave, a tool responde indisponível.

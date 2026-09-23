@@ -31,10 +31,6 @@ class UserCreate(schemas.BaseUserCreate):
     pass
 
 
-class UserUpdate(schemas.BaseUserUpdate):
-    pass
-
-
 async def get_user_db(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AsyncIterator[SQLAlchemyUserDatabase]:
@@ -97,14 +93,24 @@ current_superuser = fastapi_users.current_user(active=True, superuser=True)
 
 
 # REVISAR(human): seed da conta demo no startup, idempotente. Se já existe,
-# não reseta a senha, só garante a flag de admin (is_superuser, ticket 15).
+# não reseta a senha. A demo nunca é admin: a senha dela já esteve no bundle do front.
+# O update rebaixa a linha antiga, que o ticket 15 marcava como superuser.
 # Alternativa descartada: migração de dados.
 async def garantir_conta_demo() -> None:
-    """Cria a conta demo se ela não existe. A conta demo é superuser."""
+    """Cria a conta demo se ela não existe. Garante que ela não é superuser."""
     async with SessionLocal() as session:
         manager = UserManager(SQLAlchemyUserDatabase(session, User))
         try:
-            await manager.create(UserCreate(email=DEMO_EMAIL, password=settings.demo_password, is_superuser=True))
+            await manager.create(UserCreate(email=DEMO_EMAIL, password=settings.demo_password))
         except exceptions.UserAlreadyExists:
-            await session.execute(update(User).where(User.email == DEMO_EMAIL).values(is_superuser=True))
+            await session.execute(update(User).where(User.email == DEMO_EMAIL).values(is_superuser=False))
             await session.commit()
+
+
+async def garantir_admin() -> None:
+    """Marca como superuser a conta de ADMIN_EMAIL, se ela existe. Roda depois do seed da demo."""
+    if not settings.admin_email:
+        return
+    async with SessionLocal() as session:
+        await session.execute(update(User).where(User.email == settings.admin_email).values(is_superuser=True))
+        await session.commit()

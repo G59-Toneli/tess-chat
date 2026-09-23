@@ -12,7 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.anexos import router as anexos_router
 from app.config import settings
 from app.auditoria import router as auditoria_router
-from app.auth import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_users, garantir_conta_demo
+from app.auth import (
+    User,
+    UserCreate,
+    UserRead,
+    auth_backend,
+    current_user,
+    fastapi_users,
+    garantir_admin,
+    garantir_conta_demo,
+)
 from app.chat import router as chat_router
 from app.conectores import router as conectores_router
 from app.configuracao import router as configuracao_router
@@ -30,13 +39,13 @@ from app.tools import router as tools_router
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await garantir_conta_demo()
+    await garantir_admin()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"])
 app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
-app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 app.include_router(conversas_router)
 app.include_router(chat_router)
 app.include_router(credito_router)
@@ -58,10 +67,16 @@ async def health(session: Annotated[AsyncSession, Depends(get_session)]) -> dict
     return {"status": "ok"}
 
 
+# Só leitura do próprio Usuário. O router de users do FastAPI-Users expunha PATCH e DELETE /users/{id}.
+@app.get("/users/me", response_model=UserRead, tags=["users"])
+async def eu(user: Annotated[User, Depends(current_user)]) -> User:
+    return user
+
+
 @app.get("/api/config-publica")
 async def config_publica() -> dict[str, bool | str]:
     """Config que o front lê sem login. Decidida em runtime: a mesma imagem serve dev e prod."""
-    return {"demo": settings.env != "prod", "env": settings.env}
+    return {"env": settings.env}
 
 
 # Manter no fim: catch-all do front depois de todas as rotas da API.
