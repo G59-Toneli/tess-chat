@@ -1,7 +1,7 @@
 # 09 — Anexos: imagem e PDF no chat
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 07
 **Refs:** `research/02` §1.5.
 
