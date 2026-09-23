@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from pydantic_ai import Agent
 from pydantic_ai.agent import AgentRunResult
+from pydantic_ai.messages import ModelResponse
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError
 from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
@@ -24,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
 
 from app.audit import audit
+from app.compactacao import Compactacao, com_resumo, modelo_resumo, ponto_de_corte, should_compact, ultimo_resumo
 from app.auth import User, current_user
 from app.config import settings
 from app.conversas import Conversation, Message, conversa_do_usuario
@@ -66,8 +68,12 @@ def _estimar_input(linhas: list[Message], novas: list[Any]) -> int:
     return -(-chars // 3)
 
 
-async def _erro(cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: Exception, t0: float) -> None:
+async def _erro(
+    cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: Exception, t0: float, comp: Compactacao | None = None
+) -> None:
     async with SessionLocal() as s:
+        if comp:
+            await comp.auditar(s, None)
         await audit(
             s,
             "llm_error",
@@ -131,13 +137,24 @@ async def _rotear(
 # REVISAR(human): grava usuário e assistente juntos, só no fim do turno com sucesso.
 # Turno que falha não deixa mensagem órfã no histórico. Uso vai na mensagem do assistente.
 async def _persistir(
-    cid: uuid.UUID, uid: uuid.UUID, nome: str, result: AgentRunResult[Any], antes: int, t0: float
+    cid: uuid.UUID,
+    uid: uuid.UUID,
+    nome: str,
+    result: AgentRunResult[Any],
+    antes: int,
+    t0: float,
+    comp: Compactacao | None = None,
 ) -> None:
     latencia = int((time.perf_counter() - t0) * 1000)
     uso = result.usage
     # new_messages() não traz a mensagem do front: o adapter a põe no message_history.
-    ui = VercelAIAdapter.dump_messages(result.all_messages()[antes:], sdk_version=SDK)
+    # A Compactação encolhe o histórico do run: o índice das novas desloca junto.
+    novas = result.all_messages()[antes - (comp.removidos if comp else 0) :]
+    ui = VercelAIAdapter.dump_messages(novas, sdk_version=SDK)
     async with SessionLocal() as s:
+        if comp:
+            primeira = next((m for m in novas if isinstance(m, ModelResponse)), None)
+            await comp.auditar(s, primeira.usage.input_tokens if primeira else None)
         linhas = [
             Message(conversation_id=cid, role=m.role, parts=[p.model_dump(mode="json", by_alias=True) for p in m.parts])
             for m in ui
@@ -174,6 +191,45 @@ async def _persistir(
         await s.commit()
 
 
+async def _preparar_historico(
+    session: AsyncSession, uid: uuid.UUID, cid: uuid.UUID, linhas: list[Message], mr: Model
+) -> tuple[list[Any], Compactacao | None]:
+    """Resumo vigente + Mensagens depois do corte. Monta a Compactação se o turno anterior passou do limiar."""
+    resumo = await ultimo_resumo(session, cid)
+    efetivas = [l for l in linhas if resumo is None or l.id > resumo.ate_message_id]
+    texto = resumo.texto if resumo else None
+    historico = com_resumo(texto, _historico(efetivas))
+    anterior = next((l for l in reversed(efetivas) if l.role == "assistant"), None)
+    uso = RunUsage(input_tokens=anterior.input_tokens or 0) if anterior else None
+    corte = ponto_de_corte([l.role for l in efetivas], settings.compactacao_turnos_literais)
+    if corte is None or not should_compact(uso, settings):
+        return historico, None
+    comp = Compactacao(
+        uid=uid,
+        cid=cid,
+        modelo=mr,
+        resumo_anterior=texto,
+        antigas=_historico(efetivas[:corte]),
+        recentes=_historico(efetivas[corte:]),
+        ate_message_id=efetivas[corte - 1].id,
+        tokens_antes=uso.input_tokens,
+        tamanho_historico=len(historico),
+    )
+    return historico, comp
+
+
+@router.get("/{cid}/compactacao")
+async def corte_atual(
+    cid: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(current_user)],
+) -> dict[str, int | None]:
+    """Última Mensagem coberta pelo Resumo vigente. O front marca \"histórico compactado aqui\" depois dela."""
+    await conversa_do_usuario(session, user, cid)
+    resumo = await ultimo_resumo(session, cid)
+    return {"ate_message_id": resumo.ate_message_id if resumo else None}
+
+
 # REVISAR(human): 502 só quando o provedor falha antes do primeiro evento.
 # Depois que o stream começou o status 200 já foi, então o erro vai como chunk de erro do AI SDK.
 # Nos dois casos grava llm_error.
@@ -184,6 +240,7 @@ async def chat(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(current_user)],
     m: Annotated[Model, Depends(modelo)],
+    mr: Annotated[Model, Depends(modelo_resumo)],
     t: Annotated[httpx.AsyncBaseTransport | None, Depends(transporte)],
     jev: Annotated[AsyncTypeSafeClient | None, Depends(cliente_jev)],
 ) -> Response:
@@ -201,8 +258,8 @@ async def chat(
 
     q = select(Message).where(Message.conversation_id == cid).order_by(Message.created_at, Message.id)
     linhas = list((await session.scalars(q)).all())
-    historico = _historico(linhas)
     uid, nome = user.id, m.model_name
+    historico, comp = await _preparar_historico(session, uid, cid, linhas, mr)
     await reservar(session, uid, cid, nome, _estimar_input(linhas, novas))
     tools = await toolset_da_conversa(session, uid, cid, t)
     gate = await _rotear(session, jev, uid, cid, novas[0])
@@ -215,11 +272,11 @@ async def chat(
         try:
             async for ev in adapter.run_stream_native(
                 message_history=historico, model=m, model_settings=AJUSTES, conversation_id=str(cid),
-                toolsets=[tools], capabilities=[gate],
+                toolsets=[tools], capabilities=[gate, *([comp.capability()] if comp else [])],
             ):
                 yield ev
         except ModelAPIError as exc:
-            await _erro(cid, uid, nome, exc, t0)
+            await _erro(cid, uid, nome, exc, t0, comp)
             raise
 
     nativos = eventos()
@@ -235,6 +292,6 @@ async def chat(
             yield ev
 
     async def ao_fim(result: AgentRunResult[Any]) -> None:
-        await _persistir(cid, uid, nome, result, len(historico), t0)
+        await _persistir(cid, uid, nome, result, len(historico), t0, comp)
 
     return adapter.streaming_response(adapter.transform_stream(todos(), on_complete=ao_fim))
