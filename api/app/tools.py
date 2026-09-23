@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from tavily import AsyncTavilyClient
 
-from app import conectores, mcp
+from app import conectores, mcp, mcp_oauth
 from app.audit import audit
 from app.config import settings
 from app.auth import User, current_superuser
@@ -291,10 +291,14 @@ async def toolset_da_conversa(
             ts.add_function(conectores.ligar(tool.nome, uid, t, cid), name=tool.nome, description=tool.descricao)
         elif tool.mcp_server_id is not None:
             por_servidor.setdefault(tool.mcp_server_id, set()).add(tool.nome)
-    servidores = (await session.scalars(select(mcp.McpServer).where(mcp.McpServer.id.in_(por_servidor)))).all()
+    candidatos = (await session.scalars(select(mcp.McpServer).where(mcp.McpServer.id.in_(por_servidor)))).all()
+    # OAuth vencendo renova antes da sonda; aguardando ou expirado sai do turno (ticket 52).
+    usaveis = await asyncio.gather(*(mcp_oauth.renovar(s, t) for s in candidatos))
+    servidores = [s for s, ok in zip(candidatos, usaveis, strict=True) if ok]
+    fora = [s.nome for s, ok in zip(candidatos, usaveis, strict=True) if not ok]
     # Servidor fora do ar sai do turno em vez de derrubá-lo (ticket 23). Sondas em paralelo.
     erros = await asyncio.gather(*(mcp.alcancavel(s) for s in servidores))
-    vivos, fora = [], []
+    vivos = []
     for srv, erro in zip(servidores, erros, strict=True):
         if erro is None:
             vivos.append(srv)

@@ -7,7 +7,7 @@ Termos do produto. Um significado por termo. Sem detalhe de implementação.
 - **Mensagem**: um turno na Conversa. Origem: usuário, assistente, tool. Pode carregar Anexos.
 - **Anexo**: imagem ou PDF enviado numa Mensagem e entregue ao modelo para análise.
 - **Tool**: capacidade que o modelo pode invocar durante um turno. Origem `nativa` (fornecida pelo app), `google` (habilitada por um Conector) ou `mcp` (exposta por um Servidor MCP). O Usuário ativa e desativa por Conversa.
-- **Servidor MCP**: endpoint externo cadastrado pelo Usuário que publica Tools via Model Context Protocol.
+- **Servidor MCP**: endpoint externo cadastrado pelo Usuário que publica Tools via Model Context Protocol. Autentica por header fixo ou por OAuth. Estado `ok`, `aguardando_oauth` ou `expirado`; fora de `ok`, as Tools dele saem do turno (ADR 0022).
 - **Conector**: vínculo autorizado do Usuário com uma plataforma externa (Google Drive, Gmail). Um Conector habilita Tools nativas que leem dados dessa plataforma e preparam Rascunhos.
 - **Rascunho**: e-mail preparado pela Tool `gmail_send` que só sai pelo clique do Usuário em Enviar. Estado `pendente`, `enviado` ou `descartado` (ADR 0013).
 - **Roteador**: etapa antes da chamada ao modelo principal que classifica o turno: precisa de Tool ou não, e qual. Devolve confiança. Abaixo do limiar, a decisão volta ao modelo principal.

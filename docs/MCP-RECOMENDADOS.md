@@ -5,7 +5,7 @@ Pesquisa de 2026-09-23. Fonte: doc oficial de cada fornecedor. O que não está 
 ## Critérios do nosso cliente (ADR 0009)
 
 1. Servidor remoto em Streamable HTTP. Sem stdio. Sem SSE legado.
-2. Auth por header `Authorization` fixo (Bearer, token, API key) ou sem auth. Servidor só com OAuth interativo não serve.
+2. Auth por header `Authorization` fixo (Bearer, token, API key), sem auth, ou OAuth com registro dinâmico (DCR) desde o ticket 52 ([ADR 0022](adr/0022-mcp-oauth-dcr.md)). OAuth que exige app registrado à mão (HubSpot, Slack, GitHub) não serve.
 3. URL https.
 4. Ação visível na demo: cria algo, devolve link, imagem ou dado real. Leitura de doc é secundária.
 
@@ -45,7 +45,7 @@ Pesquisa de 2026-09-23. Fonte: doc oficial de cada fornecedor. O que não está 
 
 | Servidor | Motivo |
 |---|---|
-| Notion | Doc oficial só cita OAuth para o servidor hospedado. Integration token só funciona no servidor self-hosted stdio, que a Notion não mantém mais. |
+| Notion | Descartado por header: doc oficial só cita OAuth para o servidor hospedado. Integration token só funciona no servidor self-hosted stdio, que a Notion não mantém mais. Desde o ticket 52 entra por OAuth com DCR (atalho na tela `/mcp`). |
 | Sentry | Doc oficial: "All connections use OAuth." |
 | Vercel | OAuth, e só aceita clientes revisados e aprovados pela Vercel. Nosso cliente não está na lista. |
 | Brave Search | Não tem endpoint remoto oficial. O servidor oficial roda em stdio ou HTTP local. Endpoint remoto só via terceiro (Apify). |
@@ -55,5 +55,5 @@ Pesquisa de 2026-09-23. Fonte: doc oficial de cada fornecedor. O que não está 
 ## Para a entrevista
 
 1. "O cliente só fala Streamable HTTP porque stdio num app multiusuário é executar processo arbitrário no nosso servidor, e SSE legado foi deprecado pela própria spec e pelos fornecedores (DeepWiki, Linear e Zapier já marcam ou recusam SSE)."
-2. "Auth é um header fixo porque o Servidor MCP é cadastrado por URL e usado sem ninguém na frente do navegador, então um fluxo OAuth interativo por usuário não cabe no escopo do desafio."
-3. "A consequência é que servidores só-OAuth como Notion e Sentry ficam de fora, e isso é uma escolha consciente: OAuth com Dynamic Client Registration é o próximo passo, não um esquecimento."
+2. "Auth é header fixo ou OAuth com DCR. No OAuth o app descobre o authorization server pela spec MCP, registra um cliente público, abre o consentimento com PKCE e guarda o token por usuário. Antes do turno ele renova o token; se não conseguir, o servidor sai do turno até o usuário reconectar (ADR 0022)."
+3. "Só DCR, porque app registrado por provedor pede cadastro manual e segredo por ambiente. Notion e Stripe aceitam DCR e têm atalho de 1 clique; HubSpot, Slack e GitHub seguem por token no header."

@@ -23,6 +23,7 @@ from app.estaticos import montar_estaticos
 from app.roteador import router as roteador_router
 from app.shares import router as shares_router
 from app.mcp import router as mcp_router
+from app.mcp_oauth import router as mcp_oauth_router
 from app.tools import router as tools_router
 
 
@@ -46,6 +47,7 @@ app.include_router(auditoria_router)
 app.include_router(anexos_router)
 app.include_router(configuracao_router)
 app.include_router(conectores_router)
+app.include_router(mcp_oauth_router)
 app.include_router(mcp_router)
 
 

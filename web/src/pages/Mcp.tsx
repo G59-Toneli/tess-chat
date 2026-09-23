@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { AlertCircleIcon, ChevronDownIcon, KeyRoundIcon, PlugIcon, ServerIcon, Trash2Icon } from 'lucide-react'
+import { useSearchParams } from 'react-router'
+import {
+  AlertCircleIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  KeyRoundIcon,
+  PlugIcon,
+  RefreshCwIcon,
+  ServerIcon,
+  ShieldCheckIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { EstadoCarregando, EstadoErro, EstadoVazio } from '@/components/estados'
 import {
@@ -21,15 +33,38 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { ErroApi } from '@/lib/api'
-import { alternarServidor, cadastrarServidor, listarServidores, removerServidor, type McpServidor } from '@/lib/mcp'
+import {
+  alternarServidor,
+  ATALHOS_OAUTH,
+  cadastrarServidor,
+  iniciarOAuth,
+  listarServidores,
+  removerServidor,
+  textoErroOAuthMcp,
+  type McpOAuth,
+  type McpServidor,
+} from '@/lib/mcp'
 
 const fmtData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
-/** Tela /mcp: cadastrar Servidor MCP por URL + header, ver as tools, ligar/desligar e remover. */
+/** Leva o browser ao consentimento do servidor (redirect, não popup). Devolve a mensagem de erro, se houver. */
+async function irParaOAuth(pedido: McpOAuth): Promise<string | null> {
+  try {
+    window.location.assign((await iniciarOAuth(pedido)).url)
+    return null
+  } catch (err) {
+    return err instanceof ErroApi && typeof err.detail === 'string'
+      ? err.detail
+      : 'Não foi possível iniciar a conexão OAuth. Tente de novo.'
+  }
+}
+
+/** Tela /mcp: cadastrar Servidor MCP por URL + header ou por OAuth, ver as tools, ligar/desligar e remover. */
 export function Mcp() {
   const [servidores, setServidores] = useState<McpServidor[] | null>(null)
   const [erro, setErro] = useState(false)
   const [removendo, setRemovendo] = useState<McpServidor | null>(null)
+  const [params, setParams] = useSearchParams()
 
   const carregar = useCallback(async () => {
     setErro(false)
@@ -43,6 +78,20 @@ export function Mcp() {
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  // Volta do consentimento OAuth: avisa e limpa a query.
+  useEffect(() => {
+    const codigo = params.get('erro')
+    if (params.get('conectado')) toast.success('Servidor MCP conectado por OAuth. As tools já estão nas suas conversas.', { id: 'oauth' })
+    else if (codigo) toast.error(textoErroOAuthMcp(codigo), { id: 'oauth' })
+    else return
+    setParams({}, { replace: true })
+  }, [params, setParams])
+
+  async function reconectar(s: McpServidor) {
+    const erro = await irParaOAuth({ nome: s.nome, url: s.url, sid: s.id })
+    if (erro) toast.error(erro)
+  }
 
   async function alternar(s: McpServidor, ativo: boolean) {
     setServidores((ss) => ss?.map((x) => (x.id === s.id ? { ...x, ativo } : x)) ?? ss)
@@ -88,7 +137,7 @@ export function Mcp() {
       ) : (
         <div className="space-y-4">
           {servidores.map((s) => (
-            <CardServidor key={s.id} s={s} onAlternar={alternar} onRemover={setRemovendo} />
+            <CardServidor key={s.id} s={s} onAlternar={alternar} onRemover={setRemovendo} onReconectar={reconectar} />
           ))}
         </div>
       )}
@@ -118,7 +167,18 @@ function FormNovo({ onCadastrado }: { onCadastrado: (s: McpServidor) => void }) 
   const [url, setUrl] = useState('')
   const [autorizacao, setAutorizacao] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [indo, setIndo] = useState<string | null>(null) // nome do fluxo OAuth em andamento
   const [erro, setErro] = useState<string | null>(null)
+
+  async function oauth(pedido: McpOAuth) {
+    setIndo(pedido.nome)
+    setErro(null)
+    const falha = await irParaOAuth(pedido)
+    if (falha) {
+      setErro(falha)
+      setIndo(null)
+    }
+  }
 
   async function enviar(e: FormEvent) {
     e.preventDefault()
@@ -144,8 +204,19 @@ function FormNovo({ onCadastrado }: { onCadastrado: (s: McpServidor) => void }) 
       <form onSubmit={enviar}>
         <CardHeader>
           <CardTitle className="text-base">Adicionar servidor</CardTitle>
-          <CardDescription>O app conecta, lista as tools e só grava se a conexão der certo.</CardDescription>
+          <CardDescription>
+            Com header, o app conecta, lista as tools e só grava se a conexão der certo. Por OAuth, você autoriza na
+            página do servidor e volta para cá.
+          </CardDescription>
         </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-2 pt-4">
+          <span className="text-sm text-muted-foreground">Conectar em 1 clique:</span>
+          {ATALHOS_OAUTH.map((a) => (
+            <Button key={a.nome} type="button" variant="outline" size="sm" disabled={!!indo} onClick={() => void oauth(a)}>
+              {indo === a.nome ? <Spinner /> : <ShieldCheckIcon />} {a.nome}
+            </Button>
+          ))}
+        </CardContent>
         <CardContent className="grid gap-4 pt-4 pb-2 sm:grid-cols-[1fr_2fr]">
           <div className="space-y-2">
             <Label htmlFor="mcp-nome">Nome</Label>
@@ -180,8 +251,16 @@ function FormNovo({ onCadastrado }: { onCadastrado: (s: McpServidor) => void }) 
             </p>
           )}
         </CardContent>
-        <CardFooter className="justify-end pt-4">
-          <Button type="submit" disabled={enviando || !nome.trim() || !url.trim()}>
+        <CardFooter className="flex-wrap justify-end gap-2 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={enviando || !!indo || !nome.trim() || !url.trim()}
+            onClick={() => void oauth({ nome: nome.trim(), url: url.trim() })}
+          >
+            {indo === nome.trim() ? <Spinner /> : <ShieldCheckIcon />} Conectar por OAuth
+          </Button>
+          <Button type="submit" disabled={enviando || !!indo || !nome.trim() || !url.trim()}>
             {enviando ? <Spinner /> : <PlugIcon />} {enviando ? 'Conectando...' : 'Conectar e listar tools'}
           </Button>
         </CardFooter>
@@ -194,35 +273,62 @@ function CardServidor({
   s,
   onAlternar,
   onRemover,
+  onReconectar,
 }: {
   s: McpServidor
   onAlternar: (s: McpServidor, ativo: boolean) => void
   onRemover: (s: McpServidor) => void
+  onReconectar: (s: McpServidor) => void
 }) {
   const id = `mcp-ativo-${s.id}`
+  const pendente = s.estado !== 'ok'
   return (
     <Card className={s.ativo ? undefined : 'opacity-70'}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <ServerIcon className="size-4 text-muted-foreground" /> {s.nome}
           <Badge variant="secondary">{s.tools.length} tools</Badge>
-          {s.tem_auth && (
+          {s.oauth ? (
             <Badge variant="outline" className="font-normal">
-              <KeyRoundIcon /> com autenticação
+              <ShieldCheckIcon /> OAuth
+            </Badge>
+          ) : (
+            s.tem_auth && (
+              <Badge variant="outline" className="font-normal">
+                <KeyRoundIcon /> com autenticação
+              </Badge>
+            )
+          )}
+          {s.estado === 'aguardando_oauth' && (
+            <Badge variant="secondary" className="font-normal">
+              <ClockIcon /> aguardando autorização
+            </Badge>
+          )}
+          {s.estado === 'expirado' && (
+            <Badge variant="destructive" className="font-normal">
+              <TriangleAlertIcon /> conexão expirada
             </Badge>
           )}
           <div className="ml-auto flex items-center gap-2">
             <Label htmlFor={id} className="text-sm font-normal text-muted-foreground">
               {s.ativo ? 'Ligado' : 'Desligado'}
             </Label>
-            <Switch id={id} checked={s.ativo} onCheckedChange={(v) => onAlternar(s, v)} />
+            <Switch id={id} checked={s.ativo} disabled={pendente} onCheckedChange={(v) => onAlternar(s, v)} />
           </div>
         </CardTitle>
         <CardDescription className="truncate font-mono text-xs" title={s.url}>
           {s.url}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pt-2">
+      <CardContent className="space-y-2 pt-2">
+        {pendente && (
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            <AlertCircleIcon className="mt-0.5 size-4 shrink-0" />
+            {s.estado === 'expirado'
+              ? 'A autorização venceu e não pôde ser renovada. As tools ficam fora das conversas até você reconectar.'
+              : 'A autorização não foi concluída. Reconecte para liberar as tools.'}
+          </p>
+        )}
         <Collapsible>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="group -ml-2 text-muted-foreground">
@@ -243,9 +349,16 @@ function CardServidor({
       </CardContent>
       <CardFooter className="justify-between pt-2 text-xs text-muted-foreground">
         <span>Adicionado em {fmtData.format(new Date(s.created_at))}</span>
-        <Button variant="outline" size="sm" onClick={() => onRemover(s)}>
-          <Trash2Icon /> Remover
-        </Button>
+        <div className="flex gap-2">
+          {s.oauth && pendente && (
+            <Button size="sm" onClick={() => onReconectar(s)}>
+              <RefreshCwIcon /> Reconectar
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => onRemover(s)}>
+            <Trash2Icon /> Remover
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   )

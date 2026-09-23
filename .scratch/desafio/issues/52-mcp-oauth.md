@@ -1,7 +1,7 @@
 # 52 — Servidor MCP por OAuth (descoberta + DCR + PKCE)
 
 **Type:** task (api/ e web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ADR 0009, ADR 0017, ticket 17, ticket 23. Pedido do Toneli em 23/09. Plano: `C:\Users\Admin\.claude\plans\fala-cara-atualmente-reactive-curry.md`.
 
@@ -78,3 +78,10 @@
 ## Fora do escopo
 - Popup. Revogação no provedor. Servidor compartilhado por workspace. Client ID Metadata Document.
 - E2E real com Notion e Stripe: é HITL do Toneli, vai no `MANHA.md`.
+
+## Answer
+- `api/app/mcp_oauth.py`: iniciar (sonda 401, RFC 9728/8414 pelos helpers do SDK, DCR público, PKCE S256, `resource`) e callback (state JWT + cookie, troca, lista e grava tools). `renovar` roda antes da sonda do turno; falha marca `expirado` e tira o servidor do turno. Migração 0020, ADR 0022.
+- `validar_url` roda em toda URL de metadata (recurso, auth server, registration, authorize, token), inclusive no refresh.
+- Front: atalhos Notion/Stripe, botão "Conectar por OAuth", badge aguardando/expirado e "Reconectar" no card, toast na volta. Screenshot: `.scratch/desafio/screens/52-mcp-oauth.png`.
+- Ressalvas: sonda é POST `initialize` (DECISOES-AUTONOMAS); cada iniciar faz um DCR novo; E2E real com Notion/Stripe é HITL no MANHA.md.
+- `REVISAR(human)`: `_descobrir`, `_registrar`, `_pedir_token`, `renovar`, `_concluir`.
