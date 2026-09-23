@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { ShieldAlertIcon } from 'lucide-react'
+import { PencilIcon, ShieldAlertIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { EstadoCarregando, EstadoErro, EstadoVazio } from '@/components/estados'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useContextoApp } from '@/layout/AppLayout'
+import { definirCap } from '@/lib/configuracao'
 import { painelCredito, usd, usuariosAdmin, type Saldo, type UsuarioAdmin } from '@/lib/painel'
 import { Resumo } from '@/pages/Creditos'
 
@@ -22,6 +27,7 @@ export function Admin() {
 function PainelAdmin() {
   const [dados, setDados] = useState<{ saldo: Saldo; usuarios: UsuarioAdmin[] } | null>(null)
   const [erro, setErro] = useState(false)
+  const [editando, setEditando] = useState<UsuarioAdmin | null>(null)
 
   const carregar = useCallback(async () => {
     setErro(false)
@@ -76,7 +82,17 @@ function PainelAdmin() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{usd(u.gasto_micro_usd)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{usd(u.cap_micro_usd)}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="tabular-nums"
+                            aria-label={`Editar Cap de ${u.email}`}
+                            onClick={() => setEditando(u)}
+                          >
+                            {usd(u.cap_micro_usd)} <PencilIcon />
+                          </Button>
+                        </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {((u.gasto_micro_usd / Math.max(1, u.cap_micro_usd)) * 100).toLocaleString('pt-BR', {
                             maximumFractionDigits: 1,
@@ -97,7 +113,68 @@ function PainelAdmin() {
           </Card>
         </div>
       )}
+      <DialogCap usuario={editando} fechar={() => setEditando(null)} recarregar={carregar} />
     </div>
+  )
+}
+
+/** Cap do Usuário em US$. A API grava em micro-USD e emite settings_changed. */
+function DialogCap({
+  usuario,
+  fechar,
+  recarregar,
+}: {
+  usuario: UsuarioAdmin | null
+  fechar: () => void
+  recarregar: () => Promise<void>
+}) {
+  const [valor, setValor] = useState('')
+  useEffect(() => setValor(usuario ? (usuario.cap_micro_usd / 1_000_000).toString().replace('.', ',') : ''), [usuario])
+  const micro = Math.round(Number(valor.replace(',', '.')) * 1_000_000)
+  const valido = valor.trim() !== '' && Number.isFinite(micro) && micro >= 0
+
+  async function salvar(e: FormEvent) {
+    e.preventDefault()
+    if (!usuario || !valido) return
+    try {
+      await definirCap(usuario.id, micro)
+      toast.success(`Cap de ${usuario.email} agora é ${usd(micro)}.`)
+      fechar()
+      await recarregar()
+    } catch {
+      toast.error('Não foi possível salvar o Cap. Tente de novo.')
+    }
+  }
+
+  return (
+    <Dialog open={usuario !== null} onOpenChange={(aberto) => !aberto && fechar()}>
+      <DialogContent>
+        <form onSubmit={salvar} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Cap de crédito</DialogTitle>
+            <DialogDescription className="truncate">{usuario?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="cap">Limite em US$</Label>
+            <Input
+              id="cap"
+              inputMode="decimal"
+              value={valor}
+              onChange={(e) => setValor(e.target.value.replace(/[^\d.,]/g, ''))}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={fechar}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!valido}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 

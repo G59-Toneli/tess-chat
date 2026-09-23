@@ -5,6 +5,7 @@ import { Auditoria } from '@/pages/Auditoria'
 import { Chat } from '@/pages/Chat'
 import { Compartilhados } from '@/pages/Compartilhados'
 import { Compartilhamento } from '@/pages/Compartilhamento'
+import { Configuracao } from '@/pages/Configuracao'
 import { Creditos } from '@/pages/Creditos'
 import { Login } from '@/pages/Login'
 import { Placeholder } from '@/pages/Placeholder'
@@ -18,7 +19,7 @@ export default function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Chat />} />
         <Route path="/c/:id" element={<Chat />} />
-        <Route path="/config" element={<Placeholder titulo="Configuração" />} />
+        <Route path="/config" element={<Configuracao />} />
         <Route path="/auditoria" element={<Auditoria />} />
         <Route path="/creditos" element={<Creditos />} />
         <Route path="/tools" element={<Tools />} />

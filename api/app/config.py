@@ -22,14 +22,14 @@ class Settings(BaseSettings):
     tavily_api_key: str | None = None
     # Roteador Jev (ADR 0005). Sem chave, o Roteador cai em AUTO.
     typesafe_api_key: str | None = None
-    # Limiar do gate. Vai para a Configuração no ticket 14.
+    # Default do limiar do gate. A Configuração sobrepõe (ticket 14).
     roteador_limiar: float = 0.7
     # Crédito (ADR 0004). Linha em `caps` sobrescreve.
     cap_usuario_micro_usd: int = 2_000_000
     cap_global_micro_usd: int = 20_000_000
     # Teto de saída por request: a reserva usa esse valor inteiro.
     max_output_tokens: int = 8192
-    # Compactação (ADR 0006). Vão para a Configuração no ticket 14.
+    # Compactação (ADR 0006). O limiar é default; a Configuração sobrepõe (ticket 14).
     compactacao_limiar: int = 100_000
     compactacao_turnos_literais: int = 2
     # Anexos (ticket 09). Fora do git (`data/` no .gitignore).
