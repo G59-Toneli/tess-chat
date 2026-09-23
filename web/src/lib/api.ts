@@ -90,7 +90,7 @@ export async function cadastrar(email: string, senha: string): Promise<void> {
 }
 
 // Pública: o Login lê antes de ter token (ticket 34).
-export const configPublica = () => api<{ env: string }>('/api/config-publica')
+export const configPublica = () => api<{ env: string; cadastro_aberto: boolean }>('/api/config-publica')
 export const eu = () => api<Usuario>('/users/me')
 export const listarConversas = () => api<Conversa[]>('/api/conversations')
 export const criarConversa = (title: string) =>

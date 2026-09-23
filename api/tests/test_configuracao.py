@@ -1,5 +1,6 @@
 """Configuração por Usuário e por Conversa (ticket 14). Modelos são FunctionModel."""
 
+import uuid
 from typing import Annotated
 
 from fastapi import Depends
@@ -16,7 +17,7 @@ from app.credito import CreditLedger
 from app.db import SessionLocal
 from app.main import app
 from tests.test_auditoria import demo
-from tests.test_auth import eventos
+from tests.test_auth import SENHA, eventos
 from tests.test_chat import corpo, usar_modelo  # noqa: F401  (fixture)
 from tests.test_compactacao import LONGO, modelo_eco, resumidor  # noqa: F401  (fixture)
 from tests.test_conversas import criar, usuario
@@ -194,3 +195,30 @@ async def test_teto_de_tools_da_conversa_sobrepoe_o_do_usuario(client, usar_mode
     assert r.status_code == 200, r.text
     # Teto 2: a 3ª chamada é cortada.
     assert len(pedidos) == 3
+
+
+async def test_cadastro_fechado_responde_403_e_aberto_201(client):
+    hd = await demo(client)
+    email = f"fechado-{uuid.uuid4().hex[:8]}@teste.dev"
+    try:
+        assert (await client.put("/api/admin/configuracao", json={"cadastro_aberto": False}, headers=hd)).status_code == 200
+        assert (await client.get("/api/config-publica")).json()["cadastro_aberto"] is False
+
+        fechado = await client.post("/auth/register", json={"email": email, "password": SENHA})
+        assert fechado.status_code == 403 and "Cadastro fechado" in fechado.json()["detail"]
+    finally:
+        await client.put("/api/admin/configuracao", json={"cadastro_aberto": True}, headers=hd)
+
+    assert (await client.get("/api/config-publica")).json()["cadastro_aberto"] is True
+    assert (await client.post("/auth/register", json={"email": email, "password": SENHA})).status_code == 201
+    [ev] = [e for e in await eventos("settings_changed") if e.payload.get("escopo") == "global"][-2:-1]
+    assert ev.payload["alteracoes"] == {"cadastro_aberto": {"de": True, "para": False}}
+
+
+async def test_nao_admin_nao_fecha_o_cadastro(client):
+    _, h = await usuario(client)
+
+    r = await client.put("/api/admin/configuracao", json={"cadastro_aberto": False}, headers=h)
+
+    assert r.status_code == 403
+    assert (await client.get("/api/config-publica")).json()["cadastro_aberto"] is True

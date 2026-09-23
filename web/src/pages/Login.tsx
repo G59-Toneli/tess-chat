@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { IconeApp, NOME_APP } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { cadastrar, entrar, lerToken, textoErroAuth } from '@/lib/api'
+import { cadastrar, configPublica, entrar, lerToken, textoErroAuth } from '@/lib/api'
 
 /** Login e cadastro no mesmo card. */
 export function Login() {
@@ -19,6 +19,17 @@ export function Login() {
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  // "Criar conta" só aparece depois da resposta, sem piscar. Falhou: some; a API decide no /auth/register.
+  const [cadastroAberto, setCadastroAberto] = useState(false)
+
+  useEffect(() => {
+    configPublica()
+      .then((c) => {
+        setCadastroAberto(c.cadastro_aberto)
+        if (!c.cadastro_aberto) setModo('entrar')
+      })
+      .catch(() => setCadastroAberto(false))
+  }, [])
   if (lerToken()) return <Navigate to={destino} replace />
 
   const cadastro = modo === 'cadastrar'
@@ -86,19 +97,21 @@ export function Login() {
             <Button type="submit" className="w-full" disabled={enviando}>
               {enviando && <Spinner />} {cadastro ? 'Criar conta' : 'Entrar'}
             </Button>
-            <p className="text-sm text-muted-foreground">
-              {cadastro ? 'Já tem conta?' : 'Não tem conta?'}{' '}
-              <button
-                type="button"
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-                onClick={() => {
-                  setModo(cadastro ? 'entrar' : 'cadastrar')
-                  setErro(null)
-                }}
-              >
-                {cadastro ? 'Entrar' : 'Criar conta'}
-              </button>
-            </p>
+            {cadastroAberto && (
+              <p className="text-sm text-muted-foreground">
+                {cadastro ? 'Já tem conta?' : 'Não tem conta?'}{' '}
+                <button
+                  type="button"
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                  onClick={() => {
+                    setModo(cadastro ? 'entrar' : 'cadastrar')
+                    setErro(null)
+                  }}
+                >
+                  {cadastro ? 'Entrar' : 'Criar conta'}
+                </button>
+              </p>
+            )}
           </CardFooter>
         </form>
       </Card>
