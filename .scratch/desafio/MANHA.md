@@ -2,7 +2,7 @@
 
 Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
 
-- [ ] **Trocar o `GITHUB_PAT`.** Vazou em texto aberto no log local da sessão do agente do ticket 03. Não foi para o repo. Gere um novo, atualize o `.env`.
+- [ ] **Trocar o `GITHUB_PAT`.** Vazou em texto aberto no log local da sessão do agente do ticket 03. Não foi para o repo. Gere um novo, atualize o `.env`. Depois, recadastre o GitHub em `/mcp`: o header fica cifrado no banco com o PAT velho (ticket 17).
 - [x] `TAVILY_API_KEY` adicionada (free, 1.000 créditos/mês). Testes do ticket 10 usam resposta gravada, não a API.
 - [ ] Ler `docs/DECISOES-AUTONOMAS.md`: decisões que os agentes tomaram sozinhos. Já tem a do JWT_SECRET e DEMO_PASSWORD com default de dev.
 - [ ] Ler os `REVISAR(human)` no código: `grep -rn "REVISAR(human)" api/`. São as funções que você ia escrever e que caem na entrevista.
@@ -34,3 +34,7 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
 - [ ] Ler `docs/ENTREVISTA.md`: 3 perguntas e resposta curta por ADR, mais o workflow com IA. As perguntas marcadas **Lacuna** são as mais prováveis de apertar.
 
 - [ ] **Decidir o fallback OpenAI (ADR 0012).** O ticket 19 achou que o ADR descreve um fallback para OpenAI que não existe no código: nada lê `OPENAI_API_KEY`. Ou implementa (ticket novo) ou escreve um ADR revisando o 0012. Está listado no README como limite conhecido.
+
+- [ ] **Duas decisões de `docs/LACUNAS.md` sem ticket.** (1) Reserva de crédito estimada localmente (~3 chars/token) em vez de `count_tokens`, contra o ADR 0004: emendar o ADR ou abrir ticket. (2) Turno cortado pelo teto de tool calls não é cobrado (06b): decidir se cobra.
+- [ ] **ADR 0010 vs código.** O ticket 18 usou httpx direto em vez da lib do Google que o ADR cita. Está em `DECISOES-AUTONOMAS.md`. Regra do repo: não contrariar ADR sem escrever outro. Decidir se emenda o 0010 ou aceita como está; você vai defender isso.
+- [ ] **Regra violada, para você saber:** o screenshot do ticket 21 (`21-tools-nao-admin.png`) saiu do Chromium do Playwright MCP, não do Brave. Os outros tickets da noite usaram Brave via playwright-core.

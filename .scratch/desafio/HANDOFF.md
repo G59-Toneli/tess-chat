@@ -18,6 +18,9 @@ Atualizado em 2026-09-23 ~03:50 (horário local -03:00). Sessão atual: orquestr
 - **Gemini free key** (`GEMINI_API_KEY`) não serve. Sempre `GEMINI_PAID_API_KEY`.
 - Tetos de chamada real por ticket: Gemini 2 a 4, Tavily 2 a 3, Jev ~10. Agentes às vezes estouram porque um turno faz vários requests. Aceitável, registrado.
 - Rate limit do plano Max: esperar e repetir.
+- **Agentes conversam entre si e ressuscitam.** Depois do `TaskStop`, um agente que recebe mensagem de outro volta a rodar. Conferir com `ListAgents` e encerrar de novo. Não deixe dois agentes com interesse no mesmo arquivo (`.env.example`) vivos ao mesmo tempo.
+- **Dois agentes em `web/` funcionam** se o prompt particionar por arquivo: um cria página + rota + link no nav, o outro só componente existente. Funcionou em 14 + 07c.
+- **Tickets só de docs correm em paralelo com qualquer ticket de código** (20, 22, 24). Bom uso da fila enquanto `chat.py` está ocupado.
 
 ## Estado dos tickets
 - **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 17, 18 (AFK), 19 (AFK), 20, 21, 22, 23, 24. Tudo em `origin/main`.
