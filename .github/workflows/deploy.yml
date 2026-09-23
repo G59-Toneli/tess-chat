@@ -1,17 +1,76 @@
-# Push na main: ssh no VPS e roda deploy/deploy.sh (git pull + compose up --build).
+# Testes da api e build do web em push e PR. Deploy só em push na main, depois dos dois:
+# ssh no VPS e roda deploy/deploy.sh (git pull + compose up --build).
 name: deploy
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: deploy
-  cancel-in-progress: false
-
 jobs:
-  deploy:
+  testes:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: tess_owner
+          POSTGRES_PASSWORD: tess_owner
+          POSTGRES_DB: tess
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U tess_owner -d tess"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    # Credenciais de dev do docker-compose.yml, não são segredo. Chaves de API falsas ou vazias:
+    # nenhum teste chama Gemini, Tavily ou Jev de verdade (conftest desliga reserva e Jev).
+    env:
+      DATABASE_URL: postgresql+asyncpg://tess_app:tess_app@127.0.0.1:5433/tess
+      DATABASE_URL_OWNER: postgresql+asyncpg://tess_owner:tess_owner@127.0.0.1:5433/tess
+      GEMINI_PAID_API_KEY: ci-falso
+      GOOGLE_CLIENT_ID: ci-falso
+      GOOGLE_CLIENT_SECRET: ci-falso
+      ENV: dev
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      # O service não monta docker/postgres-init; cria o papel tess_app na mão.
+      - run: PGPASSWORD=tess_owner psql -h 127.0.0.1 -p 5433 -U tess_owner -d tess -f ../docker/postgres-init/01-roles.sql
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
+      - run: uv sync --locked
+      # Chave Fernet descartável por execução.
+      - run: echo "CONNECTORS_KEY=$(uv run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
+      - run: uv run alembic upgrade head
+      - run: uv run pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      # oxlint só sai com erro em error; warning não derruba o job.
+      - run: npm run lint
+      - run: npm run build
+
+  deploy:
+    needs: [testes, web]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
     steps:
       - uses: appleboy/ssh-action@v1
         with:
