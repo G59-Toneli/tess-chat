@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, Navigate, NavLink, Outlet, useMatch, useNavigate, useOutletContext } from 'react-router'
+import { Link, Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from 'react-router'
 import { toast } from 'sonner'
-import { LogOutIcon, MoonIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, SunIcon, Trash2Icon } from 'lucide-react'
+import {
+  CoinsIcon,
+  LogOutIcon,
+  MoonIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlugIcon,
+  PlusIcon,
+  ScrollTextIcon,
+  SearchIcon,
+  ServerIcon,
+  Share2Icon,
+  ShieldIcon,
+  SlidersHorizontalIcon,
+  SunIcon,
+  Trash2Icon,
+  WrenchIcon,
+  type LucideIcon,
+} from 'lucide-react'
 import { IconeApp, NOME_APP } from '@/components/Logo'
 import { ItemCompartilhar } from '@/components/ItemCompartilhar'
 import {
@@ -26,6 +44,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   apagarConversa,
@@ -41,16 +68,28 @@ import { agruparPorData, iniciais } from '@/lib/datas'
 import { cn } from '@/lib/utils'
 import { alternarTema, temaEscuro } from '@/tema'
 
-const itensMenu = [
-  { to: '/config', rotulo: 'Configuração' },
-  { to: '/tools', rotulo: 'Tools' },
-  { to: '/mcp', rotulo: 'Servidores MCP' },
-  { to: '/conectores', rotulo: 'Conectores' },
-  { to: '/creditos', rotulo: 'Créditos' },
-  { to: '/auditoria', rotulo: 'Auditoria' },
-  { to: '/compartilhados', rotulo: 'Compartilhados' },
-  // /perfil fica fora do menu até existir: hoje é placeholder. E-mail, tema e Sair já estão aqui.
-  { to: '/admin', rotulo: 'Administração' },
+type ItemNav = { to: string; rotulo: string; icone: LucideIcon; soAdmin?: boolean }
+
+// Telas internas no rodapé da sidebar (ticket 28). /perfil fica fora até existir: hoje é placeholder.
+const gruposNav: { rotulo: string; itens: ItemNav[] }[] = [
+  {
+    rotulo: 'Extensões',
+    itens: [
+      { to: '/tools', rotulo: 'Tools', icone: WrenchIcon },
+      { to: '/mcp', rotulo: 'Servidores MCP', icone: ServerIcon },
+      { to: '/conectores', rotulo: 'Conectores', icone: PlugIcon },
+    ],
+  },
+  {
+    rotulo: 'Conta',
+    itens: [
+      { to: '/config', rotulo: 'Configuração', icone: SlidersHorizontalIcon },
+      { to: '/creditos', rotulo: 'Créditos', icone: CoinsIcon },
+      { to: '/compartilhados', rotulo: 'Compartilhados', icone: Share2Icon },
+      { to: '/auditoria', rotulo: 'Auditoria', icone: ScrollTextIcon },
+      { to: '/admin', rotulo: 'Administração', icone: ShieldIcon, soAdmin: true },
+    ],
+  },
 ]
 
 export type ContextoApp = {
@@ -95,12 +134,13 @@ function LayoutAutenticado() {
   )
 
   return (
-    <div className="flex h-svh overflow-hidden">
+    <SidebarProvider className="h-svh overflow-hidden">
       <aside className="flex w-72 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
         <Link to="/" className="flex h-14 shrink-0 items-center gap-2 px-4 font-semibold">
           <IconeApp className="size-7" /> {NOME_APP}
         </Link>
         <SidebarConversas conversas={conversas} erro={erroConversas} recarregar={recarregarConversas} />
+        <NavTelas admin={usuario?.is_superuser ?? false} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-end border-b px-4">
@@ -116,11 +156,9 @@ function LayoutAutenticado() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="truncate">{usuario?.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {itensMenu.filter((i) => i.to !== '/admin' || usuario?.is_superuser).map((i) => (
-                <DropdownMenuItem key={i.to} onSelect={() => navigate(i.to)}>
-                  {i.rotulo}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onSelect={() => navigate('/config')}>
+                <SlidersHorizontalIcon /> Configuração
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={alternarTema}>
                 {temaEscuro() ? <SunIcon /> : <MoonIcon />} {temaEscuro() ? 'Tema claro' : 'Tema escuro'}
@@ -135,7 +173,36 @@ function LayoutAutenticado() {
           <Outlet context={contexto} />
         </main>
       </div>
-    </div>
+    </SidebarProvider>
+  )
+}
+
+/** Bloco fixo no rodapé da sidebar com as telas internas. Administração só para superuser. */
+function NavTelas({ admin }: { admin: boolean }) {
+  const { pathname } = useLocation()
+  return (
+    <nav aria-label="Telas" className="shrink-0 border-t border-sidebar-border py-1">
+      {gruposNav.map((g) => (
+        <SidebarGroup key={g.rotulo} className="py-1">
+          <SidebarGroupLabel>{g.rotulo}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {g.itens
+                .filter((i) => admin || !i.soAdmin)
+                .map((i) => (
+                  <SidebarMenuItem key={i.to}>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith(i.to)}>
+                      <NavLink to={i.to}>
+                        <i.icone /> <span>{i.rotulo}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
+    </nav>
   )
 }
 

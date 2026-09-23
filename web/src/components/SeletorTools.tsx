@@ -25,7 +25,12 @@ export function SeletorTools({ conversaId }: { conversaId?: string }) {
         conversaId ? toolsDaConversa(conversaId) : Promise.resolve(null),
       ])
       setGlobais(new Map(catalogo.map((t) => [t.nome, t.ativa_global])))
-      setTools(daConversa ?? catalogo.map((t) => ({ nome: t.nome, origem: t.origem, descricao: t.descricao, ativa: t.ativa_global })))
+      setTools(daConversa ?? catalogo.map((t) => ({
+          nome: t.nome,
+          origem: t.origem,
+          descricao_usuario: t.descricao_usuario,
+          ativa: t.ativa_global,
+        })),)
     } catch {
       setErro(true)
     }
@@ -100,7 +105,11 @@ export function SeletorTools({ conversaId }: { conversaId?: string }) {
                     />
                   </div>
                   <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {!global ? 'Desligada para todas as conversas.' : t.servidor ? `${t.servidor} · ${t.descricao}` : t.descricao}
+                    {!global
+                      ? 'Desligada para todas as conversas.'
+                      : t.servidor
+                        ? `${t.servidor} · ${t.descricao_usuario}`
+                        : t.descricao_usuario}
                   </p>
                 </li>
               )

@@ -29,6 +29,7 @@ TIMEOUT_S = 15.0
 SONDA_S = 3.0
 # Limite de nome de function do Gemini.
 LIMITE_NOME = 64
+LIMITE_DESCRICAO_USUARIO = 140  # ticket 28: cabe em duas linhas no seletor de tools
 # Hosts do servidor demo liberados em http quando ENV=dev: dentro e fora do compose.
 HOSTS_DEMO = {"mcp-demo", "127.0.0.1"}
 
@@ -129,6 +130,7 @@ class McpAtivoIn(BaseModel):
 class McpToolOut(BaseModel):
     nome: str
     descricao: str
+    descricao_usuario: str
 
 
 class McpServerOut(BaseModel):
@@ -155,7 +157,7 @@ async def _saida(session: Sessao, srv: McpServer) -> McpServerOut:
         ativo=srv.ativo,
         tem_auth=bool(_decifrar(srv.headers)),
         created_at=srv.created_at,
-        tools=[McpToolOut(nome=t.nome, descricao=t.descricao) for t in tools],
+        tools=[McpToolOut(nome=t.nome, descricao=t.descricao, descricao_usuario=t.descricao_usuario) for t in tools],
     )
 
 
@@ -205,11 +207,13 @@ async def cadastrar(body: McpServerIn, session: Sessao, user: Usuario) -> McpSer
     for t in listadas:
         nome = f"{p}_{t.name}"
         if len(nome) <= LIMITE_NOME:
+            descricao = t.description or t.name
             session.add(
                 Tool(
                     nome=nome,
                     origem="mcp",
-                    descricao=t.description or t.name,
+                    descricao=descricao,
+                    descricao_usuario=descricao[:LIMITE_DESCRICAO_USUARIO],  # sem texto próprio: a do servidor, curta
                     schema=t.input_schema,
                     ativa_global=True,
                     mcp_server_id=srv.id,

@@ -127,7 +127,8 @@ async def test_pode_enviar_no_chat_nao_muda_o_rascunho(client, google, usar_mode
     assert r.status_code == 200, r.text
     assert (await client.get(f"{DRAFTS}/{did}", headers=h)).json()["estado"] == "pendente"
     assert envios(google) == []
-    assert "gmail_send" in {t.name for t in vistos[0].function_tools}
+    declarada = next(t for t in vistos[0].function_tools if t.name == "gmail_send")
+    assert "NÃO envia" in (declarada.description or "")  # o modelo recebe descricao, não descricao_usuario
 
 
 # ---------- Enviar e descartar ----------

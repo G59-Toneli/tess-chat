@@ -1,7 +1,7 @@
 # 28 — Navegação na sidebar, login demo direto, descrição de tool para o usuário
 
 **Type:** task (AFK)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 27
 **Refs:** `docs/UX-AUDITORIA.md` (achados de severidade alta e média), `docs/UI-GUIA.md`, ADR 0013. Decisão do Toneli em 23/09.
 
@@ -13,7 +13,14 @@
 3. **Descrição para o usuário.** Coluna `descricao_usuario` em `tools` (migração `0016`), preenchida para todas as tools nativas, google e mcp (para MCP: usar a descrição do servidor, cortada em 140 caracteres). `GET /api/tools` e o estado da conversa devolvem `descricao_usuario`; o modelo continua recebendo `descricao`. `/tools` e o SeletorTools mostram `descricao_usuario`. Texto em pt-BR, voz do produto ("Busca na web e cita as fontes"), sem instrução ao modelo.
 
 **Aceite:**
-- [ ] Logado como não-admin: sidebar mostra 7 links, sem Administração. Como admin: 8. Screenshot dark `28-sidebar-nav.png` (admin) e `28-sidebar-nav-user.png`.
-- [ ] Clique em "Entrar com conta demo" cai no chat logado.
-- [ ] Teste: `GET /api/tools` devolve `descricao_usuario` sem a string "usuário" nem "NÃO" para `gmail_send`; o registro do modelo continua com a `descricao` original.
-- [ ] `uv run pytest tests/test_tools.py tests/test_email.py tests/test_mcp.py` verde; `tsc` e `npm run build` limpos.
+- [x] Logado como não-admin: sidebar mostra 7 links, sem Administração. Como admin: 8. Screenshot dark `28-sidebar-nav.png` (admin) e `28-sidebar-nav-user.png`.
+- [x] Clique em "Entrar com conta demo" cai no chat logado.
+- [x] Teste: `GET /api/tools` devolve `descricao_usuario` sem a string "usuário" nem "NÃO" para `gmail_send`; o registro do modelo continua com a `descricao` original.
+- [x] `uv run pytest tests/test_tools.py tests/test_email.py tests/test_mcp.py` verde; `tsc` e `npm run build` limpos.
+
+## Answer
+- Sidebar ganhou bloco fixo no rodapé com shadcn `SidebarGroup`/`SidebarMenu`: "Extensões" e "Conta", ícone lucide, ativo por rota, Administração só para superuser. Avatar ficou com Configuração, tema e Sair.
+- "Entrar com conta demo" autentica e vai para `/` num clique.
+- Migração 0016: `tools.descricao_usuario NOT NULL`, texto pt-BR para as 6 nativas/google, MCP com a descrição do servidor cortada em 140. `/api/tools`, estado da conversa e `/api/mcp-servers` devolvem o campo; `/tools` e SeletorTools mostram. O modelo segue com `descricao`.
+- Ressalvas: "Perfil" segue fora do menu (placeholder). A API na 8000 roda código antigo: precisa reiniciar, senão cadastrar servidor MCP falha no `NOT NULL` e o front novo mostra descrição vazia.
+- Screenshots: `28-sidebar-nav.png`, `28-sidebar-nav-user.png`, `28-seletor-tools.png`, `28-menu-usuario.png`. Sem `REVISAR(human)` novo.
