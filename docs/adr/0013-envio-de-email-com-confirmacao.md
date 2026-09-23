@@ -8,7 +8,7 @@ O ADR 0010 fixou o Conector Google como somente leitura. Pedido do Toneli em 23/
 ## Decisão
 1. **Escopo** `gmail.send` somado aos escopos de leitura. Quem já conectou precisa reconectar; a tela de Conectores avisa.
 2. **Duas fases, uma Tool.** A Tool `gmail_send` nunca envia direto. Ela grava um **Rascunho** (`email_drafts`: usuário, conversa, mensagem, para, assunto, corpo, `thread_id` opcional, estado `pendente|enviado|descartado`) e devolve ao modelo o id e o texto "rascunho criado, aguardando confirmação". O modelo mostra o rascunho ao Usuário.
-3. **Confirmação é clique, não texto.** O front renderiza o Rascunho com botões "Enviar" e "Descartar". Só `POST /api/conectores/google/drafts/{id}/enviar`, autenticado pelo dono, chama a API do Gmail. Texto "pode enviar" digitado no chat não envia nada: o modelo não tem Tool de envio final.
+3. **Confirmação é clique, não texto.** O front renderiza o Rascunho com botões "Enviar" e "Descartar". Só `POST /api/connectors/google/drafts/{id}/enviar`, autenticado pelo dono, chama a API do Gmail. Texto "pode enviar" digitado no chat não envia nada: o modelo não tem Tool de envio final.
 4. **Resposta na thread.** Se o Usuário pediu para responder um e-mail lido por `gmail_read`, o Rascunho leva `thread_id`, `In-Reply-To` e `References` do original.
 5. **Auditoria** (ADR 0007): `email_draft_created`, `email_sent` (com `message_id` do Gmail) e `email_draft_discarded`.
 6. **Toggle.** `gmail_send` é uma Tool como as outras: nasce desligada por Conversa. O Usuário liga quando quer.
