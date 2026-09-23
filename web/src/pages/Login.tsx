@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router'
+import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { UserRoundIcon } from 'lucide-react'
 import { IconeApp, NOME_APP } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,9 @@ import { cadastrar, configPublica, CONTA_DEMO, entrar, lerToken, textoErroAuth }
 /** Login e cadastro no mesmo card. Conta demo entra direto. */
 export function Login() {
   const navigate = useNavigate()
+  // Volta para onde o usuário estava (ex.: link compartilhado). Só caminho interno.
+  const proximo = useSearchParams()[0].get('proximo')
+  const destino = proximo?.startsWith('/') && !proximo.startsWith('//') ? proximo : '/'
   const [modo, setModo] = useState<'entrar' | 'cadastrar'>('entrar')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -26,7 +29,7 @@ export function Login() {
       .catch(() => setDemo(false))
   }, [])
 
-  if (lerToken()) return <Navigate to="/" replace />
+  if (lerToken()) return <Navigate to={destino} replace />
 
   const cadastro = modo === 'cadastrar'
 
@@ -35,7 +38,7 @@ export function Login() {
     setEnviando(true)
     try {
       await acao()
-      navigate('/', { replace: true })
+      navigate(destino, { replace: true })
     } catch (err) {
       setErro(textoErroAuth(err))
     } finally {

@@ -24,6 +24,8 @@ export type SaidaRascunho = {
   assunto: string
   corpo: string
   thread_id: string | null
+  /** Cópia de Conversa compartilhada (ticket 46): só leitura, o Rascunho é do dono do link. */
+  copia?: boolean
 }
 
 export const ehRascunho = (x: unknown): x is SaidaRascunho =>
@@ -32,7 +34,8 @@ export const ehRascunho = (x: unknown): x is SaidaRascunho =>
 const ROTULO: Record<EstadoRascunho, string> = { pendente: 'Aguardando você', enviado: 'Enviado', descartado: 'Descartado' }
 
 /** somenteLeitura: link público. Sem botões e sem API autenticada; o estado vem na própria part (api/app/shares.py). */
-export function RascunhoEmail({ saida, somenteLeitura = false }: { saida: SaidaRascunho; somenteLeitura?: boolean }) {
+export function RascunhoEmail({ saida, somenteLeitura: soLeitura = false }: { saida: SaidaRascunho; somenteLeitura?: boolean }) {
+  const somenteLeitura = soLeitura || saida.copia === true
   // A parte gravada na Mensagem fica em "pendente". O estado real vem do servidor.
   const [estado, setEstado] = useState<EstadoRascunho>(saida.estado)
   const [dono, setDono] = useState(true)

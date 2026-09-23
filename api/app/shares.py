@@ -141,14 +141,7 @@ async def revogar(share_id: str, session: Sessao, user: Usuario) -> Response:
 async def publico(share_id: str, session: Sessao, response: Response) -> SharePublico:
     """Sem auth. Mensagens até o corte."""
     share, conv, dono = await _share_ativo(session, share_id)
-    msgs: list[Message] = []
-    if share.last_message_id is not None:
-        q = (
-            select(Message)
-            .where(Message.conversation_id == conv.id, Message.id <= share.last_message_id)
-            .order_by(Message.created_at, Message.id)
-        )
-        msgs = list((await session.scalars(q)).all())
+    msgs = await _ate_o_corte(session, share)
     response.headers.update(NOINDEX)
     return SharePublico(
         title=conv.title,
@@ -157,6 +150,52 @@ async def publico(share_id: str, session: Sessao, response: Response) -> SharePu
         created_at=share.created_at,
         messages=await _com_estado_dos_rascunhos(session, conv.id, msgs),
     )
+
+
+async def _ate_o_corte(session: AsyncSession, share: Share) -> list[Message]:
+    if share.last_message_id is None:
+        return []
+    q = (
+        select(Message)
+        .where(Message.conversation_id == share.conversation_id, Message.id <= share.last_message_id)
+        .order_by(Message.created_at, Message.id)
+    )
+    return list((await session.scalars(q)).all())
+
+
+class ForkOut(BaseModel):
+    conversation_id: uuid.UUID
+
+
+# REVISAR(human): fork, não escrita na Conversa do dono (ADR 0020). A cópia é do Usuário logado e
+# só leva o que não depende da conta do dono: Rascunho vira só leitura com o estado real do momento,
+# anexo vira texto sem bytes, resultado de tool fica como histórico. Não chama modelo, então não cobra.
+@router.post("/api/s/{share_id}/fork", status_code=201, response_model=ForkOut)
+async def fork(share_id: str, session: Sessao, user: Usuario) -> ForkOut:
+    """Nova Conversa do Usuário logado com cópia das Mensagens até o corte do link."""
+    share, conv, _ = await _share_ativo(session, share_id)
+    msgs = await _com_estado_dos_rascunhos(session, conv.id, await _ate_o_corte(session, share))
+    nova = Conversation(user_id=user.id, title=f"{conv.title} (cópia)")
+    session.add(nova)
+    await session.flush()
+    session.add_all(
+        Message(conversation_id=nova.id, role=m.role, parts=[_parte_da_copia(p) for p in m.parts]) for m in msgs
+    )
+    await audit(
+        session, "share_forked", user_id=user.id, conversation_id=nova.id,
+        payload={"share_id": share.id, "conversa_origem": str(conv.id), "conversa_nova": str(nova.id)},
+    )
+    await session.commit()
+    return ForkOut(conversation_id=nova.id)
+
+
+def _parte_da_copia(p: dict[str, Any]) -> dict[str, Any]:
+    """Anexo sem bytes vira texto; Rascunho ganha `copia` e o front não mostra Enviar."""
+    if p.get("type") == "file":
+        return {"type": "text", "text": f"[anexo: {p.get('filename') or p.get('mediaType')}]"}
+    if _draft_id(p):
+        return {**p, "output": {**p["output"], "copia": True}}
+    return p
 
 
 def _draft_id(parte: dict[str, Any]) -> uuid.UUID | None:
