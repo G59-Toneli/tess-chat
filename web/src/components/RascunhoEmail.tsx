@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2Icon, CornerUpLeftIcon, MailIcon, SendIcon, Trash2Icon, XCircleIcon } from 'lucide-react'
+import { Link } from 'react-router'
+import { ArrowRightIcon, CheckCircle2Icon, CornerUpLeftIcon, MailIcon, SendIcon, Trash2Icon, XCircleIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { ErroApi } from '@/lib/api'
-import { descartarRascunho, enviarRascunho, lerRascunho, type EstadoRascunho } from '@/lib/conectores'
+import {
+  descartarRascunho,
+  ehErroEnvio,
+  enviarRascunho,
+  lerRascunho,
+  type ErroEnvio,
+  type EstadoRascunho,
+} from '@/lib/conectores'
 
 // Rascunho de e-mail dentro da mensagem do assistente (ADR 0013). Só o clique em Enviar manda o e-mail.
 
@@ -28,7 +36,7 @@ export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
   const [estado, setEstado] = useState<EstadoRascunho>(saida.estado)
   const [dono, setDono] = useState(true)
   const [acao, setAcao] = useState<'enviar' | 'descartar' | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
+  const [erro, setErro] = useState<ErroEnvio | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -47,8 +55,10 @@ export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
       const r = await (qual === 'enviar' ? enviarRascunho : descartarRascunho)(saida.draft_id)
       setEstado(r.estado)
     } catch (e) {
-      const detalhe = e instanceof ErroApi && typeof e.detail === 'string' ? e.detail : null
-      setErro(detalhe ?? 'Não foi possível concluir. Tente de novo.')
+      // 502 do envio traz {mensagem, reconectar}; 409 e 404 trazem texto.
+      const detalhe = e instanceof ErroApi ? e.detail : null
+      if (ehErroEnvio(detalhe)) setErro(detalhe)
+      else setErro({ mensagem: typeof detalhe === 'string' ? detalhe : 'Não foi possível concluir. Tente de novo.', reconectar: false })
       // 409: outro clique já decidiu. Relê para mostrar o estado certo.
       if (e instanceof ErroApi && e.status === 409) void lerRascunho(saida.draft_id).then((r) => setEstado(r.estado))
     } finally {
@@ -84,9 +94,14 @@ export function RascunhoEmail({ saida }: { saida: SaidaRascunho }) {
         )}
         <div className="rounded-md border bg-muted/40 p-3 whitespace-pre-wrap">{saida.corpo}</div>
         {erro && (
-          <p className="text-sm text-destructive" role="alert">
-            {erro}
-          </p>
+          <div className="space-y-1 text-sm text-destructive" role="alert">
+            <p>{erro.mensagem}</p>
+            {erro.reconectar && (
+              <Link to="/conectores" className="inline-flex items-center gap-1 font-medium underline underline-offset-4">
+                Ir para Conectores <ArrowRightIcon className="size-3.5" />
+              </Link>
+            )}
+          </div>
         )}
       </CardContent>
       {pendente && dono && (

@@ -17,7 +17,7 @@ from fastapi.responses import RedirectResponse
 from fastapi_users.jwt import decode_jwt, generate_jwt
 from pydantic import BaseModel
 from pydantic_ai import RunContext
-from sqlalchemy import ARRAY, DateTime, ForeignKey, Text, func, select
+from sqlalchemy import ARRAY, Boolean, DateTime, ForeignKey, Text, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.audit import audit
@@ -38,6 +38,7 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me"
 DRIVE = "https://www.googleapis.com/drive/v3/files"
+DRIVE_ABOUT = "https://www.googleapis.com/drive/v3/about"
 AUD_STATE = "tess:google-oauth"
 VALIDADE_STATE = 600
 # Renova um pouco antes de vencer: o token não expira no meio da chamada.
@@ -59,6 +60,8 @@ class Connector(Base):
     tokens: Mapped[str] = mapped_column(Text)  # JSON cifrado com Fernet
     escopos: Mapped[list[str]] = mapped_column(ARRAY(Text))
     expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    conta_email: Mapped[str | None] = mapped_column(Text)  # nulo: conexão anterior ao ticket 29
+    gmail_disponivel: Mapped[bool] = mapped_column(Boolean, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -348,6 +351,8 @@ async def gmail_send(
 
 
 TOOLS = {"gmail_search", "gmail_read", "drive_search_read", "gmail_send"}
+# Somem quando a conta Google não tem caixa Gmail (ticket 29). drive_search_read fica.
+TOOLS_GMAIL = {"gmail_search", "gmail_read", "gmail_send"}
 
 
 def ligar(nome: str, uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, cid: uuid.UUID | None = None):
@@ -383,6 +388,8 @@ class ConectorOut(BaseModel):
     escopos: list[str] = []
     expira_em: datetime | None = None
     conectado_em: datetime | None = None
+    conta_email: str | None = None
+    gmail_disponivel: bool = True
 
 
 router = APIRouter(prefix="/api/connectors", tags=["conectores"])
@@ -395,7 +402,12 @@ async def listar(session: Sessao, user: Usuario) -> list[ConectorOut]:
     c = await session.get(Connector, (user.id, PROVEDOR))
     if c is None:
         return [ConectorOut(provedor=PROVEDOR, conectado=False)]
-    return [ConectorOut(provedor=PROVEDOR, conectado=True, escopos=c.escopos, expira_em=c.expira_em, conectado_em=c.created_at)]
+    return [
+        ConectorOut(
+            provedor=PROVEDOR, conectado=True, escopos=c.escopos, expira_em=c.expira_em, conectado_em=c.created_at,
+            conta_email=c.conta_email, gmail_disponivel=c.gmail_disponivel,
+        )
+    ]
 
 
 # REVISAR(human): o callback chega por GET do browser, sem o Bearer do front. O state é um JWT
@@ -418,6 +430,41 @@ async def autorizar(user: Usuario) -> dict[str, str]:
         "state": state,
     }
     return {"url": f"{AUTH_URL}?{urlencode(params)}"}
+
+
+def _motivo(r: httpx.Response) -> str:
+    """Mensagem crua do Google (`error.message`), ou o começo do corpo se vier fora do formato."""
+    try:
+        erro = r.json()["error"]
+        return erro["message"] if isinstance(erro, dict) else str(erro)
+    except Exception:  # noqa: BLE001  corpo fora do formato do Google
+        return r.text[:300]
+
+
+def _sem_caixa(motivo: str) -> bool:
+    return "mail service not enabled" in motivo.lower()
+
+
+# REVISAR(human): uma chamada a users/me/profile responde as duas perguntas do ticket 29: o e-mail da
+# conta (emailAddress) e se ela tem caixa Gmail. Conta criada com e-mail de outro provedor devolve
+# 400 "Mail service not enabled" sem e-mail: aí o Drive (drive/v3/about) informa a conta. Sem escopo
+# novo: gmail.readonly e drive.readonly já cobrem. Qualquer outra falha não derruba a conexão: Gmail
+# fica como disponível e a conta fica nula.
+async def _conta(token: str, t: httpx.AsyncBaseTransport | None) -> tuple[str | None, bool]:
+    """(conta_email, gmail_disponivel) da conta recém-conectada."""
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        async with httpx.AsyncClient(transport=t, timeout=TIMEOUT, headers=headers) as http:
+            r = await http.get(f"{GMAIL}/profile")
+            if r.is_success:
+                return r.json().get("emailAddress"), True
+            if r.status_code not in (400, 403) or not _sem_caixa(_motivo(r)):
+                return None, True
+            about = await http.get(DRIVE_ABOUT, params={"fields": "user(emailAddress)"})
+            email = about.json().get("user", {}).get("emailAddress") if about.is_success else None
+            return email, False
+    except (httpx.HTTPError, ValueError):
+        return None, True
 
 
 def _voltar(**query: str) -> RedirectResponse:
@@ -450,10 +497,15 @@ async def callback(
     if c is None:
         c = Connector(user_id=uid, provedor=PROVEDOR)
         session.add(c)
+    conta_email, gmail = await _conta(resp["access_token"], t)
     c.tokens, c.escopos, c.expira_em = _cifrar(tokens), escopos, _expira(resp)
-    await audit(session, "connector_linked", user_id=uid, payload={"provedor": PROVEDOR, "escopos": escopos})
+    c.conta_email, c.gmail_disponivel = conta_email, gmail
+    await audit(
+        session, "connector_linked", user_id=uid,
+        payload={"provedor": PROVEDOR, "escopos": escopos, "conta_email": conta_email, "gmail_disponivel": gmail},
+    )
     await session.commit()
-    return _voltar(conectado="1")
+    return _voltar(conectado="1") if gmail else _voltar(conectado="1", sem_gmail="1")
 
 
 @router.delete("/google", status_code=204)
@@ -520,16 +572,30 @@ def _mime(d: EmailDraft) -> str:
     return base64.urlsafe_b64encode(m.as_bytes()).decode()
 
 
-def _texto_erro_gmail(e: httpx.HTTPStatusError) -> str:
-    status = e.response.status_code
-    if status == 401:
-        return EXPIROU
-    try:
-        motivo = e.response.json()["error"]["message"]
-    except Exception:  # noqa: BLE001  corpo fora do formato do Google
-        motivo = e.response.text[:300]
-    dica = " Reconecte a conta Google em Conectores." if status == 403 else ""
-    return f"O Gmail recusou o envio (HTTP {status}): {motivo}.{dica}"
+SEM_CAIXA = (
+    "Esta conta Google não tem caixa Gmail (é uma conta criada com um e-mail de outro provedor). "
+    "Conecte uma conta @gmail.com ou Workspace com Gmail ativo."
+)
+RECONECTAR = "A conexão com o Google expirou ou foi revogada. Reconecte a conta Google em Conectores."
+
+
+# REVISAR(human): único mapa de erro do Gmail para texto de usuário (ticket 29). Devolve o texto e se
+# a ação é reconectar (o front mostra o link "Ir para Conectores"). Casa por trecho da mensagem do
+# Google, sem diferenciar maiúscula; o status só decide 401 e 429. O texto cru fica só na auditoria.
+def traduzir_erro_gmail(status: int | None, motivo: str) -> tuple[str, bool]:
+    """(texto para o usuário, reconectar) a partir do status e da mensagem crua do Google."""
+    m = motivo.lower()
+    if _sem_caixa(m):
+        return SEM_CAIXA, True
+    if "insufficient authentication scopes" in m or "insufficientpermissions" in m:
+        return "Falta a permissão de envio. Reconecte a conta Google em Conectores e aceite a permissão de envio.", True
+    if status == 401 or "invalid_grant" in m or "revoked" in m:
+        return RECONECTAR, True
+    if "recipient address required" in m or "invalid to header" in m:
+        return "Destinatário inválido. Confira o endereço em Para e peça um novo rascunho ao assistente.", False
+    if status == 429 or "quota" in m or "rate limit" in m:
+        return "O Gmail limitou os envios por agora. Tente de novo em alguns minutos.", False
+    return f"O Gmail recusou o envio (HTTP {status}). Tente de novo em instantes.", False
 
 
 @router.get("/google/drafts/{did}", response_model=RascunhoOut)
@@ -540,7 +606,7 @@ async def ler_rascunho(did: uuid.UUID, session: Sessao, user: Usuario) -> Rascun
 
 # REVISAR(human): único caminho que envia e-mail. Trava a linha (SELECT ... FOR UPDATE): dois cliques
 # simultâneos não enviam duas vezes, o segundo espera e recebe 409. Falha do Gmail mantém `pendente`,
-# grava email_send_failed e devolve 502 com o motivo do Google em texto.
+# grava email_send_failed com o erro cru do Google e devolve 502 com o texto traduzido e se é para reconectar.
 @router.post("/google/drafts/{did}/enviar", response_model=RascunhoOut)
 async def enviar_rascunho(did: uuid.UUID, session: Sessao, user: Usuario, t: Transporte) -> RascunhoOut:
     """Envia o Rascunho pelo Gmail do dono. Só o clique no front chega aqui."""
@@ -555,19 +621,21 @@ async def enviar_rascunho(did: uuid.UUID, session: Sessao, user: Usuario, t: Tra
             r = await http.post(f"{GMAIL}/messages/send", json=corpo)
             r.raise_for_status()
     except (ConectorExpirado, httpx.HTTPError) as e:
-        if isinstance(e, ConectorExpirado):
-            texto = str(e)
-        elif isinstance(e, httpx.HTTPStatusError):
-            texto = _texto_erro_gmail(e)
-        else:
-            texto = f"Não foi possível falar com o Gmail ({type(e).__name__}). Tente de novo."
         status = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None
+        if isinstance(e, ConectorExpirado):
+            cru, (texto, reconectar) = str(e), (RECONECTAR, True)
+        elif isinstance(e, httpx.HTTPStatusError):
+            cru = _motivo(e.response)
+            texto, reconectar = traduzir_erro_gmail(status, cru)
+        else:
+            cru = type(e).__name__
+            texto, reconectar = f"Não foi possível falar com o Gmail ({cru}). Tente de novo.", False
         await audit(
             session, "email_send_failed", user_id=user.id, conversation_id=d.conversation_id,
-            payload={"draft_id": str(d.id), "status": status, "erro": texto[:500]},
+            payload={"draft_id": str(d.id), "status": status, "erro": cru[:500]},
         )
         await session.commit()
-        raise HTTPException(status_code=502, detail=texto) from e
+        raise HTTPException(status_code=502, detail={"mensagem": texto, "reconectar": reconectar}) from e
     d.estado, d.gmail_message_id, d.decidido_em = "enviado", r.json().get("id"), datetime.now(UTC)
     await audit(
         session, "email_sent", user_id=user.id, conversation_id=d.conversation_id,

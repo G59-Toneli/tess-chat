@@ -8,7 +8,15 @@ export type Conector = {
   escopos: string[]
   expira_em: string | null
   conectado_em: string | null
+  conta_email: string | null
+  gmail_disponivel: boolean
 }
+
+/** Detalhe do 502 no envio: texto em pt-BR e se a saída é reconectar (ticket 29). */
+export type ErroEnvio = { mensagem: string; reconectar: boolean }
+
+export const ehErroEnvio = (x: unknown): x is ErroEnvio =>
+  typeof x === 'object' && x !== null && typeof (x as ErroEnvio).mensagem === 'string'
 
 export const listarConectores = () => api<Conector[]>('/api/connectors')
 export const urlDoGoogle = () => api<{ url: string }>('/api/connectors/google/authorize')
