@@ -3,6 +3,7 @@
 import time
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import replace
 from functools import cache
 from typing import Annotated, Any
 
@@ -14,6 +15,7 @@ from pydantic_ai import Agent
 from pydantic_ai.agent import AgentRunResult
 from pydantic_ai.messages import (
     INTERRUPTED_TOOL_RETURN_CONTENT,
+    BinaryContent,
     ModelMessage,
     ModelRequest,
     ModelResponse,
@@ -22,6 +24,7 @@ from pydantic_ai.messages import (
     RetryPromptPart,
     ToolCallPart,
     ToolReturnPart,
+    UserPromptPart,
 )
 from pydantic_ai.exceptions import ModelHTTPError, RunCancelled
 from pydantic_ai.models import Model
@@ -185,6 +188,23 @@ async def _rotear(
     return Gate(escolha)
 
 
+# REVISAR(human): arquivo que uma tool devolveu (PDF do Drive, ADR 0015) vem num UserPromptPart ao lado
+# do retorno. O dump o gravaria como Mensagem de usuário com data URI: bytes no banco e balão na tela.
+# Sai antes do dump; o retorno da tool já traz o marcador `[arquivo do Drive: nome]`.
+def _sem_arquivo_de_tool(msgs: list[ModelMessage]) -> list[ModelMessage]:
+    def arquivo(p: Any) -> bool:
+        return isinstance(p, UserPromptPart) and not isinstance(p.content, str) and any(
+            isinstance(c, BinaryContent) for c in p.content
+        )
+
+    return [
+        replace(m, parts=[p for p in m.parts if not arquivo(p)])
+        if isinstance(m, ModelRequest) and any(isinstance(p, ToolReturnPart) for p in m.parts)
+        else m
+        for m in msgs
+    ]
+
+
 # REVISAR(human): grava usuário e assistente juntos, só no fim do turno com sucesso.
 # Turno que falha não deixa mensagem órfã no histórico. Uso vai na mensagem do assistente.
 # Turno cortado (ticket 30) grava o mesmo par, com o aviso na Mensagem do assistente e o uso real.
@@ -206,7 +226,7 @@ async def _persistir(
     # A Compactação encolhe o histórico do run: o índice das novas desloca junto.
     novas = todas[antes - (comp.removidos if comp else 0) :]
     resposta = next(m for m in reversed(novas) if isinstance(m, ModelResponse))
-    ui = VercelAIAdapter.dump_messages(novas, sdk_version=SDK)
+    ui = VercelAIAdapter.dump_messages(_sem_arquivo_de_tool(novas), sdk_version=SDK)
     async with SessionLocal() as s:
         if comp:
             primeira = next((m for m in novas if isinstance(m, ModelResponse)), None)

@@ -13,7 +13,7 @@ import trafilatura
 from fastapi import APIRouter, Depends, HTTPException
 from mcp.types import CONNECTION_CLOSED, REQUEST_TIMEOUT
 from pydantic import BaseModel, Field, ValidationError
-from pydantic_ai import FunctionToolset, ModelRetry, RunContext
+from pydantic_ai import FunctionToolset, ModelRetry, RunContext, ToolReturn
 from pydantic_ai.toolsets import AbstractToolset, CombinedToolset, WrapperToolset
 from pydantic_ai.toolsets.abstract import ToolsetTool
 from pydantic_core import SchemaValidator, core_schema
@@ -251,7 +251,12 @@ class Auditada(WrapperToolset[Any]):
         except Exception as exc:
             await self._auditar(t0, {**base, "erro": resumo_erro(exc)})
             raise
-        await self._auditar(t0, {**base, "result_chars": len(str(resultado))})
+        # Arquivo devolvido (PDF do Drive): conta só o texto; mime e bytes vêm do metadata.
+        if isinstance(resultado, ToolReturn):
+            extra = {"result_chars": len(str(resultado.return_value)), **(resultado.metadata or {})}
+        else:
+            extra = {"result_chars": len(str(resultado))}
+        await self._auditar(t0, {**base, **extra})
         # Nativa já volta cortada; MCP não tinha teto (ticket 31). Dict corta como JSON, não repr.
         if self.origens.get(name) == "mcp":
             texto = resultado if isinstance(resultado, str) else json.dumps(resultado, ensure_ascii=False, default=str)
