@@ -322,10 +322,20 @@ async def corte_atual(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(current_user)],
 ) -> dict[str, int | None]:
-    """Última Mensagem coberta pelo Resumo vigente. O front marca \"histórico compactado aqui\" depois dela."""
+    """Resumo vigente: até onde ele cobre e o turno em que foi feito. O front marca o separador antes desse turno."""
     await conversa_do_usuario(session, user, cid)
     resumo = await ultimo_resumo(session, cid)
-    return {"ate_message_id": resumo.ate_message_id if resumo else None}
+    if resumo is None:
+        return {"ate_message_id": None, "turno_message_id": None}
+    # REVISAR(human): o Resumo é gravado durante o turno, antes das Mensagens dele. Então a 1ª
+    # Mensagem `user` criada depois do Resumo é a do turno que compactou.
+    q = (
+        select(Message.id)
+        .where(Message.conversation_id == cid, Message.role == "user", Message.created_at > resumo.created_at)
+        .order_by(Message.created_at, Message.id)
+        .limit(1)
+    )
+    return {"ate_message_id": resumo.ate_message_id, "turno_message_id": await session.scalar(q)}
 
 
 # REVISAR(human): 502 só quando o provedor falha antes do primeiro evento.
