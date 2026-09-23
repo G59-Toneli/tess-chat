@@ -62,7 +62,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 ## 4. Infraestrutura
 
-**Escolha:** VPS na OCI, Docker Compose com `caddy`, `app` e `postgres`, HTTPS automático do Caddy, domínio próprio `chat.toneli.dev.br`. Resumo do [ADR 0011](adr/0011-deploy-compose-caddy-duckdns-oci.md).
+**Escolha:** VPS do trabalho do Toneli (aarch64), Docker Compose com `app` e `postgres` (`deploy/docker-compose.yml`), atrás do nginx do host com certbot, domínio próprio `chat.toneli.dev.br`. Resumo do [ADR 0014](adr/0014-deploy-nginx-do-host-no-vps-compartilhado.md), que substituiu a parte Caddy e OCI do [ADR 0011](adr/0011-deploy-compose-caddy-duckdns-oci.md). A conta OCI nova falhou; um Caddy nosso brigaria pelas portas 80/443 do nginx que já serve outra produção.
 
 **Descartados no ADR 0011:**
 - Cloudflare Quick Tunnel: não passa SSE, mata o streaming.
@@ -77,7 +77,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 **Por que não Kubernetes:** **INFERIDO**. Um app, um banco, um avaliador, uma semana no ar. Compose descreve os três serviços num arquivo. K8s traz control plane, ingress e manifests sem nenhum requisito que peça escala ou alta disponibilidade.
 
-**Estado:** o deploy é o ticket 16, bloqueado em acesso SSH ao VPS (`MANHA.md`). `deploy/` só tem `mcp-demo/` (ticket 17). Ainda não há Caddyfile nem `.github/` no repo.
+**Estado:** no ar em https://chat.toneli.dev.br (ticket 16). `deploy/` tem o compose de produção, `deploy.sh`, backup diário por cron e o site nginx. O CI (`.github/workflows/deploy.yml`) roda testes e build em push e PR e faz o deploy por ssh em push na `main`. Runbook em [`INFRA.md`](INFRA.md).
 
 ## 5. Fluxo de trabalho com IA
 

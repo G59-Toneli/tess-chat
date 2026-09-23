@@ -122,7 +122,7 @@ Tokens cifrados com Fernet; a chave (`CONNECTORS_KEY`) fica fora do banco. O cal
 
 Pergunta extra provável: **testou com Gmail real?** Os testes usam Google mockado. A validação real depende do seu login e está no `MANHA.md`. Responda com o que foi feito até a data.
 
-## ADR 0011 — Compose + Caddy + domínio próprio
+## ADR 0011 e 0014 — Compose, nginx do host, domínio próprio
 
 **Por que não serverless?**
 INFERIDO, nenhum doc compara. O chat é stream SSE longo com vários requests ao modelo por turno; serverless tem timeout e cobra por duração. Os Anexos ficam em disco. Fonte: MOTIVACOES §4.
@@ -133,7 +133,10 @@ O Quick Tunnel não passa SSE e mata o streaming. ngrok tem URL efêmera e tela 
 **Por que não Kubernetes?**
 INFERIDO. Um app, um banco, uma semana no ar. Compose descreve três serviços num arquivo. Nada pede escala nem alta disponibilidade.
 
-Estado: o deploy é o ticket 16, bloqueado no acesso SSH ao VPS.
+**Por que saiu o Caddy?**
+A conta OCI nova falhou e o deploy foi para o VPS do trabalho. Lá o nginx do host já ocupa 80/443 com certbot e serve outra produção. Um Caddy nosso precisaria dessas portas. O nginx ganhou um site novo com `proxy_buffering off` para o SSE passar. Fonte: ADR 0014.
+
+Estado: no ar em https://chat.toneli.dev.br. CI por GitHub Actions faz o deploy por ssh em push na `main`.
 
 ## ADR 0012 — Retry e fallback de modelo
 
