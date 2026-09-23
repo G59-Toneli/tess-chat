@@ -18,3 +18,17 @@ Itens que precisam de você. O orquestrador acrescenta aqui durante a noite.
   7. "resume o arquivo <nome de um Google Doc seu> do meu Drive". Esperado: tool `drive_search_read` e resumo do conteúdo.
   8. Auditoria: eventos `connector_linked` e `tool_call`. Revogar em Conectores gera `connector_revoked`.
   9. Produção: no `.env` do deploy, `PUBLIC_BASE_URL=https://chat.toneli.dev.br` e uma `CONNECTORS_KEY` própria.
+- [ ] **Gravar o vídeo (ticket 19, até 5 min) e entregar ao CPO.** Roteiro completo em `README.md`, seção "Roteiro do vídeo". Ordem:
+  1. Login com a conta demo.
+  2. Conversa simples: stream e badge de modelo e tokens.
+  3. Imagem anexada.
+  4. PDF anexado; pergunta de seguimento sobre o PDF.
+  5. Tool web: linha "roteado para web_search" e URLs citadas.
+  6. Compactação: limiar baixo (ex.: 2.000) em `/config`, escopo da Conversa; mandar mensagem; recarregar para ver o marcador.
+  7. Cap: em `/admin`, cap da conta demo em zero; mandar mensagem e mostrar o aviso. **Restaure o cap antes do passo 9.**
+  8. `/auditoria` filtrada pela Conversa e `/creditos`.
+  9. Share: abrir em janela anônima, revogar em `/compartilhados`, recarregar e mostrar o 404.
+  10. MCP: `/mcp` com GitHub (`https://api.githubcopilot.com/mcp/` + PAT novo) ou o demo local `http://127.0.0.1:8765/mcp`; "quais meus repos".
+  11. Google: `/conectores`, conectar, "qual meu último e-mail sobre X". Depende da validação do ticket 18 acima.
+  Antes de gravar: `docker compose up -d --wait`, `cd api && uv run alembic upgrade head`, `cd web && npm run build`, `cd api && uv run uvicorn app.main:app --port 8000`. Se o deploy (16) sair antes, grave no link público.
+- [ ] Ler `docs/ENTREVISTA.md`: 3 perguntas e resposta curta por ADR, mais o workflow com IA. As perguntas marcadas **Lacuna** são as mais prováveis de apertar.
