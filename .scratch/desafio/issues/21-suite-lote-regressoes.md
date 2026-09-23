@@ -1,7 +1,7 @@
 # 21 — Suíte completa em lote e regressões conhecidas
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 17, 18 (roda no fim do bloco, depois que o último ticket de código fechar)
 
 **What to build:** rodar `cd api && uv run pytest` e `cd web && npm run build && npx tsc --noEmit`. Corrigir toda regressão com diff mínimo. Não refatorar.

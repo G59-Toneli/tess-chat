@@ -8,7 +8,8 @@ export type ToolCatalogo = {
   schema: Record<string, unknown>
   ativa_global: boolean
 }
-export type ToolConversa = { nome: string; origem: string; descricao: string; ativa: boolean }
+/** `servidor`: nome do Servidor MCP, só em origem mcp. */
+export type ToolConversa = { nome: string; origem: string; descricao: string; ativa: boolean; servidor?: string | null }
 export type DecisaoRoteador = { ts: string; tool: string; confidence: number; forcada: boolean }
 /** A API já devolve estes campos em /messages; o tipo base do 07 não os declara. */
 export type MensagemComUso = MensagemApi & {
