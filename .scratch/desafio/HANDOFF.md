@@ -1,6 +1,6 @@
 # Handoff do orquestrador
 
-Atualizado em 2026-09-23 ~03:20 (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
+Atualizado em 2026-09-23 ~03:50 (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
 
 ## Como orquestrar (ciclo)
 1. Escolher ticket `ready-for-agent` cujos `Blocked by` estão `resolved`.
@@ -20,13 +20,13 @@ Atualizado em 2026-09-23 ~03:20 (horário local -03:00). Sessão atual: orquestr
 - Rate limit do plano Max: esperar e repetir.
 
 ## Estado dos tickets
-- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 18 (parte AFK), 20, 22. Tudo em `origin/main`.
-- **Rodando:** exec-17 (MCP; migração 0013; único em `chat.py`/`tools.py`).
-- **Próximos, nesta ordem:** 21 (suíte completa em lote + regressões listadas no ticket; roda depois do 17) → 19 (README, guia de entrevista, roteiro do vídeo; lê `docs/MOTIVACOES.md`, `docs/ESTRUTURA.md`, `docs/LACUNAS.md`). 16 (deploy) quando o Toneli entregar SSH.
-- **Tickets novos desta sessão:** 20 (estrutura do repo + motivações, resolvido), 21 (suíte em lote), 22 (WORKFLOW.md reflete a prática, resolvido).
-- **Bloqueados em Toneli:** 02 e 16 (SSH do VPS, registro A). Validação manual do 18 com a conta Google está no `MANHA.md`.
-- 17 e 18 foram liberados para rodar em localhost sem esperar o 16; deploy só troca a URL base (`PUBLIC_BASE_URL`).
-- Próxima migração livre depois do 17: `0014` (conferir `ls api/migrations/versions`).
+- **Resolvidos:** 01, 03, 04, 05, 06, 06b, 07a, 07, 07b, 07c, 08, 09, 09b, 10, 11, 12, 13, 14, 15, 17, 18 (AFK), 19 (AFK), 20, 21, 22, 23, 24. Tudo em `origin/main`.
+- **Rodando:** nenhum. Todos os agentes encerrados.
+- **Suíte final do bloco (23/09 ~03:45, Postgres 5433 + mcp-demo 8765):** `uv run pytest` 141 passed / 0 failed; `npm run build` e `tsc --noEmit` limpos.
+- **Bloqueados em Toneli:** 02 e 16 (SSH do VPS, registro A `chat.toneli.dev.br`). Parte HITL do 18 (conectar conta Google e validar) e do 19 (gravar vídeo) no `MANHA.md`. Decisão sobre fallback OpenAI (ADR 0012 sem código) no `MANHA.md`.
+- **Próximo ticket de código:** 16 (deploy), assim que houver SSH. No deploy: `ENV=prod`, `PUBLIC_BASE_URL=https://chat.toneli.dev.br`, `CONNECTORS_KEY` própria, trocar `GITHUB_PAT` e recadastrar o GitHub em `/mcp`.
+- Próxima migração livre: `0014`.
+- Tickets criados nesta sessão: 20 (estrutura + motivações), 21 (suíte em lote), 22 (WORKFLOW real), 23 (resiliência MCP + SSRF), 24 (docs atualizados). Todos resolvidos.
 
 ## Lacunas conhecidas
 Consolidadas em `docs/LACUNAS.md`. Ticket 19 lê. Duas pedem decisão: reserva por `count_tokens` (ADR 0004 vs código) e cobrança do turno cortado pelo teto de tools.
