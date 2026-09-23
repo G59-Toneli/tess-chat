@@ -1,7 +1,7 @@
 # 16 — Deploy da Camada 1 no VPS com CI
 
 **Type:** task (AFK + HITL)
-**Status:** ready-for-agent
+**Status:** resolved (parte AFK; DNS, TLS e secrets do CI no MANHA)
 **Blocked by:** nenhum (02 absorvido por este ticket; 09 a 15 resolvidos)
 **Refs:** ADR 0011. **Marco: sexta 26/09.**
 
@@ -26,3 +26,10 @@
 - CI: GitHub Actions com `appleboy/ssh-action` (ou ssh puro) usando secrets `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`. Escrever o workflow e listar em `MANHA.md` os secrets que o Toneli cadastra no GitHub (não cadastre você; o `GITHUB_PAT` está vazado). Até então, deploy manual por ssh documentado em `docs/INFRA.md`.
 - Repo é privado: o `git pull` no VPS precisa de deploy key. Gerar par no VPS (`ssh-keygen -t ed25519 -f ~/.ssh/tess-deploy`), imprimir a pública no relatório e no `MANHA.md` para o Toneli cadastrar como Deploy Key (read-only) no GitHub. Até lá, copiar o código por `rsync`/`scp` a partir do working tree local (`git archive HEAD`).
 - `docs/INFRA.md` ganha o inventário real acima e o runbook (deploy, logs, backup, rollback, `down -v`).
+
+## Answer
+- No ar no VPS: código fb9856e em `/opt/tess-chat`, compose `tess-chat` (postgres sem porta, `migrate`, app em 127.0.0.1:8010), site nginx `tess-chat` (80), backup diário em `/etc/cron.d/tess-chat`. Validado dentro da VM via `Host: chat.toneli.dev.br`: index 200, login demo devolve token, `down`+`up` mantém usuários e auditoria, backup gerou dump. ADR 0014 e runbook em `docs/INFRA.md`.
+- Pendente (HITL): registro A `chat.toneli.dev.br` dá NXDOMAIN no autoritativo após 30 min de espera, então certbot não rodou e não há HTTPS. Depois do DNS: `sudo certbot --nginx -d chat.toneli.dev.br --non-interactive --agree-tos --redirect`.
+- Pendente (HITL): deploy key, secrets do Actions e redirect do Google, passo a passo no `MANHA.md`. CI escrito, não executado.
+- Ressalvas: sem smoke test de chat (todo turno chama o Jev, teto 0). Reboot real do VPS não testado (produção do trabalho). `DEMO_PASSWORD` segue `demo12345` (DECISOES).
+

@@ -1,0 +1,2 @@
+# /etc/cron.d/tess-chat: backup diário às 03:30.
+30 3 * * * ubuntu /opt/tess-chat/deploy/backup.sh >> /opt/tess-chat/backups/backup.log 2>&1
