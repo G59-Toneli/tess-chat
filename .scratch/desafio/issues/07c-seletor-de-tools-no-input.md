@@ -1,7 +1,7 @@
 # 07c — Seletor de tools junto da área de input
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 09
 **Refs:** `docs/UI-GUIA.md`. Feedback do Toneli em 23/09 à noite.
 

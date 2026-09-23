@@ -112,3 +112,22 @@ export function textoErroChat(e: Error & { statusCode?: number }): string {
   }
   return ERRO_PROVEDOR
 }
+
+// Anexos (ticket 09). A Mensagem leva só a referência `/api/attachments/{id}`.
+export type Anexo = { id: string; filename: string; mime_type: string; size_bytes: number; url: string }
+export const ACEITOS = 'image/png,image/jpeg,image/webp,application/pdf'
+export const LIMITE_ANEXO = 20 * 1024 * 1024
+
+/** Sobe um arquivo. `dados` é o data URL que o prompt-input entrega. */
+export async function enviarAnexo(dados: string, nome: string): Promise<Anexo> {
+  const blob = await (await fetch(dados)).blob()
+  const form = new FormData()
+  form.append('file', blob, nome)
+  return api<Anexo>('/api/attachments', { method: 'POST', body: form })
+}
+
+export function textoErroAnexo(e: unknown): string {
+  if (e instanceof ErroApi && e.status === 415) return 'Tipo não permitido. Envie PNG, JPG, WEBP ou PDF.'
+  if (e instanceof ErroApi && e.status === 413) return 'Arquivo acima de 20 MB.'
+  return 'Não foi possível enviar o anexo. Tente de novo.'
+}

@@ -24,6 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
 
+from app.anexos import montar_anexos
 from app.audit import audit
 from app.compactacao import Compactacao, com_resumo, modelo_resumo, ponto_de_corte, should_compact, ultimo_resumo
 from app.auth import User, current_user
@@ -309,6 +310,8 @@ async def chat(
     await reservar(session, uid, cid, nome, _estimar_input(linhas, novas))
     tools = await toolset_da_conversa(session, uid, cid, t)
     gate = await _rotear(session, jev, uid, cid, novas[0])
+    # Depois da reserva e do Roteador: o base64 não entra na estimativa nem no Jev.
+    await montar_anexos(session, uid, novas[0])
     await session.commit()
     await session.close()
 
