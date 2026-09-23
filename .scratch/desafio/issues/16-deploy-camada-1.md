@@ -10,7 +10,7 @@
 **HITL:** segredos no GitHub e no VPS.
 
 **Aceite:**
-- [ ] Fluxo completo funciona no link público, em janela anônima.
+- [x] Fluxo completo funciona no link público, em janela anônima. (HTTPS válido desde 23/09 ~13:05 -03; redeploy do HEAD 42cca64 pelo orquestrador; smoke test: root 200, login demo 200)
 - [ ] Push na main atualiza o VPS sem intervenção.
 - [ ] Reiniciar o VPS mantém dados.
 
