@@ -21,6 +21,21 @@ async def session():
 
 
 @pytest.fixture(autouse=True)
+def sem_fallback_real(monkeypatch):
+    """Nenhum teste cai no Gemini de reserva real nem espera o backoff. test_resiliencia troca."""
+    from app import resiliencia
+    from app.chat import modelo_reserva
+
+    async def ja(_s: float) -> None:
+        return None
+
+    monkeypatch.setattr(resiliencia, "dormir", ja)
+    app.dependency_overrides[modelo_reserva] = lambda: None
+    yield
+    app.dependency_overrides.pop(modelo_reserva, None)
+
+
+@pytest.fixture(autouse=True)
 def sem_jev():
     """Nenhum teste chama o Jev real. Sem cliente, o Roteador cai em AUTO. test_roteador troca."""
     app.dependency_overrides[cliente_jev] = lambda: None

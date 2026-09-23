@@ -12,14 +12,14 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from pydantic_ai import Agent
 from pydantic_ai.agent import AgentRunResult
-from pydantic_ai.messages import ModelResponse
-from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError
+from pydantic_ai.messages import ModelResponse, PartDeltaEvent, PartStartEvent
+from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.models import Model
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.ui.vercel_ai.request_types import FileUIPart, TextUIPart, UIMessage
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typesafe_sdk import AsyncTypeSafeClient, TypeSafeError
@@ -31,10 +31,13 @@ from app.config import settings
 from app.conversas import Conversation, Message, conversa_do_usuario
 from app.credito import acertar, reservar
 from app.db import SessionLocal, get_session
+from app.resiliencia import ERROS_PROVEDOR, Turno, cadeia, causa, resumo_erro
 from app.roteador import PRECO_JEV, Gate, apply_gate, cliente_jev, decidir, opcoes
 from app.tools import estado_da_conversa, toolset_da_conversa, transporte
 
 MODELO = "gemini-3.8-flash"
+# Fallback do ADR 0012. Sem OPENAI_API_KEY no .env, a cadeia para aqui.
+MODELO_RESERVA = "gemini-3.7-flash"
 # Thinking explícito. O default do modelo deu ~7 s até o primeiro token no spike.
 AJUSTES = GoogleModelSettings(
     google_thinking_config={"thinking_level": "low"}, max_tokens=settings.max_output_tokens
@@ -46,13 +49,18 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @cache
-def _gemini() -> GoogleModel:
-    return GoogleModel(MODELO, provider=GoogleProvider(api_key=settings.gemini_paid_api_key))
+def _gemini(nome: str = MODELO) -> GoogleModel:
+    return GoogleModel(nome, provider=GoogleProvider(api_key=settings.gemini_paid_api_key))
 
 
 def modelo() -> Model:
     """Modelo da rota. Os testes trocam via dependency_overrides."""
     return _gemini()
+
+
+def modelo_reserva() -> Model | None:
+    """Próximo da cadeia de fallback. None desliga o fallback (testes)."""
+    return _gemini(MODELO_RESERVA)
 
 
 def _historico(linhas: list[Message]):
@@ -68,20 +76,44 @@ def _estimar_input(linhas: list[Message], novas: list[Any]) -> int:
     return -(-chars // 3)
 
 
+async def _auditar_tentativas(s: AsyncSession, uid: uuid.UUID, cid: uuid.UUID, turno: Turno) -> None:
+    """Um `llm_retry` por tentativa que falhou e um `llm_fallback` por troca de modelo."""
+    for r in turno.retries:
+        await audit(s, "llm_retry", user_id=uid, conversation_id=cid, model=r["modelo"], payload=r)
+    for f in turno.fallbacks:
+        await audit(s, "llm_fallback", user_id=uid, conversation_id=cid, model=f["para"], payload=f)
+
+
 async def _erro(
-    cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: Exception, t0: float, comp: Compactacao | None = None
+    cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: BaseException, turno: Turno, comp: Compactacao | None = None
 ) -> None:
     async with SessionLocal() as s:
         if comp:
             await comp.auditar(s, None)
+        await _auditar_tentativas(s, uid, cid, turno)
         await audit(
             s,
             "llm_error",
             user_id=uid,
             conversation_id=cid,
             model=nome,
-            latency_ms=int((time.perf_counter() - t0) * 1000),
-            payload={"erro": type(exc).__name__, "status": getattr(exc, "status_code", None), "msg": str(exc)[:500]},
+            latency_ms=int((time.perf_counter() - turno.t0) * 1000),
+            payload={**resumo_erro(exc), "tentativas": turno.tentativas},
+        )
+        await s.commit()
+
+
+async def _limite_de_tools(cid: uuid.UUID, uid: uuid.UUID, nome: str, exc: UsageLimitExceeded, turno: Turno) -> None:
+    async with SessionLocal() as s:
+        await _auditar_tentativas(s, uid, cid, turno)
+        await audit(
+            s,
+            "tool_limit_reached",
+            user_id=uid,
+            conversation_id=cid,
+            model=turno.respondido or nome,
+            latency_ms=int((time.perf_counter() - turno.t0) * 1000),
+            payload={"limite": settings.tool_calls_limit, "msg": str(exc)[:500]},
         )
         await s.commit()
 
@@ -139,14 +171,16 @@ async def _rotear(
 async def _persistir(
     cid: uuid.UUID,
     uid: uuid.UUID,
-    nome: str,
+    turno: Turno,
     result: AgentRunResult[Any],
     antes: int,
-    t0: float,
     comp: Compactacao | None = None,
 ) -> None:
-    latencia = int((time.perf_counter() - t0) * 1000)
+    latencia = int((time.perf_counter() - turno.t0) * 1000)
     uso = result.usage
+    # Mensagem e Ledger levam o modelo que respondeu, com o preço dele.
+    nome = turno.respondido or turno.pedido
+    resposta = result.response
     # new_messages() não traz a mensagem do front: o adapter a põe no message_history.
     # A Compactação encolhe o histórico do run: o índice das novas desloca junto.
     novas = result.all_messages()[antes - (comp.removidos if comp else 0) :]
@@ -170,6 +204,7 @@ async def _persistir(
         conv = await s.get(Conversation, cid)
         conv.updated_at = func.now()
         custo = await acertar(s, uid, cid, ultima.id, nome, uso)
+        await _auditar_tentativas(s, uid, cid, turno)
         await audit(s, "message_sent", user_id=uid, conversation_id=cid, payload={"message_id": linhas[0].id})
         await audit(
             s,
@@ -186,6 +221,12 @@ async def _persistir(
                 "cache_read_tokens": uso.cache_read_tokens,
                 "requests": uso.requests,
                 "message_id": ultima.id,
+                "modelo_pedido": turno.pedido,
+                "modelo_respondido": nome,
+                "modelo_real": resposta.model_name,
+                "tentativas": turno.tentativas,
+                "latencia_primeiro_token_ms": turno.primeiro_token_ms,
+                "motivo_termino": resposta.finish_reason,
             },
         )
         await s.commit()
@@ -240,6 +281,7 @@ async def chat(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(current_user)],
     m: Annotated[Model, Depends(modelo)],
+    reserva: Annotated[Model | None, Depends(modelo_reserva)],
     mr: Annotated[Model, Depends(modelo_resumo)],
     t: Annotated[httpx.AsyncBaseTransport | None, Depends(transporte)],
     jev: Annotated[AsyncTypeSafeClient | None, Depends(cliente_jev)],
@@ -266,23 +308,32 @@ async def chat(
     await session.commit()
     await session.close()
 
-    t0 = time.perf_counter()
+    turno = Turno(nome)
+    modelos = cadeia(turno, [m, *([reserva] if reserva else [])])
+    limites = UsageLimits(tool_calls_limit=settings.tool_calls_limit)
 
     async def eventos() -> AsyncIterator[Any]:
         try:
             async for ev in adapter.run_stream_native(
-                message_history=historico, model=m, model_settings=AJUSTES, conversation_id=str(cid),
+                message_history=historico, model=modelos, model_settings=AJUSTES, conversation_id=str(cid),
                 toolsets=[tools], capabilities=[gate, *([comp.capability()] if comp else [])],
+                usage_limits=limites,
             ):
+                if isinstance(ev, (PartStartEvent, PartDeltaEvent)):
+                    turno.marcar_primeiro_token()
                 yield ev
-        except ModelAPIError as exc:
-            await _erro(cid, uid, nome, exc, t0, comp)
+        except UsageLimitExceeded as exc:
+            await _limite_de_tools(cid, uid, nome, exc, turno)
+            raise
+        except ERROS_PROVEDOR as exc:
+            await _erro(cid, uid, nome, exc, turno, comp)
             raise
 
     nativos = eventos()
     try:
         primeiro = await anext(nativos)
-    except ModelAPIError as exc:
+    except ERROS_PROVEDOR as exc:
+        exc = causa(exc)
         status = f"HTTP {exc.status_code}" if isinstance(exc, ModelHTTPError) else type(exc).__name__
         return JSONResponse({"detail": f"O provedor do modelo falhou ({status}). Tente de novo."}, status_code=502)
 
@@ -292,6 +343,6 @@ async def chat(
             yield ev
 
     async def ao_fim(result: AgentRunResult[Any]) -> None:
-        await _persistir(cid, uid, nome, result, len(historico), t0, comp)
+        await _persistir(cid, uid, turno, result, len(historico), comp)
 
     return adapter.streaming_response(adapter.transform_stream(todos(), on_complete=ao_fim))
