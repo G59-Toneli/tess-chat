@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { UserRoundIcon } from 'lucide-react'
 import { IconeApp, NOME_APP } from '@/components/Logo'
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { cadastrar, CONTA_DEMO, entrar, lerToken, textoErroAuth } from '@/lib/api'
+import { cadastrar, configPublica, CONTA_DEMO, entrar, lerToken, textoErroAuth } from '@/lib/api'
 
 /** Login e cadastro no mesmo card. Conta demo entra direto. */
 export function Login() {
@@ -17,6 +17,14 @@ export function Login() {
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  // Botão demo só depois da resposta, sem piscar. Falhou: some (ticket 34).
+  const [demo, setDemo] = useState(false)
+
+  useEffect(() => {
+    configPublica()
+      .then((c) => setDemo(c.demo))
+      .catch(() => setDemo(false))
+  }, [])
 
   if (lerToken()) return <Navigate to="/" replace />
 
@@ -90,7 +98,7 @@ export function Login() {
             <Button type="submit" className="w-full" disabled={enviando}>
               {enviando && <Spinner />} {cadastro ? 'Criar conta' : 'Entrar'}
             </Button>
-            {!cadastro && (
+            {!cadastro && demo && (
               <Button type="button" variant="outline" className="w-full" onClick={usarDemo} disabled={enviando}>
                 <UserRoundIcon /> Entrar com conta demo
               </Button>

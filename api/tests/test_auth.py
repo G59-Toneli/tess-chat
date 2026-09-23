@@ -105,3 +105,30 @@ async def test_conta_demo_existe_e_loga_apos_seed(client):
     resp = await logar(client, DEMO_EMAIL, settings.demo_password)
 
     assert resp.status_code == 200
+
+
+async def test_config_publica_em_prod_esconde_demo(client, monkeypatch):
+    monkeypatch.setattr(settings, "env", "prod")
+
+    resp = await client.get("/api/config-publica")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"demo": False, "env": "prod"}
+
+
+async def test_config_publica_em_dev_mostra_demo(client, monkeypatch):
+    monkeypatch.setattr(settings, "env", "dev")
+
+    resp = await client.get("/api/config-publica")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"demo": True, "env": "dev"}
+
+
+async def test_em_prod_login_da_conta_demo_continua_aceito(client, monkeypatch):
+    monkeypatch.setattr(settings, "env", "prod")
+    await garantir_conta_demo()
+
+    resp = await logar(client, DEMO_EMAIL, settings.demo_password)
+
+    assert resp.status_code == 200

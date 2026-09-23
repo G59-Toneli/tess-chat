@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.anexos import router as anexos_router
+from app.config import settings
 from app.auditoria import router as auditoria_router
 from app.auth import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_users, garantir_conta_demo
 from app.chat import router as chat_router
@@ -53,6 +54,12 @@ async def health(session: Annotated[AsyncSession, Depends(get_session)]) -> dict
     """Responde ok se o banco responde."""
     await session.execute(text("SELECT 1"))
     return {"status": "ok"}
+
+
+@app.get("/api/config-publica")
+async def config_publica() -> dict[str, bool | str]:
+    """Config que o front lê sem login. Decidida em runtime: a mesma imagem serve dev e prod."""
+    return {"demo": settings.env != "prod", "env": settings.env}
 
 
 # Manter no fim: catch-all do front depois de todas as rotas da API.
