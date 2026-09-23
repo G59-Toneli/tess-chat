@@ -1,5 +1,5 @@
 // Tools (ADR 0009), decisões do Roteador (ADR 0005) e uso por Mensagem.
-import { authHeader, ErroApi, type MensagemApi } from '@/lib/api'
+import { api, json, type MensagemApi } from '@/lib/api'
 
 export type ToolCatalogo = {
   nome: string
@@ -26,19 +26,13 @@ export type MensagemComUso = MensagemApi & {
 }
 export type Uso = { modelo: string; entrada: number; saida: number; decisao?: DecisaoRoteador }
 
-async function pedir<T>(caminho: string, init: RequestInit = {}): Promise<T> {
-  const r = await fetch(caminho, { ...init, headers: { ...authHeader(), 'Content-Type': 'application/json' } })
-  if (!r.ok) throw new ErroApi(r.status, (await r.json().catch(() => ({}))).detail)
-  return (await r.json()) as T
-}
-
-export const listarCatalogo = () => pedir<ToolCatalogo[]>('/api/tools')
+export const listarCatalogo = () => api<ToolCatalogo[]>('/api/tools')
 export const alternarGlobal = (nome: string, ativa: boolean) =>
-  pedir<ToolCatalogo>(`/api/tools/${nome}`, { method: 'PUT', body: JSON.stringify({ ativa_global: ativa }) })
-export const toolsDaConversa = (id: string) => pedir<ToolConversa[]>(`/api/conversations/${id}/tools`)
+  api<ToolCatalogo>(`/api/tools/${nome}`, { method: 'PUT', ...json({ ativa_global: ativa }) })
+export const toolsDaConversa = (id: string) => api<ToolConversa[]>(`/api/conversations/${id}/tools`)
 export const alternarNaConversa = (id: string, nome: string, ativa: boolean) =>
-  pedir<ToolConversa[]>(`/api/conversations/${id}/tools`, { method: 'PUT', body: JSON.stringify({ [nome]: ativa }) })
-export const decisoesDoRoteador = (id: string) => pedir<DecisaoRoteador[]>(`/api/conversations/${id}/roteador`)
+  api<ToolConversa[]>(`/api/conversations/${id}/tools`, { method: 'PUT', ...json({ [nome]: ativa }) })
+export const decisoesDoRoteador = (id: string) => api<DecisaoRoteador[]>(`/api/conversations/${id}/roteador`)
 
 // REVISAR(human): casa cada resposta do assistente com a decisão do Roteador do mesmo turno.
 // A decisão é gravada antes do stream e as Mensagens do turno só no fim, todas com o mesmo

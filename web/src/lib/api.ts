@@ -44,8 +44,9 @@ export class ErroApi extends Error {
   }
 }
 
-export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T> {
-  const r = await fetch(caminho, { ...init, headers: { ...authHeader(), ...init.headers } })
+/** `semAuth`: sem token, para rota pública (link de share) abrir igual em janela anônima. */
+export async function api<T>(caminho: string, { semAuth, ...init }: RequestInit & { semAuth?: boolean } = {}): Promise<T> {
+  const r = await fetch(caminho, { ...init, headers: { ...(semAuth ? {} : authHeader()), ...init.headers } })
   if (r.status === 401 && lerToken()) sair()
   if (!r.ok) {
     const corpo = await r.json().catch(() => ({}))
@@ -54,7 +55,7 @@ export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T
   return (r.status === 204 ? undefined : await r.json()) as T
 }
 
-const json = (body: unknown): RequestInit => ({
+export const json = (body: unknown): RequestInit => ({
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(body),
 })
