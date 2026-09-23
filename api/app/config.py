@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     public_base_url: str = "http://localhost:8000"
     # Chave Fernet dos tokens dos Conectores. Sem ela, conectar responde 503.
     connectors_key: str | None = None
+    # dev libera http:// para o servidor MCP demo (ticket 23). Produção define ENV=prod.
+    env: str = "dev"
 
 
 settings = Settings()

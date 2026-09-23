@@ -1,9 +1,12 @@
 """Servidor MCP por Usuário: cadastro, listagem das tools e toolset do turno (ticket 17, ADR 0009)."""
 
+import asyncio
+import ipaddress
 import re
 import uuid
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
@@ -15,13 +18,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.audit import audit
 from app.conectores import _cifrar, _decifrar
+from app.config import settings
 from app.conversas import Sessao, Usuario
 from app.db import Base
+from app.resiliencia import resumo_erro
 
 # Timeout do handshake e de cada chamada. Servidor lento não segura o cadastro nem o turno.
 TIMEOUT_S = 15.0
+# Sonda do turno: servidor que não responde nisso fica fora do turno (ticket 23).
+SONDA_S = 3.0
 # Limite de nome de function do Gemini.
 LIMITE_NOME = 64
+# Hosts do servidor demo liberados em http quando ENV=dev: dentro e fora do compose.
+HOSTS_DEMO = {"mcp-demo", "127.0.0.1"}
 
 
 class McpServer(Base):
@@ -46,8 +55,48 @@ def prefixo(srv: McpServer) -> str:
     return f"{slug}_{srv.id.hex[:4]}"
 
 
-def _cliente(url: str, headers: dict[str, str]) -> MCPToolset:
-    return MCPToolset(url, headers=headers, init_timeout=TIMEOUT_S, read_timeout=TIMEOUT_S)
+def _cliente(url: str, headers: dict[str, str], timeout: float = TIMEOUT_S) -> MCPToolset:
+    return MCPToolset(url, headers=headers, init_timeout=timeout, read_timeout=timeout)
+
+
+class UrlRecusada(ValueError):
+    """URL de Servidor MCP fora da política. A mensagem vai para o usuário."""
+
+
+# REVISAR(human): barreira de SSRF no cadastro. Só https, e todo IP que o host resolve precisa ser
+# público (`is_global` recusa privado, loopback, link-local 169.254 da metadata, reservado).
+# Checa TODOS os IPs: um host com um IP público e um interno passaria se olhasse só o primeiro.
+# Exceção: em dev, o demo em http. Ressalva: o turno resolve o DNS de novo (rebinding não coberto).
+async def validar_url(url: str) -> None:
+    partes = urlsplit(url)
+    host = (partes.hostname or "").lower()
+    if settings.env == "dev" and host in HOSTS_DEMO:
+        return
+    if partes.scheme != "https":
+        raise UrlRecusada("A URL do servidor MCP precisa usar https://.")
+    try:
+        ips = [ipaddress.ip_address(host)]
+    except ValueError:
+        try:
+            infos = await asyncio.get_running_loop().getaddrinfo(host, partes.port or 443)
+        except OSError as e:
+            raise UrlRecusada(f"Não consegui resolver o host da URL ({host}).") from e
+        ips = [ipaddress.ip_address(i[4][0].split("%")[0]) for i in infos]
+    for ip in ips:
+        real = ip.ipv4_mapped if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped else ip
+        if not real.is_global:
+            raise UrlRecusada(f"A URL aponta para um endereço interno ({real}). Use um servidor MCP público.")
+
+
+async def alcancavel(srv: McpServer) -> BaseException | None:
+    """Sonda curta: conecta e lista. Devolve o erro, ou None se o servidor respondeu."""
+    try:
+        async with asyncio.timeout(SONDA_S + 1):
+            async with _cliente(srv.url, _decifrar(srv.headers), SONDA_S) as cli:
+                await cli.list_tools()
+    except Exception as e:  # noqa: BLE001  qualquer falha tira o servidor do turno
+        return e
+    return None
 
 
 def toolset(srv: McpServer, ativas: set[str]) -> AbstractToolset[Any]:
@@ -132,6 +181,10 @@ async def cadastrar(body: McpServerIn, session: Sessao, user: Usuario) -> McpSer
     """Conecta no servidor, lista as tools e grava servidor e tools no registro com origem mcp."""
     from app.tools import Tool  # tools importa este módulo
 
+    try:
+        await validar_url(body.url)
+    except UrlRecusada as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     headers = _cabecalhos(body.autorizacao)
     try:
         async with _cliente(body.url, headers) as cli:
