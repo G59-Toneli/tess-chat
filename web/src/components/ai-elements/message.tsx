@@ -341,6 +341,7 @@ const rehypePlugins = Object.values({
       allowDataImages: true,
       allowedLinkPrefixes: ["*"],
       allowedProtocols: ["*"],
+      blockedImageClass: "inline-block rounded bg-muted px-3 py-1 text-sm text-muted-foreground",
     },
   ],
 }) as NonNullable<StreamdownProps["rehypePlugins"]>;
