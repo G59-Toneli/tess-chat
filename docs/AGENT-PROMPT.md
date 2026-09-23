@@ -8,6 +8,7 @@ Você executa UM ticket do projeto `C:\Projects\desafio` (repo git, branch `main
 3. O ticket em `.scratch/desafio/issues/NN-*.md`, incluindo a seção "Do spike" se houver
 4. Os ADRs citados no ticket, em `docs/adr/`
 5. `api/README.md` e a estrutura atual de `api/` (e `web/` quando existir). Leia só o que o ticket toca.
+6. Se o ticket toca `web/`: `docs/UI-GUIA.md` é obrigatório, incluindo a verificação visual por screenshot.
 
 ## Regras
 - Só este ticket. Não refatore o que está do lado. Não toque em `deploy/`, `docs/INFRA.md` nem `spike/`.
