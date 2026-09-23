@@ -1,7 +1,7 @@
 # 15 — Painel de auditoria e créditos
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 08, 13
 **Refs:** ADR 0004, 0007.
 

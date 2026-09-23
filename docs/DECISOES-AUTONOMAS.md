@@ -48,3 +48,10 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 07 | Erro do provedor vira toast com ação "Tentar de novo" (`regenerate`). Erro no meio do stream mostra texto genérico em pt-BR. | Mostrar o texto do provedor. | O 502 já vem em pt-BR da API. O chunk de erro vem em inglês. |
 | 07 | Toaster do shadcn sem `next-themes`: lê o tema de `tema.ts`. | Instalar `next-themes`. | 07a já decidiu pelo tema próprio. |
 | 07 | Sem Evento de auditoria no front. | Emitir evento do front. | Login, cadastro, Conversa e mensagem já emitem evento na API. |
+| 13 | Leitura pública em `GET /api/s/{id}` (JSON). `GET /s/{id}` serve o `index.html` do front com `X-Robots-Tag: noindex`: 200 se o link vale, 404 com o mesmo HTML se revogado ou inexistente. | `/s/{id}` devolver JSON. | A rota `/s/:shareId` é do front (SPA). O navegador mostra "link indisponível" em vez de JSON cru; o status 404 continua idêntico nos dois casos. |
+| 13 | Id do link: `secrets.token_urlsafe(16)` (128 bits), coluna `text`. | uuid4 (122 bits). | ADR 0008 pede 128 bits ou mais. |
+| 13 | Corte = maior `messages.id` da Conversa no momento do share; a leitura filtra `id <= corte`. Conversa sem Mensagem: corte nulo, link vazio. | Copiar as Mensagens. | `bigserial` só cresce; ADR 0008 descarta cópia. |
+| 13 | "Compartilhada por" mostra só a parte do e-mail antes do `@`. | E-mail inteiro. | Link é público; e-mail completo vaza dado pessoal. |
+| 13 | Cada clique em Compartilhar cria um link novo com corte novo. Links antigos continuam até revogar. `DELETE /api/shares/{id}`; revogar de novo = 404. | Reaproveitar o link ativo da Conversa. | Mais simples; o corte de cada link fica fiel ao momento em que foi criado. |
+| 13 | Link criado aparece num toast (sonner) com cópia automática e ação Copiar. | Dialog com o link. | O conteúdo do DropdownMenu desmonta ao fechar; dialog exigiria estado no `AppLayout` (arquivo do 07). |
+| 13 | View pública mostra só partes `text` de Mensagens user/assistant; Mensagens `tool` ficam fora. | Mostrar blocos de tool. | Read-only para leitor externo; resultado bruto de tool polui e pode ter dado de terceiro. |

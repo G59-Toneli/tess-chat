@@ -3,6 +3,7 @@ import { Link, Navigate, NavLink, Outlet, useMatch, useNavigate, useOutletContex
 import { toast } from 'sonner'
 import { LogOutIcon, MoonIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, SunIcon, Trash2Icon } from 'lucide-react'
 import { IconeApp, NOME_APP } from '@/components/Logo'
+import { ItemCompartilhar } from '@/components/ItemCompartilhar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -231,6 +232,7 @@ function ItemConversa({
           <DropdownMenuItem onSelect={() => onRenomear(conversa)}>
             <PencilIcon /> Renomear
           </DropdownMenuItem>
+          <ItemCompartilhar conversa={conversa} />
           <DropdownMenuItem variant="destructive" onSelect={() => onApagar(conversa)}>
             <Trash2Icon /> Apagar
           </DropdownMenuItem>
