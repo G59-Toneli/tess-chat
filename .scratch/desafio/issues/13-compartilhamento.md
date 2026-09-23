@@ -1,7 +1,7 @@
 # 13 — Compartilhar conversa por link público
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 07
 **Refs:** ADR 0008.
 

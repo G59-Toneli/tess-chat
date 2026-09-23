@@ -1,7 +1,7 @@
 # 06b — Retry, fallback de modelo e observabilidade do turno
 
 **Type:** task (AFK)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 10
 **Refs:** ADR 0012, 0003, 0004, 0007.
 
@@ -12,3 +12,5 @@
 - [ ] Teste em que o primeiro modelo falha sempre: o segundo responde, evento `llm_fallback`, Mensagem e Ledger gravam o segundo modelo e o preço dele.
 - [ ] Erro 400 não gera retry.
 - [ ] `llm_call` traz latência até o primeiro token e total.
+
+**Adendo (do ticket 10):** incluir `UsageLimits(tool_calls_limit=...)` por turno (default 5, vindo de Configuração quando o 14 existir) e evento `tool_limit_reached`. Um turno gerou 4 buscas Tavily seguidas; sem teto, o free tier evapora.
