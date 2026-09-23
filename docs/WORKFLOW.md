@@ -1,20 +1,49 @@
-# Workflow de execução autônoma
+# Workflow de execução por agentes
 
-Base: `research/04-workflow-autonomo-dev.md`.
+Como um ticket vira commit neste repo. Fontes: `.scratch/desafio/HANDOFF.md`, `LEDGER.md`, `docs/AGENT-PROMPT.md`, `docs/MOTIVACOES.md`.
 
-## Regras
-- Um ticket por invocação de `claude -p --model opus`. Nunca dois.
-- Antes de codar, o agente lê `CONTEXT.md`, o ticket e os ADRs referenciados.
-- TDD (`mattpocock-skills:tdd`). Testes rodam **fora** do Claude, no script, como gate. Só exit 0 fecha o ticket.
-- Um commit por ticket, mensagem `feat(NN): <slug>`.
-- Ledger em `.scratch/desafio/LEDGER.md`: uma linha por tentativa: ticket, início, fim, resultado, commit, turnos.
-- Decisão não coberta por ADR: escolher a opção mais simples que atende o aceite e registrar em `docs/DECISOES-AUTONOMAS.md`. Não parar.
-- `TODO(human)`: desde 23/09 à noite o agente implementa e marca `REVISAR(human)`. Toneli estuda depois. Nada bloqueia.
-- Rate limit do plano Max: o script espera 30 min e tenta de novo. Não é falha do ticket.
-- Limites por invocação: `--max-turns 80`, `--permission-mode auto --permission-prompts none --output-format json`.
-- Sonda feita (01 e 03). Prompt-padrão em `docs/AGENT-PROMPT.md`. Suíte completa e golden set rodam em lote no fim de cada bloco.
+## Como foi de fato (desde 22/09 à noite)
 
-## Checkpoint humano (manhã / almoço)
-1. `git log --oneline` e `LEDGER.md`.
-2. Subir a app e clicar no fluxo do ticket.
-3. Resolver `waiting-human` e `BLOCKED`.
+### Papéis
+- **Orquestrador:** uma sessão interativa do Claude Code (modelo Fable). Escolhe o ticket, dispara o agente, confere o commit, dá push, aprova screenshot. Não escreve código de ticket.
+- **Agente executor:** um subagente Opus 5.5 disparado pela tool `Agent` do Claude Code, nome `exec-NN`. Executa um ticket só, seguindo `docs/AGENT-PROMPT.md`.
+- **Toneli:** resolve o que só humano resolve (chaves, DNS, SSH), listado em `.scratch/desafio/MANHA.md`. Estuda depois as funções marcadas `REVISAR(human)`.
+
+### Ciclo de um ticket
+1. O orquestrador escolhe um ticket `ready-for-agent` com todos os `Blocked by` em `resolved`.
+2. O orquestrador dispara o agente com prompt curto: "Execute o ticket NN seguindo à letra docs/AGENT-PROMPT.md", mais 3 a 6 linhas de contexto. O contexto diz o que já existe, quem edita o quê em paralelo, o número da próxima migração e o teto de chamadas reais.
+3. O agente lê `WORKFLOW.md`, `CONTEXT.md`, o ticket, os ADRs citados e só o código que o ticket toca. Ticket de front lê também `docs/UI-GUIA.md`.
+4. O agente faz TDD e roda só os testes do ticket, contra o Postgres do `docker-compose.yml` (porta 5433). A suíte completa não é dele.
+5. Decisão fora dos ADRs: o agente escolhe a opção mais simples que atende o aceite, registra em `docs/DECISOES-AUTONOMAS.md` e segue. Não para.
+6. Função que o ticket marca `TODO(human)`: o agente implementa e deixa `# REVISAR(human): <o que decide e por quê>` acima dela.
+7. Ticket de front: o agente tira screenshots no Brave (dark, 1440x900) e salva em `.scratch/desafio/screens/`.
+8. O agente fecha o ticket: `**Status:** resolved`, seção `## Answer`, libera os tickets dependentes, escreve uma linha no `LEDGER.md`.
+9. O agente commita `feat(NN): <slug>` com `git commit --only <seus arquivos>`. Não dá push.
+10. O agente reporta em até 10 linhas: aceite, hash, ressalvas, tickets liberados.
+11. O orquestrador confere `git log origin/main..HEAD`, dá `git push` e encerra o agente (`TaskStop`). Em ticket de front, abre 1 ou 2 screenshots e aprova ou abre ticket de ajuste.
+12. O orquestrador dispara o próximo ticket.
+
+### Regras aprendidas na execução
+- **Stage compartilhado.** Vários agentes usam o mesmo working tree e o mesmo index. Todo commit usa `git commit --only` com os próprios arquivos. Antes, `git diff --cached --name-only` deve listar só esses arquivos. Motivo: um commit do orquestrador engoliu os arquivos do ticket 06 (`2c738a6`).
+- **`api/app/chat.py` é o gargalo.** Só um agente por vez edita o laço do Agent. Ticket que só monta prompt, adiciona endpoint ou toca só `web/` pode correr em paralelo.
+- **Migração numerada no prompt.** O orquestrador informa o número da próxima migração livre (conferir `api/migrations/versions`). Dois agentes em paralelo não criam migração.
+- **Teto de chamada real por ticket.** Gemini 2 a 4, Tavily 2 a 3, Jev cerca de 10. Testes usam resposta gravada ou `TestModel`/`FunctionModel` do Pydantic AI. O LEDGER registra quantas chamadas cada ticket fez. Estouro pequeno é aceito e registrado.
+- **Gemini sempre com `GEMINI_PAID_API_KEY`.** A chave free não serve.
+- **Screenshot no Brave, nunca no Chrome.** O Playwright MCP abre o Chrome. Os agentes usam `playwright-core` apontando para o executável do Brave, numa porta própria (a 5173 pode estar ocupada).
+- **Rate limit do plano Max:** esperar e repetir. Não é falha do ticket.
+- **Testes em lote.** Suíte completa (`cd api && uv run pytest`; `cd web && npm run build`) e golden set rodam no fim de um bloco de tickets, com um agente para corrigir regressões. O golden set do Jev já está gravado e não é regravado.
+- **Nada bloqueia a noite.** Decisão nova vai para `DECISOES-AUTONOMAS.md`. Função humana vira `REVISAR(human)`. Regra desde 22/09 22:24 (`bd7ddf6`).
+
+### Estado entre sessões
+- `.scratch/desafio/HANDOFF.md`: estado do orquestrador. Ciclo, regras aprendidas, tickets resolvidos, próximos na ordem, bloqueios. A sessão seguinte do orquestrador começa por ele.
+- `.scratch/desafio/LEDGER.md`: uma linha por execução de ticket, com início, fim, resultado e commit.
+- `.scratch/desafio/MANHA.md`: o que precisa do Toneli.
+- `.scratch/desafio/map.md`: destino, decisões e estado dos tickets.
+
+## Plano original e por que mudou
+
+- **Plano** (`research/04-workflow-autonomo-dev.md`): script em Git Bash iniciado pelo Toneli, chamando `claude -p --model opus` um ticket por invocação, com `--max-turns 80` e `--permission-mode auto`. A suíte de testes rodava fora do Claude como gate; só exit 0 fechava o ticket. Ticket que falhasse 2 vezes virava `blocked`. Decisão nova gravava `BLOCKED` no ledger e parava. Três funções (débito de crédito, gate do Roteador, gatilho de compactação) ficavam `TODO(human)` para o Toneli escrever.
+- **O que aconteceu:** o script de loop nunca foi commitado no repo. Os tickets do LEDGER rodaram pela sessão orquestradora com a tool `Agent`. Se a sonda (tickets 01 e 03) também rodou assim: **INFERIDO**, nenhum doc registra.
+- **Por que mudou:** **INFERIDO**. Nenhum doc registra o motivo. Hipóteses: a sessão orquestradora roda tickets independentes em paralelo, e corrige o rumo entre um ticket e outro (contexto no prompt, ticket de ajuste) sem reiniciar um script.
+- **O que se perdeu:** o gate externo. Hoje o agente roda os próprios testes e o orquestrador confia no relatório e no LEDGER. A compensação é a suíte completa em lote no fim do bloco.
+- **Por que `BLOCKED` e `TODO(human)` saíram:** "nada bloqueia a noite". A troca foi velocidade agora e estudo depois (`docs/MOTIVACOES.md`, seção workflow; commit `bd7ddf6`).
