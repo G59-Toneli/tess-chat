@@ -26,3 +26,9 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 07a | `loader` do AI Elements não existe no registry. Carregando usa `Spinner` + `Skeleton` do shadcn. | Escrever loader próprio. | Componentes prontos do shadcn, sem código novo. |
 | 07a | Placeholders simulam estados por `?estado=carregando\|erro`; vazio é o padrão. Componentes em `web/src/components/estados.tsx`. | Estado só quando a API existir. | Guia exige estados visíveis; os tickets seguintes reusam os componentes. |
 | 07a | Brave lançado pelo `executablePath` dentro do Playwright MCP (confirmado por `navigator.brave`). | Mudar a config do MCP. | Config do harness não é deste ticket. |
+| 08 | Reserva estima o input localmente (~3 caracteres por token sobre as partes) + `max_output_tokens` inteiro. | `UsageLimits(count_tokens_before_request=True)`. | countTokens custa um request extra por turno, limita tokens e não dinheiro, e o `FunctionModel` dos testes não implementa. |
+| 08 | Reserva não grava linha. O Ledger só recebe o acerto real, na mesma transação das Mensagens. | Linha de reserva + linha de estorno. | Aceite pede uma linha por chamada. Ressalva: duas chamadas simultâneas podem passar juntas do Cap. |
+| 08 | Cap padrão em `config.py`: Usuário US$ 2, global US$ 20. Linha em `caps` sobrescreve (`user_id` nulo = global). | Semear o Cap na migração. | Menos dados fixos no banco; muda por `.env`. |
+| 08 | Modelo sem linha na Tabela de Preço responde 500. | Debitar zero. | Crédito sem preço é número falso. O teste do 06 com `FunctionModel` passou a usar o nome do modelo real. |
+| 08 | `max_tokens` = 8192 por request no chat. | Sem teto. | Sem teto a reserva não é teto real (research/02). |
+| 08 | Ledger e Tabela de Preço sem UPDATE/DELETE para tess_app; Ledger sem FK para Conversa. | FK com CASCADE. | Saldo não pode mudar quando a Conversa é apagada. |

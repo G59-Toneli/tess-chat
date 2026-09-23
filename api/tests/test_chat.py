@@ -64,7 +64,7 @@ async def test_segunda_mensagem_ve_a_primeira(client, usar_modelo):
         vistas.append(msgs)
         yield f"resposta {len(vistas)}"
 
-    usar_modelo(FunctionModel(stream_function=stream))
+    usar_modelo(FunctionModel(stream_function=stream, model_name=MODELO))
     _, h = await usuario(client)
     cid = (await criar(client, h))["id"]
 

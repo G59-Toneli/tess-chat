@@ -1,7 +1,7 @@
 # 12 — Compactação automática do histórico
 
 **Type:** task (AFK + HITL)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 08
 **Refs:** ADR 0006.
 
