@@ -16,10 +16,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from fastapi_users.jwt import decode_jwt, generate_jwt
 from pydantic import BaseModel
-from pydantic_ai import RunContext
+from pydantic_ai import BinaryContent, RunContext, ToolReturn
 from sqlalchemy import ARRAY, Boolean, DateTime, ForeignKey, Text, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.anexos import MEDIA_PDF
 from app.audit import audit
 from app.config import settings
 from app.conversas import Sessao, Usuario
@@ -44,6 +45,11 @@ VALIDADE_STATE = 600
 # Renova um pouco antes de vencer: o token não expira no meio da chamada.
 FOLGA = timedelta(seconds=60)
 LIMITE_CHARS = 20_000
+PDF = "application/pdf"
+# PDF do Drive acima disso não baixa (ticket 38). Anexo aceita 20 MB; aqui metade, pelo custo em tokens.
+TETO_PDF = 10 * 1024 * 1024
+# O que o histórico guarda no lugar dos bytes, como `[anexo: nome]` do anexo.
+MARCADOR_PDF = "[arquivo do Drive: {nome}]"
 TIMEOUT = httpx.Timeout(30.0)
 EXPIROU = (
     "A conexão com o Google expirou e não pôde ser renovada. "
@@ -163,13 +169,14 @@ async def _token(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None) -> str:
 # ---------- Tools ----------
 
 
-async def _chamar(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, nome: str, fn) -> str:
+async def _chamar(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, nome: str, fn) -> Any:
     """Abre o cliente HTTP com o token do Usuário e converte qualquer falha em texto para o modelo."""
     try:
         token = await _token(uid, t)
         headers = {"Authorization": f"Bearer {token}"}
         async with httpx.AsyncClient(transport=t, timeout=TIMEOUT, headers=headers) as http:
-            return (await fn(http))[:LIMITE_CHARS]
+            r = await fn(http)
+            return r[:LIMITE_CHARS] if isinstance(r, str) else r
     except ConectorExpirado as e:
         return str(e)
     except httpx.HTTPStatusError as e:
@@ -260,23 +267,46 @@ def _legivel(mime: str) -> bool:
     return mime in EXPORTAVEIS or mime.startswith("text/") or mime == "application/json"
 
 
-# REVISAR(human): lê só o primeiro arquivo legível (Docs, Sheets, Slides, texto) na ordem do Drive.
-# PDF e binários ficam só na lista de "outros achados": ler PDF do Drive fica fora do ticket.
-async def drive_search_read(uid: uuid.UUID, query: str, t: httpx.AsyncBaseTransport | None = None) -> str:
-    """Busca no Drive por nome ou conteúdo e devolve o texto do arquivo mais relevante."""
+async def _ler_pdf(http: httpx.AsyncClient, alvo: dict[str, Any], outros: str) -> str | ToolReturn:
+    """PDF do Drive como arquivo para o modelo. Acima do teto, só o texto explicando."""
+    cabeca = f"Arquivo: {alvo['name']} (id {alvo['id']})"
+    rodape = f"\n\nOutros achados:\n{outros}" if outros else ""
+    if int(alvo.get("size") or 0) > TETO_PDF:
+        return f"{cabeca}: PDF acima de 10 MB, não foi lido. Peça ao usuário para anexar um trecho menor.{rodape}"
+    c = await http.get(f"{DRIVE}/{alvo['id']}", params={"alt": "media"})
+    c.raise_for_status()
+    return ToolReturn(
+        return_value=f"{cabeca}\n{MARCADOR_PDF.format(nome=alvo['name'])}{rodape}",
+        content=[BinaryContent(c.content, media_type=PDF, vendor_metadata=MEDIA_PDF)],
+        metadata={"mime": PDF, "bytes": len(c.content)},
+    )
 
-    async def buscar_e_ler(http: httpx.AsyncClient) -> str:
+
+# REVISAR(human): lê o primeiro arquivo legível (Docs, Sheets, Slides, texto) na ordem do Drive.
+# Sem nenhum, baixa o primeiro PDF e devolve como arquivo, pelo mesmo caminho do PDF anexado (ADR 0015):
+# guia e boleto costumam ser escaneados, e texto extraído no servidor viria vazio. PDF acima de
+# TETO_PDF não baixa: volta como texto. Os bytes vão só neste turno; o histórico guarda o marcador.
+async def drive_search_read(
+    uid: uuid.UUID, query: str, t: httpx.AsyncBaseTransport | None = None
+) -> str | ToolReturn:
+    """Busca no Drive por nome ou conteúdo e devolve o texto (ou o PDF) do arquivo mais relevante."""
+
+    async def buscar_e_ler(http: httpx.AsyncClient) -> str | ToolReturn:
         termo = query.replace("\\", "\\\\").replace("'", "\\'")
         q = f"(name contains '{termo}' or fullText contains '{termo}') and trashed = false"
-        r = await http.get(DRIVE, params={"q": q, "pageSize": 5, "fields": "files(id,name,mimeType,modifiedTime)"})
+        r = await http.get(DRIVE, params={"q": q, "pageSize": 5, "fields": "files(id,name,mimeType,modifiedTime,size)"})
         r.raise_for_status()
         arquivos = r.json().get("files", [])
         if not arquivos:
             return "Nenhum arquivo encontrado no Drive."
         alvo = next((a for a in arquivos if _legivel(a["mimeType"])), None)
+        if alvo is None:
+            alvo = next((a for a in arquivos if a["mimeType"] == PDF), None)
         outros = "\n".join(f"- {a['name']} ({a['mimeType']}, id {a['id']})" for a in arquivos if a is not alvo)
         if alvo is None:
             return f"Nenhum arquivo em formato de texto. Achados:\n{outros}"
+        if alvo["mimeType"] == PDF:
+            return await _ler_pdf(http, alvo, outros)
         if alvo["mimeType"] in EXPORTAVEIS:
             c = await http.get(f"{DRIVE}/{alvo['id']}/export", params={"mimeType": EXPORTAVEIS[alvo["mimeType"]]})
         else:
@@ -373,7 +403,7 @@ def ligar(nome: str, uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, cid: uu
         return ler
     fn = gmail_search if nome == "gmail_search" else drive_search_read
 
-    async def buscar(query: str) -> str:
+    async def buscar(query: str) -> str | ToolReturn:
         return await fn(uid, query, t)
 
     return buscar

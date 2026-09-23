@@ -7,10 +7,11 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
-from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
+from pydantic_ai.messages import BinaryContent, ModelMessage, ModelRequest, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
 from sqlalchemy import text
 
+from app.anexos import MEDIA_PDF
 from app.chat import MODELO
 from app.conectores import CALLBACK, transporte_google
 from app.config import settings
@@ -24,6 +25,12 @@ from tests.test_conversas import criar, usuario
 GOOGLE_TOOLS = {"gmail_search", "gmail_read", "drive_search_read"}
 LEITURA = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly"
 COM_ENVIO = f"{LEITURA} https://www.googleapis.com/auth/gmail.send"
+ARQUIVOS = [
+    {"id": "d1", "name": "Plano Q4", "mimeType": "application/vnd.google-apps.document"},
+    {"id": "d2", "name": "foto.png", "mimeType": "image/png"},
+]
+PDF = b"%PDF-1.4 guia autorizada 123"
+GUIA = {"id": "p1", "name": "guia.pdf", "mimeType": "application/pdf", "size": str(len(PDF))}
 # Resposta real do Gmail para conta Google sem caixa Gmail (criada com e-mail de outro provedor).
 SEM_GMAIL = {"error": {"code": 400, "message": "Mail service not enabled", "status": "FAILED_PRECONDITION"}}
 
@@ -42,7 +49,9 @@ class Google(httpx.MockTransport):
         envio_status: int = 200,
         envio_erro: str = "Request had insufficient authentication scopes.",
         gmail_ativo: bool = True,
+        arquivos: list[dict] | None = None,
     ):
+        self.arquivos = arquivos if arquivos is not None else ARQUIVOS
         self.vistas: list[httpx.Request] = []
         self.refresh_ok = refresh_ok
         self.escopos = escopos
@@ -105,11 +114,9 @@ class Google(httpx.MockTransport):
                 return httpx.Response(self.envio_status, json=erro)
             return httpx.Response(200, json={"id": "enviado-1", "threadId": "t1", "labelIds": ["SENT"]})
         if u.path == "/drive/v3/files":
-            arquivos = [
-                {"id": "d1", "name": "Plano Q4", "mimeType": "application/vnd.google-apps.document"},
-                {"id": "d2", "name": "foto.png", "mimeType": "image/png"},
-            ]
-            return httpx.Response(200, json={"files": arquivos})
+            return httpx.Response(200, json={"files": self.arquivos})
+        if u.path == "/drive/v3/files/p1" and u.params.get("alt") == "media":
+            return httpx.Response(200, content=PDF, headers={"content-type": "application/pdf"})
         if u.path == "/drive/v3/files/d1/export":
             return httpx.Response(200, text="Plano Q4: lançar o conector em outubro.")
         return httpx.Response(404, json={"error": "rota não gravada"})
@@ -374,6 +381,118 @@ async def test_drive_search_read_le_o_arquivo(client, google, usar_modelo):
     assert "foto.png" in resposta  # os outros achados vão como lista
     export = next(r for r in google.vistas if r.url.path == "/drive/v3/files/d1/export")
     assert export.url.params["mimeType"] == "text/plain"
+
+
+def arquivos_vistos(msgs: list[ModelMessage]) -> list[BinaryContent]:
+    """Arquivos que chegaram ao modelo em qualquer parte do request."""
+    return [
+        c for m in msgs if isinstance(m, ModelRequest) for p in m.parts if isinstance(p, UserPromptPart)
+        and not isinstance(p.content, str) for c in p.content if isinstance(c, BinaryContent)
+    ]
+
+
+def modelo_que_le_pdf(pedidos: list[list[ModelMessage]]):
+    """Chama drive_search_read no 1º turno; guarda o que cada request recebeu."""
+
+    async def stream(msgs: list[ModelMessage], info: AgentInfo):
+        pedidos.append(msgs)
+        if len(pedidos) == 1:
+            yield {0: DeltaToolCall(name="drive_search_read", json_args='{"query": "guia"}', tool_call_id="c1")}
+            return
+        feitos = retornos(msgs[-1:])
+        yield f"Resposta: {feitos[-1].content}" if feitos else "Sem tool."
+
+    return FunctionModel(stream_function=stream, model_name=MODELO)
+
+
+async def test_drive_search_read_entrega_pdf_como_arquivo(client, usar_modelo):
+    g = Google(arquivos=[GUIA, ARQUIVOS[1]])
+    app.dependency_overrides[transporte_google] = lambda: g
+    app.dependency_overrides[transporte] = lambda: g
+    pedidos: list[list[ModelMessage]] = []
+    usar_modelo(modelo_que_le_pdf(pedidos))
+    uid, h = await usuario(client)
+    try:
+        await conectar(client, h)
+        cid = (await criar(client, h))["id"]
+        await client.post(f"/api/chat/{cid}", json=corpo("lê a guia autorizada"), headers=h)
+    finally:
+        app.dependency_overrides.pop(transporte_google, None)
+        app.dependency_overrides.pop(transporte, None)
+
+    [pdf] = arquivos_vistos(pedidos[1])
+    assert pdf.media_type == "application/pdf" and pdf.data == PDF
+    assert pdf.vendor_metadata == MEDIA_PDF
+    resposta = await ultima_resposta(client, h, cid)
+    assert "guia.pdf" in resposta and "foto.png" in resposta
+    ev = [e for e in await eventos("tool_call", user_id=uid) if e.payload["tool"] == "drive_search_read"][-1]
+    assert ev.payload["mime"] == "application/pdf" and ev.payload["bytes"] == len(PDF)
+
+
+async def test_drive_search_read_nao_baixa_pdf_acima_do_teto(client, usar_modelo):
+    grande = {**GUIA, "size": str(11 * 1024 * 1024)}
+    g = Google(arquivos=[grande])
+    app.dependency_overrides[transporte_google] = lambda: g
+    app.dependency_overrides[transporte] = lambda: g
+    pedidos: list[list[ModelMessage]] = []
+    usar_modelo(modelo_que_le_pdf(pedidos))
+    _, h = await usuario(client)
+    try:
+        await conectar(client, h)
+        cid = (await criar(client, h))["id"]
+        await client.post(f"/api/chat/{cid}", json=corpo("lê a guia autorizada"), headers=h)
+    finally:
+        app.dependency_overrides.pop(transporte_google, None)
+        app.dependency_overrides.pop(transporte, None)
+
+    assert not [r for r in g.vistas if r.url.params.get("alt") == "media"]
+    assert not arquivos_vistos(pedidos[1])
+    assert "10 MB" in await ultima_resposta(client, h, cid)
+
+
+async def test_drive_search_read_prefere_texto_ao_pdf(client, usar_modelo):
+    g = Google(arquivos=[GUIA, ARQUIVOS[0]])
+    app.dependency_overrides[transporte_google] = lambda: g
+    app.dependency_overrides[transporte] = lambda: g
+    pedidos: list[list[ModelMessage]] = []
+    usar_modelo(modelo_que_le_pdf(pedidos))
+    _, h = await usuario(client)
+    try:
+        await conectar(client, h)
+        cid = (await criar(client, h))["id"]
+        await client.post(f"/api/chat/{cid}", json=corpo("lê o plano"), headers=h)
+    finally:
+        app.dependency_overrides.pop(transporte_google, None)
+        app.dependency_overrides.pop(transporte, None)
+
+    assert not [r for r in g.vistas if r.url.params.get("alt") == "media"]
+    assert not arquivos_vistos(pedidos[1])
+    resposta = await ultima_resposta(client, h, cid)
+    assert "lançar o conector em outubro" in resposta and "guia.pdf" in resposta
+
+
+async def test_pdf_do_drive_nao_volta_no_turno_seguinte(client, usar_modelo):
+    g = Google(arquivos=[GUIA])
+    app.dependency_overrides[transporte_google] = lambda: g
+    app.dependency_overrides[transporte] = lambda: g
+    pedidos: list[list[ModelMessage]] = []
+    usar_modelo(modelo_que_le_pdf(pedidos))
+    _, h = await usuario(client)
+    try:
+        await conectar(client, h)
+        cid = (await criar(client, h))["id"]
+        await client.post(f"/api/chat/{cid}", json=corpo("lê a guia autorizada"), headers=h)
+        await client.post(f"/api/chat/{cid}", json=corpo("e o valor?"), headers=h)
+    finally:
+        app.dependency_overrides.pop(transporte_google, None)
+        app.dependency_overrides.pop(transporte, None)
+
+    assert arquivos_vistos(pedidos[1])
+    assert not arquivos_vistos(pedidos[2])
+    assert "[arquivo do Drive: guia.pdf]" in str(pedidos[2])
+    msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+    assert "data:application/pdf" not in json.dumps(msgs)
+    assert [m["role"] for m in msgs].count("user") == 2  # o PDF não vira Mensagem de usuário
 
 
 # ---------- Token expirado ----------

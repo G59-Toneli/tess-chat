@@ -1,7 +1,7 @@
 # 38 — `drive_search_read` lê PDF do Drive
 
 **Type:** task (AFK, só api/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** nenhum
 **Refs:** ADR 0010 (Conector Google), tickets 09/09b (anexos, `app/anexos.py`), ticket 18 (`REVISAR(human)` em `drive_search_read`). Feedback do Toneli em 23/09: pediu "a guia autorizada" do Drive e o modelo respondeu que não lê PDF.
 
@@ -23,3 +23,10 @@
 - [ ] Teste: turno seguinte / histórico recarregado não carrega os bytes do PDF.
 - [ ] ADR 0015 escrito.
 - [ ] Uma chamada real ao Gemini (teto: 2) com um PDF pequeno, confirmando que o modelo lê o conteúdo. Registrar no LEDGER.
+
+## Answer
+`drive_search_read` baixa o primeiro PDF quando não há arquivo de texto e devolve `ToolReturn` com `BinaryContent` `application/pdf` e `MEDIA_PDF` (medium). Acima de 10 MB (`size` da busca) não baixa e explica o limite. ADR 0015 escrito.
+Caminho `ToolReturn.content`, não o `function_response.parts` nativo: o Pydantic AI 2.47 descarta `media_resolution` no nativo.
+`chat._sem_arquivo_de_tool` tira a parte com o PDF antes de gravar; o histórico fica com `[arquivo do Drive: nome]` no retorno da tool (DECISOES-AUTONOMAS). `tool_call` ganhou `mime` e `bytes`.
+Gemini real: 1 run (2 requests) em script local, leu o texto do PDF. Ressalva: só o primeiro PDF é lido; seguimento sobre o PDF não reenvia o arquivo.
+`REVISAR(human)`: `drive_search_read` (comentário atualizado) e `chat._sem_arquivo_de_tool` (novo).
