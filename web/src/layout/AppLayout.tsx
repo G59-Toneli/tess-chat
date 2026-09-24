@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ComponentProps, type CSSProperties, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useState, type ComponentProps, type CSSProperties, type FormEvent } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from 'react-router'
 import { toast } from 'sonner'
 import {
@@ -120,6 +120,8 @@ function LayoutAutenticado() {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [conversas, setConversas] = useState<Conversa[] | null>(null)
   const [erroConversas, setErroConversas] = useState(false)
+  // alternarTema só mexe no classList; sem re-render o rótulo do menu fica no tema antigo.
+  const [, rerender] = useReducer((n: number) => n + 1, 0)
 
   const recarregarConversas = useCallback(async () => {
     try {
@@ -177,7 +179,7 @@ function LayoutAutenticado() {
                 <SlidersHorizontalIcon /> Configuração
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={alternarTema}>
+              <DropdownMenuItem onSelect={() => { alternarTema(); rerender() }}>
                 {temaEscuro() ? <SunIcon /> : <MoonIcon />} {temaEscuro() ? 'Tema claro' : 'Tema escuro'}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={sair}>
