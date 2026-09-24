@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { ErroApi } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import {
   alternarServidor,
   CATALOGO_MCP,
@@ -178,16 +179,16 @@ export function Mcp() {
 }
 
 // Logos em SVG inline, sem dependência nova. Formas simplificadas, não os arquivos oficiais.
-function Logo({ nome }: { nome: string }) {
+function Logo({ nome, className = 'size-10' }: { nome: string; className?: string }) {
   if (nome === 'Notion')
     return (
-      <svg viewBox="0 0 40 40" className="size-10 shrink-0" aria-hidden>
+      <svg viewBox="0 0 40 40" className={cn('shrink-0', className)} aria-hidden>
         <rect width="40" height="40" rx="8" fill="#fff" />
         <path d="M12 11h4l9 13V11h3v18h-4l-9-13v13h-3z" fill="#191919" />
       </svg>
     )
   return (
-    <svg viewBox="0 0 40 40" className="size-10 shrink-0" aria-hidden>
+    <svg viewBox="0 0 40 40" className={cn('shrink-0', className)} aria-hidden>
       <rect width="40" height="40" rx="8" fill="#635BFF" />
       <path
         d="M19 16.4c0-1 .8-1.4 2.2-1.4 2 0 4.4.6 6.4 1.7v-6A17 17 0 0 0 21.2 9.5c-5.2 0-8.7 2.7-8.7 7.3 0 7.1 9.8 6 9.8 9 0 1.2-1 1.6-2.4 1.6-2.1 0-4.8-.9-6.9-2v6.1c2.4 1 4.7 1.5 6.9 1.5 5.4 0 9-2.6 9-7.3 0-7.7-9.9-6.3-9.9-9.2z"
@@ -393,11 +394,12 @@ function CardServidor({
 }) {
   const id = `mcp-ativo-${s.id}`
   const pendente = s.estado !== 'ok'
+  const catalogo = CATALOGO_MCP.find((a) => a.url === s.url)
   return (
     <Card className={s.ativo ? undefined : 'opacity-70'}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-          <ServerIcon className="size-4 text-muted-foreground" /> {s.nome}
+          {catalogo ? <Logo nome={catalogo.nome} className="size-5" /> : <ServerIcon className="size-4 text-muted-foreground" />} {s.nome}
           <Badge variant="secondary">{s.tools.length} tools</Badge>
           {s.oauth ? (
             <Badge variant="outline" className="font-normal">
