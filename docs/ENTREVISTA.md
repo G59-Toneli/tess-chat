@@ -195,6 +195,57 @@ Provou que funciona, não que compensa. Tem o mesmo custo de rede, limita tokens
 **Quanto a estimativa erra?**
 Não medido. A razão ~3 caracteres por token é INFERIDA; imagem soma `TOKENS_IMAGEM` fixo. O erro só afeta turno perto do Cap: pode recusar um que caberia ou aceitar um que passa um pouco. O acerto grava o valor real. Fonte: `_estimar_input` em `api/app/chat.py`.
 
+## ADR 0022 — Servidor MCP por OAuth (descoberta, DCR, PKCE)
+
+**Como o app sabe se o servidor tem OAuth, se o usuário só cola a URL?**
+Manda um `initialize` sem token. Se vier 2xx, o servidor é aberto e o app cadastra direto. Se vier 401 com `WWW-Authenticate`, o app lê o metadata do recurso (RFC 9728) e depois o do authorization server (RFC 8414). Com `registration_endpoint`, abre o consentimento; sem ele, pede um token. O `iniciar` devolve `modo` = `oauth`, `sem_auth` ou `token`. Fonte: `iniciar` e `_descobrir` em `mcp_oauth.py`.
+
+**O que é DCR e por que só DCR?**
+Dynamic Client Registration (RFC 7591): o app se registra sozinho no provedor e recebe um `client_id` na hora, sem cadastro manual. Notion, Stripe, Linear e Atlassian aceitam. Sem DCR (GitHub, Slack, HubSpot), eu teria que registrar um app em cada provedor, guardar o segredo no `.env` e manter o redirect por ambiente. Para esses, o token no header continua funcionando. Fonte: ADR 0022, item 3.
+
+**Por que não usou o `OAuthClientProvider` do SDK MCP?**
+Ele roda o fluxo inteiro numa coroutine que fica esperando o callback. Num web app, o authorize e o callback são dois requests HTTP. Eu teria que guardar um `{state: Future}` em memória, que some num restart. Fiz os dois requests à mão, como no conector Google (ADR 0017), e usei do SDK só os modelos e os helpers de URL. Fonte: ADR 0022, alternativas.
+
+**Onde fica o estado entre o authorize e o callback?**
+Num cookie httpOnly, cifrado com Fernet, com `path` só no callback: `code_verifier`, nome, URL e o cliente do DCR. O state JWT leva o usuário e um `nonce` que também está no cookie; o callback só aceita o par que bate. O banco só recebe a linha depois da troca do code. Antes era gravada no `iniciar`, e o consentimento abandonado deixava um card "aguardando" (ticket 57). Fonte: `_concluir` em `mcp_oauth.py`.
+
+**E o SSRF, se o metadata vem de um servidor remoto?**
+Toda URL que vem de metadata (recurso, authorization server, registration, authorize, token) passa por `validar_url` antes do request. Sem isso, um servidor público apontaria o `token_endpoint` para a rede interna. Fonte: ADR 0022, item 5.
+
+**Como o token é renovado?**
+Antes do turno, `renovar` troca o token que vence em menos de 60 s, mandando `resource` (RFC 8707). Refresh que falha grava `expirado`, e o servidor sai do turno (fail-closed), como na Tess. O Bearer novo é gravado na coluna `headers` que já existia, então o cliente MCP do turno não mudou. Fonte: `renovar` em `mcp_oauth.py`.
+
+**Lacunas:** cada clique registra um app novo no provedor (DCR sem reaproveitamento). Remover não revoga o token no provedor. DNS rebinding não coberto. Fonte: `docs/LACUNAS.md`.
+
+Pergunta extra provável: **testou de verdade?** Sim, em produção: Notion e Stripe conectados por OAuth, e um turno de chat chamou 9 tools do Notion. O Linear chegou à tela de consentimento, o DeepWiki conectou sem auth e o GitHub caiu no modo token.
+
+## ADR 0024 — Tool por API
+
+**O que é, em uma frase?**
+O usuário transforma uma API HTTP numa Tool preenchendo um formulário: URL com `{parametros}`, descrição de cada um, autenticação e um exemplo. O app testa com o exemplo e só salva se a API responder 2xx. Fonte: `api_tools.py`, `web/src/pages/ApiTools.tsx`.
+
+**Por que request HTTP declarativo e não deixar o usuário escrever código?**
+Código do usuário exige sandbox: processo isolado, limite de CPU e memória, rede filtrada. É uma superfície de ataque inteira nova. Um request declarativo cobre o caso comum, que é uma API REST com parâmetros, e reaproveita a barreira de SSRF que já existe. Fonte: ADR 0024, "Por quê".
+
+**Por que testar antes de salvar?**
+É o mesmo invariante do cadastro de MCP. Uma tool salva e quebrada só aparece no meio de um turno, e o modelo gasta crédito para descobrir. Testando no cadastro, o erro aparece na hora, para quem pode corrigir. Mudar qualquer campo depois do teste desliga o Salvar.
+
+**Por que não tem edição?**
+Editar exigiria testar de novo, trocar o schema de uma Tool que pode estar em Conversas abertas e decidir o que fazer com o segredo guardado. Remover e cadastrar de novo cobre isso com o que já existe.
+
+**Como impede que um parâmetro mude o destino do request?**
+Os valores são URL-encoded (`quote(safe="")`), então `/` ou `?` num valor não muda a rota. Placeholder no host é recusado no cadastro. `validar_url` roda na URL final e em cada redirect, até 3 saltos. Fonte: ADR 0024, item 5 e decisões autônomas.
+
+**Onde fica o token da API?**
+Cifrado com Fernet (`CONNECTORS_KEY`). Não volta na listagem nem aparece no Evento de auditoria. No E2E de 23/09, conferi os 18 eventos da conta de teste no banco: nenhum tinha o token.
+
+**Por que não importar OpenAPI?**
+Cobre API grande, mas usuário não técnico não tem o spec à mão, e a maioria das APIs públicas simples não publica um.
+
+**Lacunas:** segredo colado na URL (`?key=...`) não é tratado como segredo. Header de auth por nome segue num redirect para outro host. DNS rebinding não coberto. Fonte: ADR 0024, consequências.
+
+Pergunta extra provável: **a Tess tem isso?** A documentação dela lista "Custom API" como *Coming soon* (docs.tess.im/en/connectors.md). Validado em produção com ViaCEP, Open-Meteo, CNPJ e feriados (BrasilAPI) sem auth, e com GitHub (Bearer, GET) e Tavily (Bearer, POST com corpo).
+
 ## Workflow com IA
 
 **Como o projeto foi construído?**
