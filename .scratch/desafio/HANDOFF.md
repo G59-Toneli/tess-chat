@@ -8,7 +8,7 @@ Atualizado em 2026-09-23 ~13:40. Sessão encerrada a pedido do Toneli; retomar a
 3. Agente reporta → conferir `git log origin/main..HEAD` → `git push` → `TaskStop` no agente → disparar o próximo.
 4. Ticket de front: abrir 1 ou 2 screenshots de `.scratch/desafio/screens/` e aprovar ou abrir ticket de ajuste. Toneli não revisa tela.
 5. Notificações repetidas de agente (idle_notification) não trazem nada novo: ignorar.
-6. Itens que precisam do Toneli vão em `MANHA.md`.
+6. Itens que precisam do Toneli: reportar direto a ele no chat.
 
 ## Regras aprendidas na noite
 - **Stage é compartilhado.** Vários agentes no mesmo working tree. Commit sempre com `--only <arquivos>`. Um commit meu engoliu os arquivos do ticket 06 (ficaram em 2c738a6).
@@ -40,12 +40,12 @@ Atualizado em 2026-09-23 ~13:40. Sessão encerrada a pedido do Toneli; retomar a
 - **Rodando:** nenhum. Todos os agentes encerrados.
 - **Responsivo (23/09 noite):** 62 a 67 resolvidos e em produção. Corte em md, script `web/scripts/checar-responsivo.mjs` é o aceite de todo ticket de front. Checagem contra produção pendente: a senha da demo em prod não é a do `.env` do VPS.
 - **Suíte final do bloco (23/09 ~03:45, Postgres 5433 + mcp-demo 8765):** `uv run pytest` 141 passed / 0 failed; `npm run build` e `tsc --noEmit` limpos.
-- **Bloqueados em Toneli:** 02 e 16 (SSH do VPS, registro A `chat.toneli.dev.br`). Parte HITL do 18 (conectar conta Google e validar) e do 19 (gravar vídeo) no `MANHA.md`. Decisão sobre fallback OpenAI (ADR 0012 sem código) no `MANHA.md`.
+- **Bloqueios do Toneli (resolvidos em 24/09):** SSH do VPS e registro A (02 e 16), validação do Conector Google (18), vídeo (19). Fallback OpenAI decidido no ADR 0018.
 - **Próximo ticket de código:** 16 (deploy), assim que houver SSH. No deploy: `ENV=prod`, `PUBLIC_BASE_URL=https://chat.toneli.dev.br`, `CONNECTORS_KEY` própria, trocar `GITHUB_PAT` e recadastrar o GitHub em `/mcp`.
 - Próxima migração livre: `0019`.
 - **Acesso ao VPS:** chave em `<omitido>` (origem `<omitido>`, leia `LEIA.txt` antes de qualquer comando). Chave do CI em `<omitido>`. Stack em `/opt/tess-chat`, app em `127.0.0.1:8010`, nginx do host com certbot. VPS é produção compartilhada: nunca tocar em nada fora de `/opt/tess-chat` e do site nginx `tess-chat`.
 - **Candidatos a próximo passo (não abertos como ticket):** propostas restantes em `docs/UX-AUDITORIA.md`; tela `/mcp` ainda mostra a descrição técnica das tools; tempo do indicador de trabalhando zera a cada espera (37); tools de leitura do Gmail ainda devolvem erro cru ao modelo (29); teste de timeout MCP de 15 s ausente (30).
-- 25 (responder e-mail com confirmação, ADR 0013) foi pedido pelo Toneli às ~07:00 e fechou. HITL dele (escopo `gmail.send` no GCP, reconectar, validar) no `MANHA.md`.
+- 25 (responder e-mail com confirmação, ADR 0013) foi pedido pelo Toneli às ~07:00 e fechou. HITL dele (escopo `gmail.send` no GCP, reconectar, validar) feito.
 - Tickets criados nesta sessão: 20 (estrutura + motivações), 21 (suíte em lote), 22 (WORKFLOW real), 23 (resiliência MCP + SSRF), 24 (docs atualizados). Todos resolvidos.
 
 ## Lacunas conhecidas
