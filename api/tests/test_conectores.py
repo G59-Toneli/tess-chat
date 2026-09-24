@@ -341,15 +341,22 @@ async def test_tools_do_google_so_aparecem_com_conector(client, google):
     nomes = lambda r: {t["nome"] for t in r.json()}  # noqa: E731
 
     antes = await client.get(f"/api/conversations/{cid}/tools", headers=h)
+    catalogo_antes = await client.get("/api/tools", headers=h)
     await conectar(client, h)
     depois = await client.get(f"/api/conversations/{cid}/tools", headers=h)
+    catalogo_depois = await client.get("/api/tools", headers=h)
     await client.delete("/api/connectors/google", headers=h)
     revogado = await client.get(f"/api/conversations/{cid}/tools", headers=h)
+    catalogo_revogado = await client.get("/api/tools", headers=h)
 
     assert not GOOGLE_TOOLS & nomes(antes)
     assert GOOGLE_TOOLS <= nomes(depois)
     assert {t["origem"] for t in depois.json() if t["nome"] in GOOGLE_TOOLS} == {"google"}
     assert not GOOGLE_TOOLS & nomes(revogado)
+    # A tela /tools segue a mesma regra: sem Conector, nada do Google no catálogo.
+    assert not GOOGLE_TOOLS & nomes(catalogo_antes)
+    assert GOOGLE_TOOLS <= nomes(catalogo_depois)
+    assert not GOOGLE_TOOLS & nomes(catalogo_revogado)
 
 
 async def test_sem_conector_modelo_nao_ve_tools_do_google(client, google, usar_modelo):

@@ -482,15 +482,23 @@ Admin = Annotated[User, Depends(current_superuser)]
 
 @router.get("/api/tools", response_model=list[ToolOut])
 async def catalogo(session: Sessao, user: Usuario) -> list[ToolOut]:
-    """Todas as Tools do registro, menos as MCP e as de API de outros Usuários."""
+    """Todas as Tools do registro, menos as MCP e as de API de outros Usuários e as do Google sem Conector."""
     from app.api_tools import ApiTool  # api_tools importa este módulo
 
     meus = select(mcp.McpServer.id).where(mcp.McpServer.user_id == user.id)
     minhas = select(ApiTool.id).where(ApiTool.user_id == user.id)
+    # Mesma regra de estado_da_conversa: o catálogo não mostra Tool que a Conversa não teria.
+    tem_conector = exists().where(
+        conectores.Connector.user_id == user.id,
+        conectores.Connector.provedor == conectores.PROVEDOR,
+        or_(Tool.nome != "gmail_send", conectores.Connector.escopos.any(conectores.ESCOPO_ENVIO)),
+        or_(Tool.nome.not_in(conectores.TOOLS_GMAIL), conectores.Connector.gmail_disponivel),
+    )
     q = (
         select(Tool)
         .where(or_(Tool.mcp_server_id.is_(None), Tool.mcp_server_id.in_(meus)))
         .where(or_(Tool.api_tool_id.is_(None), Tool.api_tool_id.in_(minhas)))
+        .where(or_(Tool.origem != conectores.PROVEDOR, tem_conector))
         .order_by(Tool.nome)
     )
     tools = (await session.scalars(q)).all()

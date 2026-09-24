@@ -13,6 +13,7 @@ from app.chat import MODELO
 from app.tools import schema_para_modelo, web_fetch
 from tests.test_auth import eventos
 from tests.test_chat import corpo
+from tests.test_conectores import conectar
 from tests.test_conversas import criar, usuario
 
 FIX = Path(__file__).parent / "fixtures"
@@ -94,9 +95,10 @@ async def test_catalogo_lista_as_nativas(client):
     assert (await client.get("/api/tools")).status_code == 401
 
 
-async def test_catalogo_devolve_descricao_para_o_usuario(client):
+async def test_catalogo_devolve_descricao_para_o_usuario(client, google):
     """Tela mostra descricao_usuario, sem instrução ao modelo. O modelo segue com descricao."""
     _, h = await usuario(client)
+    await conectar(client, h)
     por_nome = {t["nome"]: t for t in (await client.get("/api/tools", headers=h)).json()}
 
     envio = por_nome["gmail_send"]
@@ -109,9 +111,10 @@ async def test_catalogo_devolve_descricao_para_o_usuario(client):
     assert na_conversa["web_search"]["descricao_usuario"] == por_nome["web_search"]["descricao_usuario"]
 
 
-async def test_catalogo_descreve_pdf_e_recentes_do_drive(client):
+async def test_catalogo_descreve_pdf_e_recentes_do_drive(client, google):
     """A tela vê o que drive_search_read faz desde os tickets 38 e 39 (ticket 42)."""
     _, h = await usuario(client)
+    await conectar(client, h)
     por_nome = {t["nome"]: t for t in (await client.get("/api/tools", headers=h)).json()}
 
     drive = por_nome["drive_search_read"]["descricao_usuario"]
