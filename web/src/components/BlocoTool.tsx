@@ -44,7 +44,9 @@ export function partesDoNome(nome: string): { servidor?: string; tool: string } 
   const m = PREFIXO_MCP.exec(nome)
   if (!m) return { tool: nome }
   const servidor = m[1].replace(/_/g, ' ')
-  return { servidor: servidor.charAt(0).toUpperCase() + servidor.slice(1), tool: m[3] }
+  // O badge já mostra o servidor: stripe_api_read vira api_read, o que distingue as chamadas em 390.
+  const tool = m[3].startsWith(`${m[1]}_`) ? m[3].slice(m[1].length + 1) : m[3]
+  return { servidor: servidor.charAt(0).toUpperCase() + servidor.slice(1), tool }
 }
 
 function segundos(ms: number) {
@@ -83,7 +85,7 @@ export function BlocoTool({
   return (
     <div className="space-y-2">
       <Tool className="mb-0">
-        {/* Header próprio: o nome encolhe com reticências; servidor, latência, estado e seta nunca se sobrepõem. */}
+        {/* Header próprio: o nome quebra em até 2 linhas; servidor, latência, estado e seta nunca se sobrepõem. */}
         <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 p-3">
           <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
           {servidor && (
@@ -91,7 +93,7 @@ export function BlocoTool({
               {servidor}
             </Badge>
           )}
-          <span className="min-w-0 truncate text-left text-sm font-medium" title={nome}>
+          <span className="line-clamp-2 min-w-0 text-left text-sm font-medium wrap-anywhere" title={nome}>
             {tool}
           </span>
           <span className="ml-auto flex shrink-0 items-center gap-2">

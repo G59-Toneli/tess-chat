@@ -1,7 +1,7 @@
 # 67 — Acabamento mobile: título no header, nome da tool, data, gutter
 
 **Type:** task (web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 66
 **Refs:** `docs/UI-GUIA.md`, Answer dos tickets 63 e 66, `web/scripts/checar-responsivo.mjs`.
 
@@ -18,3 +18,10 @@
 - `checar-responsivo.mjs` em todas as rotas, 390/768/1440: 0 violações.
 - Screenshots 390 em `.scratch/desafio/screens/67-*`: header em `/c/<id>` e em `/config`, conversa com 2+ tool calls do Stripe, `/compartilhados`, `/perfil`. Olhar cada um: nada cortado, nada sobreposto.
 - Gemini: 0. Não alterar a Configuração da conta demo.
+
+## Answer
+- Header abaixo de `md` mostra o título da Conversa em `/c/:id` ou o nome da tela, truncado (`TituloHeader` em `AppLayout.tsx`). Desktop sem mudança.
+- Bloco de tool: tira o slug do servidor do nome quando o badge já mostra ("Stripe" + `api_search`, `api_details`, `api_write`) e quebra em até 2 linhas. Vale também no desktop (DECISOES-AUTONOMAS). `ai-elements/tool.tsx` não mudou: o header usado é o do `BlocoTool.tsx`.
+- Compartilhados: data numa linha própria, inteira em 390. Perfil com `p-4 md:p-8`.
+- `tsc -b` e `vite build` limpos. `checar-responsivo.mjs --abrir-sidebar` nas 14 rotas + `/c/2dc1e074…` (7 tools Stripe) x 390/768/1440: 0 violações (vite preview 4187 -> API 8014, código atual, Postgres 5433). Screenshots `.scratch/desafio/screens/67-*`, os 390 olhados: nada cortado nem sobreposto.
+- Gemini 0. Conta demo sem mudança. Sem REVISAR(human).

@@ -83,9 +83,9 @@ export function Compartilhados() {
                 <Link to={`/c/${s.conversation_id}`} className="block truncate font-medium hover:underline">
                   {s.title}
                 </Link>
-                <p className="truncate text-xs text-muted-foreground">
-                  Criado em {fmtData.format(new Date(s.created_at))} · {urlAbsoluta(s)}
-                </p>
+                {/* Data numa linha própria: no mobile a URL trunca sem levar a data junto. */}
+                <p className="text-xs text-muted-foreground">Criado em {fmtData.format(new Date(s.created_at))}</p>
+                <p className="truncate text-xs text-muted-foreground">{urlAbsoluta(s)}</p>
               </div>
               <div className="flex shrink-0 gap-1">
                 <Acao rotulo="Abrir link" onClick={() => window.open(s.url, '_blank', 'noopener')}>

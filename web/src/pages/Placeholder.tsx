@@ -10,7 +10,7 @@ export function Placeholder({ titulo }: { titulo: string }) {
   const [params, setParams] = useSearchParams()
   const estado = params.get('estado')
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="mx-auto max-w-4xl p-4 md:p-8">
       <h1 className="mb-6 text-2xl font-semibold">{titulo}</h1>
       {estado === 'carregando' ? (
         <EstadoCarregando />

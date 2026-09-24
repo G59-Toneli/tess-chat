@@ -101,6 +101,13 @@ const gruposNav: { rotulo: string; itens: ItemNav[] }[] = [
   },
 ]
 
+// Nome da tela no header mobile. Telas fora da sidebar entram aqui.
+const nomesTela: Record<string, string> = {
+  '/': 'Nova conversa',
+  '/perfil': 'Perfil',
+  ...Object.fromEntries(gruposNav.flatMap((g) => g.itens.map((i) => [i.to, i.rotulo]))),
+}
+
 export type ContextoApp = {
   usuario: Usuario | null
   conversas: Conversa[] | null
@@ -163,6 +170,7 @@ function LayoutAutenticado() {
       <SidebarInset className="min-h-0 min-w-0">
         <header className="flex h-14 shrink-0 items-center justify-end gap-2 border-b px-4">
           <SidebarTrigger className="mr-auto size-10 md:hidden" aria-label="Abrir menu" />
+          <TituloHeader conversas={conversas} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2 px-2" aria-label="Menu do usuário">
@@ -194,6 +202,14 @@ function LayoutAutenticado() {
       </SidebarInset>
     </SidebarProvider>
   )
+}
+
+/** Abaixo de md: título da Conversa aberta ou nome da tela, numa linha. Desktop já tem a sidebar. */
+function TituloHeader({ conversas }: { conversas: Conversa[] | null }) {
+  const { pathname } = useLocation()
+  const id = useMatch('/c/:id')?.params.id
+  const titulo = id ? (conversas?.find((c) => c.id === id)?.title ?? '') : (nomesTela[pathname] ?? '')
+  return <span className="min-w-0 flex-1 truncate text-sm font-medium md:hidden">{titulo}</span>
 }
 
 /** Link da sidebar: no mobile, navegar fecha o Sheet. */
