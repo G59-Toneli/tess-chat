@@ -68,7 +68,7 @@ def modelo_resumo() -> Model:
 
 # REVISAR(human): compacta quando os tokens de entrada do turno anterior passam do limiar.
 # Estritamente maior: no limiar exato ainda cabe. Sem turno anterior, não compacta.
-# O input do turno soma todos os requests do turno (tool loop conta mais de uma vez).
+# O input é o da última chamada do turno anterior, não a soma do tool loop (ADR 0025).
 def should_compact(usage: RunUsage | None, settings: Settings) -> bool:
     return usage is not None and usage.input_tokens > settings.compactacao_limiar
 
