@@ -56,9 +56,16 @@ export function SeletorTools({ conversaId }: { conversaId?: string }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <PromptInputButton aria-label="Tools da conversa">
+        <PromptInputButton
+          aria-label={ativas === undefined ? 'Tools da conversa' : `Tools da conversa: ${ativas} ${ativas === 1 ? 'ativa' : 'ativas'}`}
+          className="relative"
+        >
           <WrenchIcon className="size-4" />
-          <span>{ativas === undefined ? 'Tools' : `${ativas} ${ativas === 1 ? 'tool' : 'tools'}`}</span>
+          {!!ativas && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] leading-none font-medium tabular-nums text-foreground">
+              {ativas}
+            </span>
+          )}
         </PromptInputButton>
       </PopoverTrigger>
       <PopoverContent align="start" side="top" className="w-80 gap-3 p-4" aria-label="Tools da conversa">

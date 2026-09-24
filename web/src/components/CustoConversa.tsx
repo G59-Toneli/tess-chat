@@ -17,7 +17,7 @@ const ORIGEM: Record<OrigemGasto, { rotulo: string; dica: string; cor: string }>
 const pct = (parte: number, todo: number) =>
   `${(todo > 0 ? (parte / todo) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} %`
 
-/** Custo acumulado da Conversa na barra do input. Atualiza ao fim do turno e ao trocar de Conversa. Clique abre o detalhe. */
+/** Botão de custo da Conversa na barra do input: só ícone, o valor fica no modal (sem taxímetro na barra). Atualiza ao fim do turno e ao trocar de Conversa. Clique abre o detalhe. */
 export function CustoConversa({ conversaId, status }: { conversaId?: string; status: ChatStatus }) {
   const [custo, setCusto] = useState<Custo | null>(null)
   const [erro, setErro] = useState(false)
@@ -48,9 +48,8 @@ export function CustoConversa({ conversaId, status }: { conversaId?: string; sta
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <PromptInputButton aria-label={rotulo} className={cn('gap-1.5 px-2 text-xs tabular-nums', erro && 'opacity-50')}>
-          <CircleDollarSignIcon className="size-3.5" />
-          {erro ? '—' : usd(total)}
+        <PromptInputButton aria-label={rotulo} title="Custo da conversa" className={cn(erro && 'opacity-50')}>
+          <CircleDollarSignIcon className="size-4" />
         </PromptInputButton>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

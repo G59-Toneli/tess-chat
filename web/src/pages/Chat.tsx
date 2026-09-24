@@ -415,7 +415,6 @@ function Entrada({
           <SeletorTools conversaId={conversaId} />
           <SeletorModelo conversaId={conversaId} escolha={escolha} onEscolha={onEscolha} />
           <IndicadorContexto conversaId={conversaId} status={status} />
-          <span className="px-1 text-xs text-muted-foreground">Enter envia, Shift+Enter quebra linha</span>
         </div>
         <div className="flex items-center gap-1">
           <CustoConversa conversaId={conversaId} status={status} />
