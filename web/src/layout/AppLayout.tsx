@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ComponentProps, type CSSProperties, type FormEvent } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from 'react-router'
 import { toast } from 'sonner'
 import {
@@ -46,13 +46,20 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -135,24 +142,32 @@ function LayoutAutenticado() {
     [usuario, conversas, recarregarConversas],
   )
 
+  // Abaixo de md a Sidebar vira Sheet (use-mobile.ts do shadcn). Largura 18rem: a mesma do <aside> de antes.
   return (
-    <SidebarProvider className="h-svh overflow-hidden">
-      <aside className="flex w-72 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
-        <Link to="/" className="flex h-14 shrink-0 items-center gap-2 px-4 font-semibold">
-          <IconeApp className="size-7" /> {NOME_APP}
-        </Link>
-        <SidebarConversas conversas={conversas} erro={erroConversas} recarregar={recarregarConversas} />
-        <NavTelas admin={usuario?.is_superuser ?? false} />
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-end border-b px-4">
+    <SidebarProvider className="h-svh overflow-hidden" style={{ '--sidebar-width': '18rem' } as CSSProperties}>
+      <Sidebar collapsible="offcanvas">
+        <SidebarHeader className="p-0">
+          <LinkSidebar to="/" className="flex h-14 shrink-0 items-center gap-2 px-4 font-semibold">
+            <IconeApp className="size-7" /> {NOME_APP}
+          </LinkSidebar>
+        </SidebarHeader>
+        <SidebarContent className="gap-0 overflow-hidden">
+          <SidebarConversas conversas={conversas} erro={erroConversas} recarregar={recarregarConversas} />
+        </SidebarContent>
+        <SidebarFooter className="gap-0 p-0">
+          <NavTelas admin={usuario?.is_superuser ?? false} />
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset className="min-h-0 min-w-0">
+        <header className="flex h-14 shrink-0 items-center justify-end gap-2 border-b px-4">
+          <SidebarTrigger className="mr-auto size-10 md:hidden" aria-label="Abrir menu" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2 px-2" aria-label="Menu do usuário">
                 <Avatar size="sm">
                   <AvatarFallback className="text-xs">{usuario ? iniciais(usuario.email) : '…'}</AvatarFallback>
                 </Avatar>
-                <span className="max-w-48 truncate text-sm">{usuario?.email}</span>
+                <span className="hidden max-w-48 truncate text-sm md:inline">{usuario?.email}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -171,17 +186,24 @@ function LayoutAutenticado() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <Outlet context={contexto} />
-        </main>
-      </div>
+        </div>
+      </SidebarInset>
     </SidebarProvider>
   )
+}
+
+/** Link da sidebar: no mobile, navegar fecha o Sheet. */
+function LinkSidebar(props: ComponentProps<typeof Link>) {
+  const { setOpenMobile } = useSidebar()
+  return <Link {...props} onClick={() => setOpenMobile(false)} />
 }
 
 /** Bloco fixo no rodapé da sidebar com as telas internas. Administração só para superuser. */
 function NavTelas({ admin }: { admin: boolean }) {
   const { pathname } = useLocation()
+  const { setOpenMobile } = useSidebar()
   return (
     <nav aria-label="Telas" className="shrink-0 border-t border-sidebar-border py-1">
       {gruposNav.map((g) => (
@@ -194,7 +216,7 @@ function NavTelas({ admin }: { admin: boolean }) {
                 .map((i) => (
                   <SidebarMenuItem key={i.to}>
                     <SidebarMenuButton asChild isActive={pathname.startsWith(i.to)}>
-                      <NavLink to={i.to}>
+                      <NavLink to={i.to} onClick={() => setOpenMobile(false)}>
                         <i.icone /> <span>{i.rotulo}</span>
                       </NavLink>
                     </SidebarMenuButton>
@@ -231,9 +253,9 @@ function SidebarConversas({
     <>
       <div className="flex flex-col gap-2 px-3 pb-3">
         <Button className="w-full justify-start" variant="outline" asChild>
-          <Link to="/">
+          <LinkSidebar to="/">
             <PlusIcon /> Nova conversa
-          </Link>
+          </LinkSidebar>
         </Button>
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -246,7 +268,7 @@ function SidebarConversas({
           />
         </div>
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversas">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversas">
         {conversas === null && erro && (
           <div className="flex flex-col items-start gap-2 px-3 py-2 text-sm text-muted-foreground" role="alert">
             Não foi possível carregar as conversas.
@@ -292,10 +314,12 @@ function ItemConversa({
   onRenomear: (c: Conversa) => void
   onApagar: (c: Conversa) => void
 }) {
+  const { setOpenMobile } = useSidebar()
   return (
     <div className="group/item relative">
       <NavLink
         to={`/c/${conversa.id}`}
+        onClick={() => setOpenMobile(false)}
         title={conversa.title}
         className={({ isActive }) =>
           cn(
@@ -312,7 +336,7 @@ function ItemConversa({
             variant="ghost"
             size="icon-sm"
             aria-label={`Ações de ${conversa.title}`}
-            className="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+            className="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 max-md:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
           >
             <MoreHorizontalIcon />
           </Button>

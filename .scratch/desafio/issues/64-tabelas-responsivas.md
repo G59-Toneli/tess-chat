@@ -1,7 +1,7 @@
 # 64 — Telas de tabela responsivas
 
 **Type:** task (web/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 62
 **Refs:** `docs/UI-GUIA.md`, ticket 62 (script `web/scripts/checar-responsivo.mjs`).
 

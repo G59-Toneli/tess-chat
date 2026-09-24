@@ -1,7 +1,7 @@
 # 62 — Shell responsivo: Sidebar do shadcn, header mobile, script de checagem
 
 **Type:** task (web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** —
 **Refs:** `docs/UI-GUIA.md` (seção Regras, item Responsivo), shadcn Sidebar (https://ui.shadcn.com/docs/components/sidebar).
 
@@ -24,3 +24,10 @@ Conteúdo das páginas (Chat, tabelas, formulários): tickets 63 a 65.
 - Screenshots em `.scratch/desafio/screens/62-*`: `/` em 390 com sidebar fechada, 390 com sidebar aberta, 1440 igual ao antes (sem regressão visual do desktop).
 - Registrar em `docs/DECISOES-AUTONOMAS.md`: corte em `md` (768) e por quê (é o breakpoint do `use-mobile.ts` do shadcn; um só corte, sem layout de tablet próprio).
 - Gemini: 0. Não alterar a Configuração da conta demo.
+
+## Answer
+- `AppLayout.tsx` usa `Sidebar collapsible="offcanvas"` + `SidebarInset`; abaixo de `md` a sidebar é Sheet aberto pelo `SidebarTrigger` do header, e clicar em conversa, tela, logo ou "Nova conversa" fecha o Sheet (conferido no Brave). E-mail do menu some no mobile; ações da conversa ficam visíveis sem hover. Desktop 1440 igual ao antes (sidebar em 18rem).
+- `web/scripts/checar-responsivo.mjs` (playwright-core + Brave, 390/768/1440, dark, `--abrir-sidebar`). Não isenta `overflow-x: hidden` nem container só `overflow-y-*`: isentando, o build antigo passava com a página espremida (DECISOES-AUTONOMAS). No Git Bash: `MSYS_NO_PATHCONV=1` para `--rotas`.
+- Rodado em todas as rotas de `App.tsx` (vite preview 4182, API própria 8008, Postgres 5433): shell 0 violações. Antes da mudança: 10 (Config, Auditoria, Créditos, Tools, MCP, Conectores, Compartilhados, Admin), todas pela página espremida.
+- Violação de página que sobrou: `/tools` em 390, `span[data-slot=badge]` no `CardTitle` ao lado de nome de tool longo (`stripe_cf8f_get_stripe_account_info`), right=421 e 438. Insumo do 65.
+- Primitivos: `DialogContent` com `max-h` em `dvh` e rolagem interna, `PopoverContent` com `max-w` de viewport, Sheet da Sidebar sem foco automático. Screenshots em `.scratch/desafio/screens/62-raiz-*`. Gemini 0. Sem REVISAR(human).
