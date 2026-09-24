@@ -1,7 +1,7 @@
 # 16 — Deploy da Camada 1 no VPS com CI
 
 **Type:** task (AFK + HITL)
-**Status:** resolved (parte AFK; DNS, TLS e secrets do CI no MANHA)
+**Status:** resolved (DNS, TLS e secrets do CI feitos pelo Toneli em 23/09)
 **Blocked by:** nenhum (02 absorvido por este ticket; 09 a 15 resolvidos)
 **Refs:** ADR 0011. **Marco: sexta 26/09.**
 
