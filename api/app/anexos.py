@@ -34,7 +34,7 @@ Usuario = Annotated[User, Depends(current_user)]
 router = APIRouter(prefix="/api/attachments", tags=["anexos"])
 
 
-# REVISAR(human): o tipo sai dos primeiros bytes, não do Content-Type do browser.
+# o tipo sai dos primeiros bytes, não do Content-Type do browser.
 # Content-Type é declarado pelo cliente; um .txt renomeado para .png passaria.
 def tipo_real(cabeca: bytes) -> str | None:
     """Tipo MIME pelos bytes mágicos. None se não é png/jpg/webp/pdf."""
@@ -93,7 +93,7 @@ async def baixar(aid: uuid.UUID, session: Sessao, user: Usuario) -> FileResponse
     return FileResponse(anexo.path, media_type=anexo.mime_type, filename=anexo.filename)
 
 
-# REVISAR(human): só referência a anexo próprio vira arquivo para o modelo. Qualquer outra
+# só referência a anexo próprio vira arquivo para o modelo. Qualquer outra
 # URL é 422: o Pydantic AI baixaria ela do servidor (SSRF). Os bytes entram como data URI,
 # que o adapter converte em BinaryContent; o PDF leva media_resolution medium.
 async def montar_anexos(session: AsyncSession, uid: uuid.UUID, nova: UIMessage) -> None:
@@ -113,7 +113,7 @@ async def montar_anexos(session: AsyncSession, uid: uuid.UUID, nova: UIMessage) 
             p.provider_metadata = RESOLUCAO_PDF
 
 
-# REVISAR(human): anexo de turno anterior volta com os bytes (ADR 0016). Sem eles o modelo
+# anexo de turno anterior volta com os bytes (ADR 0016). Sem eles o modelo
 # inventava detalhe do arquivo no turno seguinte. PDF mantém a resolução medium. Arquivo sumido,
 # data URI antiga e URL externa (SSRF) viram texto que diz ao modelo que ele não vê o arquivo.
 async def partes_do_historico(

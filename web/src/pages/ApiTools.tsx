@@ -246,7 +246,7 @@ function detalhesDe(m: ApiToolNova | null): Record<string, Detalhe> {
   )
 }
 
-// REVISAR(human): o formulário é a fonte do body. Os parâmetros saem dos {param} da URL e do corpo,
+// o formulário é a fonte do body. Os parâmetros saem dos {param} da URL e do corpo,
 // na hora; o detalhe de cada um fica guardado pelo nome, então apagar e redigitar um placeholder
 // não perde a descrição. O teste vale para a definição exata que rodou: guarda o JSON do body
 // testado, e Salvar só liga se o body atual for igual e o status for 2xx. Mudar qualquer campo,

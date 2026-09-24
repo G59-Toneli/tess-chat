@@ -34,7 +34,7 @@ export const alternarNaConversa = (id: string, nome: string, ativa: boolean) =>
   api<ToolConversa[]>(`/api/conversations/${id}/tools`, { method: 'PUT', ...json({ [nome]: ativa }) })
 export const decisoesDoRoteador = (id: string) => api<DecisaoRoteador[]>(`/api/conversations/${id}/roteador`)
 
-// REVISAR(human): casa cada resposta do assistente com a decisão do Roteador do mesmo turno.
+// casa cada resposta do assistente com a decisão do Roteador do mesmo turno.
 // A decisão é gravada antes do stream e as Mensagens do turno só no fim, todas com o mesmo
 // created_at. Vale a última decisão com ts entre o turno anterior e este. Turno sem decisão
 // (Jev fora) fica sem linha. Uso vem só na última linha do turno.

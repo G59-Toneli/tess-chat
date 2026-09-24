@@ -66,7 +66,7 @@ def modelo_resumo() -> Model:
     return _flash_lite()
 
 
-# REVISAR(human): compacta quando os tokens de entrada do turno anterior passam do limiar.
+# compacta quando os tokens de entrada do turno anterior passam do limiar.
 # Estritamente maior: no limiar exato ainda cabe. Sem turno anterior, não compacta.
 # O input é o da última chamada do turno anterior, não a soma do tool loop (ADR 0025).
 def should_compact(usage: RunUsage | None, settings: Settings) -> bool:
@@ -78,7 +78,7 @@ async def ultimo_resumo(session: AsyncSession, cid: uuid.UUID) -> Summary | None
     return await session.scalar(q)
 
 
-# REVISAR(human): o corte cai sempre no início de um turno (linha `user`).
+# o corte cai sempre no início de um turno (linha `user`).
 # Chamada e retorno de tool ficam dentro da linha `assistant` do mesmo turno,
 # então o corte nunca separa o par. Devolve o índice da 1ª linha literal, ou None se não há o que resumir.
 def ponto_de_corte(roles: list[str], turnos_literais: int) -> int | None:
@@ -136,7 +136,7 @@ class Compactacao:
     summary_id: int | None = None
     mensagens: tuple[int, int] = (0, 0)
 
-    # REVISAR(human): roda só no passo 1. Depois do passo 1 o Pydantic AI grava a lista processada
+    # roda só no passo 1. Depois do passo 1 o Pydantic AI grava a lista processada
     # no histórico do run, então o passo 2 (depois de tool) já vê o Resumo. Falha do resumidor
     # não derruba o turno: grava llm_error e segue com o histórico inteiro.
     async def processar(self, ctx: RunContext[Any], msgs: list[ModelMessage]) -> list[ModelMessage]:

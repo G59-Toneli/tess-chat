@@ -23,7 +23,7 @@ ABANDONO = timedelta(hours=24)
 CARENCIA_S = 3600
 
 
-# REVISAR(human): varredura em vez de hook em cada exclusão. O cascade apaga a linha no banco
+# varredura em vez de hook em cada exclusão. O cascade apaga a linha no banco
 # sem o código ver; a varredura pega qualquer caminho, inclusive exclusão manual. Ordem:
 # 1) linhas de upload abandonado (sem Mensagem há 24 h) saem primeiro; 2) todo arquivo de
 # `attachments_dir` sem linha e com mais de 1 h sai. Só olha o primeiro nível da pasta e

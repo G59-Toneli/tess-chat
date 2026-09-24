@@ -4,7 +4,7 @@ Para o Toneli se preparar. Para cada ADR: 3 perguntas prováveis e uma resposta 
 
 As perguntas mais duras vêm das divergências entre ADR e código. Elas estão marcadas **Lacuna**. Resposta honesta para lacuna: diga o que o código faz, por que ficou assim, e como corrige.
 
-Antes da entrevista, leia as funções marcadas `REVISAR(human)`: `grep -rn "REVISAR(human)" api/app`. O mapa por módulo está em `docs/ESTRUTURA.md`.
+Antes da entrevista, releia as funções do mapa de `REVISAR(human)` (revisadas em 24/09; a marca saiu do código). O mapa por módulo está em `docs/ESTRUTURA.md`.
 
 ## ADR 0001 — FastAPI + Pydantic AI
 

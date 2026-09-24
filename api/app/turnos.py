@@ -38,7 +38,7 @@ class TurnoAtivo:
             self.fechado = True
             self.cond.notify_all()
 
-    # REVISAR(human): leitor do buffer. Cada leitor tem o próprio índice: replay desde o chunk 0
+    # leitor do buffer. Cada leitor tem o próprio índice: replay desde o chunk 0
     # (inclui o `start` com o message id, que o useChat precisa) e depois tail até o turno fechar.
     # Leitor que cai (cliente saiu) só some; o turno e os outros leitores seguem.
     async def ler(self) -> AsyncIterator[str]:

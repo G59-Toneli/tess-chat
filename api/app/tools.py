@@ -105,7 +105,7 @@ async def _recusa(url: str) -> str | None:
     return None
 
 
-# REVISAR(human): Jina Reader primeiro; qualquer falha (status != 200, corpo vazio, erro de rede)
+# Jina Reader primeiro; qualquer falha (status != 200, corpo vazio, erro de rede)
 # cai no GET direto da URL + trafilatura. Texto cortado em LIMITE_CHARS para não estourar o contexto.
 # SSRF: o GET direto sai do container, então a URL inicial e cada salto de redirect passam por
 # `_recusa` (redirect seguido à mão, até MAX_SALTOS). Ressalva: o httpx resolve o DNS de novo (rebinding).
@@ -150,7 +150,7 @@ def cortar(texto: str, limite: int) -> str:
 # ---------- Registro por Conversa ----------
 
 
-# REVISAR(human): ativa = ativa_global E toggle da Conversa. Sem linha em conversation_tools,
+# ativa = ativa_global E toggle da Conversa. Sem linha em conversation_tools,
 # o toggle vale padrao_ligada (true para todas; gmail_send também, desde a 0015: a trava é o clique em Enviar, ADR 0013).
 # ativa_global=false desliga a Tool em todas as Conversas.
 # Tool de origem 'google' só existe se o dono da Conversa tem Conector Google (ticket 18).
@@ -190,7 +190,7 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
     return [(t, t.ativa_global and (a if a is not None else t.padrao_ligada)) for t, a in (await session.execute(q)).all()]
 
 
-# REVISAR(human): o Gemini, com schema aberto (`parameters: object` sem propriedades, caso do Stripe),
+# o Gemini, com schema aberto (`parameters: object` sem propriedades, caso do Stripe),
 # manda objeto aninhado como string JSON. Só string que começa com { ou [ e passa no json.loads vira
 # objeto/lista; o resultado é percorrido de novo (string dentro de string). "Olá {mundo}" não muda.
 # Risco aceito: string legítima que é JSON válido vira objeto (ticket 33).
@@ -217,7 +217,7 @@ def _livre(s: Any) -> bool:
     return s.get("type") == "array" and _livre(s.get("items"))
 
 
-# REVISAR(human): o Gemini roda em modo VALIDATED e impõe o schema declarado. Objeto sem properties
+# o Gemini roda em modo VALIDATED e impõe o schema declarado. Objeto sem properties
 # vira objeto vazio: o modelo manda null ou inventa chaves (Stripe, ticket 35). Esse campo passa a ser
 # string com JSON; o call_tool da Auditada desembrulha antes de chamar o servidor. Objeto com
 # properties só é percorrido. O registro guarda o schema original; só a definição do turno muda.
@@ -361,7 +361,7 @@ async def toolset_da_conversa(
     return Auditada(todos, uid, cid, {tool.nome: tool.origem for tool in ativas}, fora, servidores)
 
 
-# REVISAR(human): falha do servidor MCP, não da tool. O MCPToolset embrulha o MCPError do SDK
+# falha do servidor MCP, não da tool. O MCPToolset embrulha o MCPError do SDK
 # num ModelRetry; o código dele diz se foi timeout (REQUEST_TIMEOUT) ou conexão (CONNECTION_CLOSED).
 # Erro que a tool devolve (ToolError, MCPError de outro código) não corta: segue ao modelo.
 def _falha_mcp(exc: BaseException) -> str | None:
@@ -411,7 +411,7 @@ class ComTeto(WrapperToolset[Any]):
                 raise
             return None
 
-    # REVISAR(human): o que corta o turno. A (limite+1)ª chamada não roda; o teto conta chamadas,
+    # o que corta o turno. A (limite+1)ª chamada não roda; o teto conta chamadas,
     # não requests, porque é o que o Usuário vê como cards. Tool MCP cujo servidor caiu ou estourou
     # o timeout também corta: repetir no mesmo turno só gastaria mais requests.
     # Erro da tool (ModelRetry, ticket 31) volta ao modelo uma vez. A falha seguida da mesma tool

@@ -256,7 +256,7 @@ function Catalogo({
   )
 }
 
-// REVISAR(human): o usuário só cola a URL. O iniciar detecta o caminho: oauth vai ao consentimento,
+// o usuário só cola a URL. O iniciar detecta o caminho: oauth vai ao consentimento,
 // sem_auth cadastra direto pelo POST sem header, token expande o campo. Mudar a URL volta ao passo 1.
 function OutroServidor({ nomes, onCadastrado }: { nomes: string[]; onCadastrado: (s: McpServidor) => void }) {
   const [url, setUrl] = useState('')

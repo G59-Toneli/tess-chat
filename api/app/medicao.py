@@ -50,7 +50,7 @@ class Medidor(AbstractCapability[Any]):
         return request_context
 
 
-# REVISAR(human): um llm_request por ModelResponse do turno, com o uso daquela chamada.
+# um llm_request por ModelResponse do turno, com o uso daquela chamada.
 # O i-ésimo request anotado pelo Medidor casa com a i-ésima ModelResponse: retry e fallback
 # do provedor rodam dentro do mesmo request, e request cancelado sem resposta sobra no fim (zip corta).
 # Aditivo: não entra no Ledger nem no custo. O llm_call do turno continua sendo o que cobra.

@@ -96,7 +96,7 @@ async def _linha(session: AsyncSession, *, user_id: uuid.UUID | None = None, cid
     return await session.scalar(q)
 
 
-# REVISAR(human): herança campo a campo. Default do .env, depois a linha do Usuário, depois a da Conversa.
+# herança campo a campo. Default do .env, depois a linha do Usuário, depois a da Conversa.
 # Devolve também o que a Conversa herdaria sem valor próprio: a tela mostra "herdado: X".
 async def resolver(session: AsyncSession, user_id: uuid.UUID, cid: uuid.UUID | None) -> tuple[Configuracao, Configuracao]:
     herdada = _sobrepor(_padrao(), await _linha(session, user_id=user_id)) if cid else _padrao()

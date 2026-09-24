@@ -49,7 +49,7 @@ class McpServer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# REVISAR(human): `tools.nome` é PK global, e dois Usuários podem cadastrar o mesmo servidor.
+# `tools.nome` é PK global, e dois Usuários podem cadastrar o mesmo servidor.
 # O nome no registro vira <slug do servidor>_<4 hex do id>_<tool>: legível para o modelo e único
 # entre Usuários. É o mesmo nome que MCPToolset.prefixed() expõe ao modelo no turno.
 def prefixo(srv: McpServer) -> str:
@@ -67,7 +67,7 @@ class UrlRecusada(ValueError):
     """URL de Servidor MCP fora da política. A mensagem vai para o usuário."""
 
 
-# REVISAR(human): barreira de SSRF no cadastro. Só https, e todo IP do host precisa ser público
+# barreira de SSRF no cadastro. Só https, e todo IP do host precisa ser público
 # (`rede.ip_interno`). Exceção: em dev, o demo em http.
 # Ressalva: o turno resolve o DNS de novo (rebinding não coberto).
 async def validar_url(url: str) -> None:
@@ -198,7 +198,7 @@ async def registrar_tools(session: Sessao, srv: McpServer, listadas: list[Any]) 
             )
 
 
-# REVISAR(human): conecta e lista as tools ANTES de gravar qualquer linha. Falha de rede, 401 ou
+# conecta e lista as tools ANTES de gravar qualquer linha. Falha de rede, 401 ou
 # protocolo vira 502 com texto legível e nada fica no banco. Tool com nome acima do limite do
 # Gemini fica de fora do registro (o modelo recusaria a declaração).
 @router.post("", response_model=McpServerOut, status_code=201)

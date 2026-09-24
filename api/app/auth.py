@@ -55,7 +55,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         await audit(self._session, "login_ok", user_id=user.id, payload={"email": user.email})
         await self._session.commit()
 
-    # REVISAR(human): FastAPI-Users não tem hook de falha de login. Sobrescrevo
+    # FastAPI-Users não tem hook de falha de login. Sobrescrevo
     # authenticate: se o pai devolve None (e-mail inexistente, senha errada ou
     # conta inativa), grava login_failed só com o e-mail, nunca a senha.
     async def authenticate(self, credentials: OAuth2PasswordRequestForm) -> User | None:
@@ -92,7 +92,7 @@ current_user = fastapi_users.current_user(active=True)
 current_superuser = fastapi_users.current_user(active=True, superuser=True)
 
 
-# REVISAR(human): seed da conta demo no startup, idempotente. Se já existe,
+# seed da conta demo no startup, idempotente. Se já existe,
 # não reseta a senha. A demo nunca é admin: a senha dela já esteve no bundle do front.
 # O update rebaixa a linha antiga, que o ticket 15 marcava como superuser.
 # Alternativa descartada: migração de dados.

@@ -77,7 +77,7 @@ async def decidir(client: AsyncTypeSafeClient, texto: str, anexos: list[str], cr
     )
 
 
-# REVISAR(human): força a Tool só se o Jev escolheu uma Tool (não `nenhuma`) com confiança >= limiar.
+# força a Tool só se o Jev escolheu uma Tool (não `nenhuma`) com confiança >= limiar.
 # `nenhuma` com confiança alta também vira AUTO: forçar "sem tool" não ganha nada e quebra se o Jev errar.
 # Tool de origem `mcp` nunca é forçada (emenda 23/09 ao ADR 0005): o Jev não tem contexto para escolher
 # entre tools genéricas de servidor externo, e forçar errado custa o turno inteiro.

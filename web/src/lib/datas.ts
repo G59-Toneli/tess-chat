@@ -4,7 +4,7 @@ export type Grupo<T> = { rotulo: string; itens: T[] }
 
 const DIA = 24 * 60 * 60 * 1000
 
-// REVISAR(human): agrupa por dia de calendário local, não por "24 h atrás".
+// agrupa por dia de calendário local, não por "24 h atrás".
 // Hoje = desde a meia-noite; Ontem = dia anterior; 7 dias = até 7 meias-noites atrás.
 // Grupo vazio some. A ordem de entrada (mais recente primeiro) é mantida.
 export function agruparPorData<T extends { updated_at: string }>(itens: T[], agora = new Date()): Grupo<T>[] {

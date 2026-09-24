@@ -111,7 +111,7 @@ Usuario = Annotated[User, Depends(current_user)]
 router = APIRouter(prefix="/api/conversations", tags=["conversas"])
 
 
-# REVISAR(human): conversa de outro usuário responde 404, igual a inexistente.
+# conversa de outro usuário responde 404, igual a inexistente.
 # O filtro por user_id vai na própria query: um caminho só, sem vazar existência.
 async def conversa_do_usuario(session: AsyncSession, user: User, cid: uuid.UUID) -> Conversation:
     """Carrega a Conversa se ela é do Usuário. Senão, 404."""
@@ -161,7 +161,7 @@ async def renomear(
     return conv
 
 
-# REVISAR(human): remoção física, com CASCADE para mensagens e anexos.
+# remoção física, com CASCADE para mensagens e anexos.
 # O evento guarda o conversation_id; audit_events não tem FK, então sobrevive.
 @router.delete("/{cid}", status_code=204)
 async def apagar(cid: uuid.UUID, session: Sessao, user: Usuario) -> Response:
@@ -184,7 +184,7 @@ async def listar_mensagens(cid: uuid.UUID, session: Sessao, user: Usuario) -> li
     return list((await session.scalars(q)).all())
 
 
-# REVISAR(human): `usado` é o input_tokens da última resposta, o mesmo número que o gatilho da Compactação lê.
+# `usado` é o input_tokens da última resposta, o mesmo número que o gatilho da Compactação lê.
 # Assim a marca do limiar na rosca bate com o momento em que a Compactação dispara.
 @router.get("/{cid}/contexto")
 async def contexto(cid: uuid.UUID, session: Sessao, user: Usuario) -> ContextoOut:

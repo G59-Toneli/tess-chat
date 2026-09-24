@@ -79,7 +79,7 @@ async def _get(http: httpx.AsyncClient, url: str) -> httpx.Response:
     return await http.get(url, headers={"Accept": "application/json"})
 
 
-# REVISAR(human): descoberta. Passo 2: initialize sem token. 2xx: o servidor não exige auth e a função
+# descoberta. Passo 2: initialize sem token. 2xx: o servidor não exige auth e a função
 # devolve None (modo sem_auth). Outro status segue para os well-known; sem metadata, só 401/403 vira
 # modo token, e o resto é erro real (502). Servidor com OAuth
 # responde 401 e o WWW-Authenticate aponta o metadata do recurso (RFC 9728). Sem header, os well-known do SDK entram
@@ -112,7 +112,7 @@ async def _descobrir(
     return prm, asm, escopo
 
 
-# REVISAR(human): DCR (RFC 7591). Só registro dinâmico: sem registration_endpoint (HubSpot, Slack,
+# DCR (RFC 7591). Só registro dinâmico: sem registration_endpoint (HubSpot, Slack,
 # GitHub) o servidor exige app registrado à mão, e não mantemos um por provedor. Cliente público
 # (`token_endpoint_auth_method=none`): o segredo do fluxo é o PKCE, não um client_secret. Os três
 # endpoints passam por validar_url antes de qualquer request, inclusive o authorize, que o browser abre.
@@ -142,7 +142,7 @@ async def _registrar(
     }
 
 
-# REVISAR(human): troca e refresh vão ao mesmo token_endpoint. `resource` (RFC 8707) vai junto para o
+# troca e refresh vão ao mesmo token_endpoint. `resource` (RFC 8707) vai junto para o
 # token sair amarrado à URL do servidor MCP, como a spec MCP exige. client_secret só se o DCR devolveu.
 async def _pedir_token(t: httpx.AsyncBaseTransport | None, oauth: dict[str, Any], form: dict[str, str]) -> OAuthToken:
     await validar_url(oauth["token_endpoint"])
@@ -164,7 +164,7 @@ def _gravar_token(srv: McpServer, oauth: dict[str, Any], token: OAuthToken) -> N
     srv.headers = _cifrar({"Authorization": f"Bearer {token.access_token}"})
 
 
-# REVISAR(human): refresh antes do turno. Token sem validade não é renovado. Vencendo em menos de 60 s,
+# refresh antes do turno. Token sem validade não é renovado. Vencendo em menos de 60 s,
 # POST grant_type=refresh_token. Falha (400 invalid_grant, sem refresh_token, rede) marca `expirado`:
 # o servidor sai do turno até o Usuário reconectar (fail-closed). Sessão própria, como conectores._token,
 # para gravar mesmo que o turno falhe depois. O objeto do turno recebe o header novo sem ficar sujo.
@@ -213,7 +213,7 @@ class IniciarIn(BaseModel):
 router = APIRouter(prefix="/api/mcp-servers/oauth", tags=["mcp"])
 
 
-# REVISAR(human): o app escolhe o caminho, não o usuário. Nenhum modo grava linha: sem_auth e token
+# o app escolhe o caminho, não o usuário. Nenhum modo grava linha: sem_auth e token
 # seguem pelo POST /api/mcp-servers; oauth só grava no callback (ticket 57). SSRF 422, rede 502.
 @router.post("/iniciar")
 async def iniciar(body: IniciarIn, session: Sessao, user: Usuario, t: Transporte) -> JSONResponse:
@@ -263,7 +263,7 @@ async def iniciar(body: IniciarIn, session: Sessao, user: Usuario, t: Transporte
     )
     await session.commit()
     r = JSONResponse({"modo": "oauth", "url": f"{autorizar}{'&' if '?' in autorizar else '?'}{urlencode(params)}"})
-    # REVISAR(human): o pendente mora no cookie, não no banco. Linha gravada antes do consentimento
+    # o pendente mora no cookie, não no banco. Linha gravada antes do consentimento
     # sobrava como "aguardando autorização" quando o usuário desistia, e o reconectar desligava o
     # servidor antes de ele autorizar. Cifrado com Fernet: o verifier e o cliente do DCR não ficam
     # legíveis para quem lê o cookie. httpOnly, path só do callback, mesma validade do state. O nonce
@@ -294,7 +294,7 @@ async def callback(
     return r
 
 
-# REVISAR(human): o state (JWT, 10 min) diz o dono e o nonce; o cookie do pendente amarra o code ao
+# o state (JWT, 10 min) diz o dono e o nonce; o cookie do pendente amarra o code ao
 # browser e ao fluxo que abriu o iniciar. Sem cookie, nada vai ao token_endpoint. A linha só nasce (ou
 # muda, no reconectar) depois da troca do code. Listagem que falha com o token novo deixa o servidor
 # `expirado`, sem tools novas, com o botão Reconectar no card.

@@ -12,7 +12,7 @@ async def resolver_ips(host: str, porta: int) -> list[str]:
     return [i[4][0].split("%")[0] for i in infos]
 
 
-# REVISAR(human): todo IP que o host resolve precisa ser público (`is_global` recusa privado,
+# todo IP que o host resolve precisa ser público (`is_global` recusa privado,
 # loopback, link-local 169.254 da metadata, reservado). Checa TODOS os IPs: um host com um IP
 # público e um interno passaria se olhasse só o primeiro. IPv6 com IPv4 embutido vale pelo IPv4.
 async def ip_interno(host: str, porta: int) -> IP | None:

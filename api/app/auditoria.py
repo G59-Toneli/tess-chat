@@ -40,7 +40,7 @@ class PaginaEventos(BaseModel):
     offset: int
 
 
-# REVISAR(human): quem vê o quê. Usuário comum: o filtro de usuário é forçado para ele
+# quem vê o quê. Usuário comum: o filtro de usuário é forçado para ele
 # mesmo, o parâmetro user_id é ignorado. Admin (is_superuser): sem user_id vê tudo,
 # inclusive eventos sem usuário (login_failed de e-mail inexistente).
 def _escopo(user: User, user_id: uuid.UUID | None) -> list[Any]:

@@ -106,7 +106,7 @@ async def _historico(s: AsyncSession, uid: uuid.UUID, linhas: list[Message], com
     return VercelAIAdapter.load_messages(ui)
 
 
-# REVISAR(human): estimativa local de input para a reserva, sem chamar countTokens.
+# estimativa local de input para a reserva, sem chamar countTokens.
 # ~3 caracteres por token sobre o JSON das partes: conservador para pt-BR (INFERIDO).
 # Imagem soma TOKENS_IMAGEM: o JSON só tem a referência, os bytes entram depois (ADR 0016).
 def _estimar_input(linhas: list[Message], novas: list[Any]) -> int:
@@ -200,7 +200,7 @@ async def _rotear(
     return Gate(escolha)
 
 
-# REVISAR(human): arquivo que uma tool devolveu (PDF do Drive, ADR 0015) vem num UserPromptPart ao lado
+# arquivo que uma tool devolveu (PDF do Drive, ADR 0015) vem num UserPromptPart ao lado
 # do retorno. O dump o gravaria como Mensagem de usuário com data URI: bytes no banco e balão na tela.
 # Sai antes do dump; o retorno da tool já traz o marcador `[arquivo do Drive: nome]`.
 def _sem_arquivo_de_tool(msgs: list[ModelMessage]) -> list[ModelMessage]:
@@ -217,7 +217,7 @@ def _sem_arquivo_de_tool(msgs: list[ModelMessage]) -> list[ModelMessage]:
     ]
 
 
-# REVISAR(human): grava a resposta do assistente no fim do turno. A pergunta já foi gravada no início
+# grava a resposta do assistente no fim do turno. A pergunta já foi gravada no início
 # (ADR 0023): turno que falha deixa a pergunta sem resposta. Uso vai na mensagem do assistente.
 # Turno cortado (ticket 30) ou parado grava o que houve, com o aviso na Mensagem do assistente e o uso real.
 # Parado antes do 1º token não tem ModelResponse: grava só o aviso.
@@ -255,7 +255,7 @@ async def _persistir(
             ultima = Message(conversation_id=cid, role="assistant", parts=[])
             linhas.append(ultima)
         ultima.model = nome
-        # REVISAR(human): a Mensagem guarda o uso da última chamada do turno, não a soma (ADR 0025).
+        # a Mensagem guarda o uso da última chamada do turno, não a soma (ADR 0025).
         # O input dela é o tamanho real da janela: é o que o gatilho da Compactação e a rosca leem.
         # A soma (custo) vai no Ledger e no llm_call. Parado antes do 1º token: sem resposta, fica a soma.
         janela = resposta.usage if resposta else uso
@@ -338,7 +338,7 @@ async def corte_atual(
     resumo = await ultimo_resumo(session, cid)
     if resumo is None:
         return {"ate_message_id": None, "turno_message_id": None}
-    # REVISAR(human): o Resumo é gravado durante o turno, antes da resposta dele. Então a 1ª
+    # o Resumo é gravado durante o turno, antes da resposta dele. Então a 1ª
     # Mensagem `assistant` criada depois do Resumo é a do turno que compactou, e a pergunta é a
     # última `user` antes dela. Vale para os dois jeitos de gravar: pergunta junto com a resposta
     # (antes do ticket 55) ou no início do turno (ADR 0023). Turno ainda sem resposta: a última pergunta.
@@ -357,7 +357,7 @@ async def corte_atual(
     return {"ate_message_id": resumo.ate_message_id, "turno_message_id": await session.scalar(q)}
 
 
-# REVISAR(human): 502 só quando o provedor falha antes do primeiro evento.
+# 502 só quando o provedor falha antes do primeiro evento.
 # Depois que o stream começou o status 200 já foi, então o erro vai como chunk de erro do AI SDK.
 # Nos dois casos grava llm_error.
 @router.post("/{cid}")
@@ -488,7 +488,7 @@ async def _preparar_turno(
 
     nativos = eventos()
 
-    # REVISAR(human): com Compactação o stream abre antes do 1º evento do modelo, para o
+    # com Compactação o stream abre antes do 1º evento do modelo, para o
     # "Compactando histórico…" aparecer durante o Resumo. O preço: falha do provedor nesse
     # turno chega como erro no stream, não como 502. Sem Compactação, nada muda.
     # Roda dentro da task: o 1º evento é esperado lá e o POST só espera `pronto`.
@@ -533,7 +533,7 @@ async def _preparar_turno(
     return adapter.encode_stream(chunks), pronto
 
 
-# REVISAR(human): o turno inteiro numa asyncio.Task própria, fora do task group da request.
+# o turno inteiro numa asyncio.Task própria, fora do task group da request.
 # O http.disconnect do Starlette mata só o leitor do buffer; o run segue, grava e cobra.
 # `pronto` libera o POST: None abre o stream; uma Response (502) volta no lugar dele e o
 # que vier depois é descartado. Falha antes de `pronto` vai para ele, senão o POST esperaria

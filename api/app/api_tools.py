@@ -114,7 +114,7 @@ def _nomes_no_corpo(v: Any) -> set[str]:
     return set(PLACEHOLDER.findall(v)) if isinstance(v, str) else set()
 
 
-# REVISAR(human): regras da definição, checadas antes de qualquer request.
+# regras da definição, checadas antes de qualquer request.
 # Placeholder só no caminho e na query: no host, o valor mudaria o destino e furaria o SSRF.
 # Todo {param} precisa estar em `parametros`; todo obrigatório precisa aparecer na URL ou no
 # corpo (opcional não usado vira query string). Corpo só no POST. Auth completo ou nenhum.
@@ -203,7 +203,7 @@ def _corpo(v: Any, valores: dict[str, Any]) -> Any:
     return PLACEHOLDER.sub(lambda m: _texto(valores.get(m[1], "")), v)
 
 
-# REVISAR(human): monta URL e corpo do request. Cada valor vai URL-encoded (quote com safe="")
+# monta URL e corpo do request. Cada valor vai URL-encoded (quote com safe="")
 # no caminho e na query: "a/b" vira "a%2Fb" e não cria segmento de rota; "?" não abre query.
 # Só os placeholders mudam: o resto do template sai como o Usuário escreveu. Parâmetro que não
 # aparece na URL nem no corpo entra no fim da query. Corpo: "{p}" sozinho vira o valor tipado;
@@ -260,7 +260,7 @@ class Resposta:
         return f"A API respondeu {self.status}: {self.texto[:TRECHO_ERRO]}"
 
 
-# REVISAR(human): SSRF igual ao web_fetch. validar_url roda na URL final, já com os valores, e em
+# SSRF igual ao web_fetch. validar_url roda na URL final, já com os valores, e em
 # cada salto de redirect (até MAX_SALTOS, seguido à mão). O valor de auth só vai no header, nunca
 # em log nem em Evento. Ressalva: o httpx resolve o DNS de novo (rebinding não coberto).
 async def executar(
@@ -398,7 +398,7 @@ async def testar(body: ApiToolIn, user: Usuario, t: Transporte) -> TesteOut:
     return TesteOut(status=r.status, corpo_cortado=r.texto, ms=r.ms)
 
 
-# REVISAR(human): testar antes de salvar, como o cadastro de MCP. O request real com o exemplo
+# testar antes de salvar, como o cadastro de MCP. O request real com o exemplo
 # roda ANTES de gravar; fora de 2xx vira 502 com status e começo do corpo, e nada fica no banco.
 @router.post("", response_model=ApiToolOut, status_code=201)
 async def cadastrar(body: ApiToolIn, session: Sessao, user: Usuario, t: Transporte) -> ApiToolOut:

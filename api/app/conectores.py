@@ -161,7 +161,7 @@ def _utc(d: datetime) -> datetime:
     return d.astimezone(UTC).replace(tzinfo=None)
 
 
-# REVISAR(human): a lib decide se o token venceu (`creds.expired` já conta vencido 3m45s antes do
+# a lib decide se o token venceu (`creds.expired` já conta vencido 3m45s antes do
 # `expiry`). Vencido, `creds.refresh` renova com o refresh_token, em thread, porque a lib é síncrona.
 # O Google às vezes não devolve refresh_token na renovação: a lib mantém o antigo. Sem refresh_token
 # ou com invalid_grant (app em Testing expira em 7 dias), a lib levanta RefreshError: vira
@@ -198,7 +198,7 @@ async def _token(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None) -> str:
 # ---------- Tools ----------
 
 
-# REVISAR(human): timeout repete `fn` uma vez. Seguro porque todo `fn` daqui só lê (GET).
+# timeout repete `fn` uma vez. Seguro porque todo `fn` daqui só lê (GET).
 # Produção 23/09: `drive_search_read` estourou os 30 s uma vez e passou na chamada seguinte.
 async def _chamar(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, nome: str, fn) -> Any:
     """Abre o cliente HTTP com o token do Usuário e converte qualquer falha em texto para o modelo."""
@@ -334,7 +334,7 @@ async def _ler_pdf(http: httpx.AsyncClient, alvo: dict[str, Any], outros: str) -
     )
 
 
-# REVISAR(human): lê o primeiro arquivo legível (Docs, Sheets, Slides, texto) na ordem do Drive.
+# lê o primeiro arquivo legível (Docs, Sheets, Slides, texto) na ordem do Drive.
 # Sem nenhum, baixa o primeiro PDF e devolve como arquivo, pelo mesmo caminho do PDF anexado (ADR 0015):
 # guia e boleto costumam ser escaneados, e texto extraído no servidor viria vazio. PDF acima de
 # TETO_PDF não baixa: volta como texto. Os bytes vão só neste turno; o histórico guarda o marcador.
@@ -401,7 +401,7 @@ async def _resposta_a(uid: uuid.UUID, t: httpx.AsyncBaseTransport | None, thread
     return original, referencias
 
 
-# REVISAR(human): a Tool nunca envia. Grava o Rascunho `pendente` e devolve o id ao modelo.
+# a Tool nunca envia. Grava o Rascunho `pendente` e devolve o id ao modelo.
 # Com thread_id, busca agora o Message-ID do original: o Rascunho já nasce com In-Reply-To e References,
 # e o clique em Enviar não depende de outra leitura. Falha na busca volta como texto e não cria Rascunho.
 async def gmail_send(
@@ -503,7 +503,7 @@ async def listar(session: Sessao, user: Usuario) -> list[ConectorOut]:
     ]
 
 
-# REVISAR(human): o callback chega por GET do browser, sem o Bearer do front. O state é um JWT
+# o callback chega por GET do browser, sem o Bearer do front. O state é um JWT
 # assinado com jwt_secret, com o id do Usuário e validade de 10 min: identifica o dono e barra CSRF.
 # O PKCE fecha a outra ponta: o code_verifier fica num cookie httpOnly que só o browser que abriu o
 # authorize tem. Um code interceptado não vira token sem ele (ADR 0017).
@@ -537,7 +537,7 @@ def _sem_caixa(motivo: str) -> bool:
     return "mail service not enabled" in motivo.lower()
 
 
-# REVISAR(human): uma chamada a users/me/profile responde as duas perguntas do ticket 29: o e-mail da
+# uma chamada a users/me/profile responde as duas perguntas do ticket 29: o e-mail da
 # conta (emailAddress) e se ela tem caixa Gmail. Conta criada com e-mail de outro provedor devolve
 # 400 "Mail service not enabled" sem e-mail: aí o Drive (drive/v3/about) informa a conta. Sem escopo
 # novo: gmail.readonly e drive.readonly já cobrem. Qualquer outra falha não derruba a conexão: Gmail
@@ -574,7 +574,7 @@ async def callback(
     return r
 
 
-# REVISAR(human): par do cookie do authorize. Sem o cookie (outro browser, ou passaram 10 min) não há
+# par do cookie do authorize. Sem o cookie (outro browser, ou passaram 10 min) não há
 # code_verifier: volta com `pkce_ausente` sem chamar o Google. Com ele, o Flow manda o verifier no
 # POST /token e o Google confere com o code_challenge do authorize. O callback sempre apaga o cookie.
 async def _trocar(
@@ -687,7 +687,7 @@ SEM_CAIXA = (
 RECONECTAR = "A conexão com o Google expirou ou foi revogada. Reconecte a conta Google em Conectores."
 
 
-# REVISAR(human): único mapa de erro do Gmail para texto de usuário (ticket 29). Devolve o texto e se
+# único mapa de erro do Gmail para texto de usuário (ticket 29). Devolve o texto e se
 # a ação é reconectar (o front mostra o link "Ir para Conectores"). Casa por trecho da mensagem do
 # Google, sem diferenciar maiúscula; o status só decide 401 e 429. O texto cru fica só na auditoria.
 def traduzir_erro_gmail(status: int | None, motivo: str) -> tuple[str, bool]:
@@ -712,7 +712,7 @@ async def ler_rascunho(did: uuid.UUID, session: Sessao, user: Usuario) -> Rascun
     return _saida(await _do_dono(session, user, did))
 
 
-# REVISAR(human): único caminho que envia e-mail. Trava a linha (SELECT ... FOR UPDATE): dois cliques
+# único caminho que envia e-mail. Trava a linha (SELECT ... FOR UPDATE): dois cliques
 # simultâneos não enviam duas vezes, o segundo espera e recebe 409. Falha do Gmail mantém `pendente`,
 # grava email_send_failed com o erro cru do Google e devolve 502 com o texto traduzido e se é para reconectar.
 @router.post("/google/drafts/{did}/enviar", response_model=RascunhoOut)

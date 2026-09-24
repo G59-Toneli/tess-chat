@@ -29,7 +29,7 @@ async def dormir(segundos: float) -> None:
     await asyncio.sleep(segundos)
 
 
-# REVISAR(human): o que é erro transitório (ADR 0012). 429 e 5xx de gateway repetem.
+# o que é erro transitório (ADR 0012). 429 e 5xx de gateway repetem.
 # Outro 4xx é erro do request: repetir ou trocar de modelo só gasta. Timeout e erro
 # de API sem status (conexão) repetem. A mesma regra decide o retry e o fallback.
 def transitorio(exc: BaseException) -> bool:

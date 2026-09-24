@@ -75,7 +75,7 @@ class Cap(Base):
     limite_micro_usd: Mapped[int] = mapped_column(BigInteger)
 
 
-# REVISAR(human): custo real de uma chamada em micro-USD inteiro.
+# custo real de uma chamada em micro-USD inteiro.
 # promptTokenCount do Gemini já inclui o cache: input cobrado = input - cache.
 # output_tokens já inclui thinking: thinking sai do output e vai ao preço de thinking.
 # Uma divisão só no total, arredondada para cima: nunca cobra menos que o provedor.
@@ -122,7 +122,7 @@ async def _cap(session: AsyncSession, user_id: uuid.UUID | None) -> int:
     return settings.cap_usuario_micro_usd if user_id is not None else settings.cap_global_micro_usd
 
 
-# REVISAR(human): reserva = custo do input estimado + max_tokens inteiro de saída ao preço de output.
+# reserva = custo do input estimado + max_tokens inteiro de saída ao preço de output.
 # Recusa se a reserva passa do que falta no Cap do Usuário ou no global. Não grava a reserva:
 # o Ledger só recebe o acerto real. Duas chamadas simultâneas podem passar juntas (ressalva).
 async def reservar(
@@ -250,7 +250,7 @@ def _fuso(tz: str = "UTC") -> str:
 Fuso = Annotated[str, Depends(_fuso)]
 
 
-# REVISAR(human): dia do gasto no fuso do browser (UI-GUIA), não em UTC:
+# dia do gasto no fuso do browser (UI-GUIA), não em UTC:
 # 22h em Brasília já é o dia seguinte em UTC. Últimas 20 linhas do Ledger.
 async def _painel(session: AsyncSession, user_id: uuid.UUID | None, tz: str) -> Painel:
     filtro = [CreditLedger.user_id == user_id] if user_id is not None else []
@@ -309,7 +309,7 @@ class CustoConversa(BaseModel):
     saldo: Saldo
 
 
-# REVISAR(human): a origem sai da linha do Ledger, sem coluna nova. Linha com message_id é a
+# a origem sai da linha do Ledger, sem coluna nova. Linha com message_id é a
 # resposta do modelo de chat; sem message_id, o modelo do Jev é o Roteador e o resto é a
 # Compactação (os dois únicos acertos sem Mensagem, ver chat.py e compactacao.py).
 @router.get("/conversas/{cid}")

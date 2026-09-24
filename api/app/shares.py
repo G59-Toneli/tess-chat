@@ -77,7 +77,7 @@ def _out(share: Share, title: str) -> ShareOut:
     )
 
 
-# REVISAR(human): 404 único para revogado e inexistente. Mesmo corpo, mesmo header:
+# 404 único para revogado e inexistente. Mesmo corpo, mesmo header:
 # quem tem um link revogado não descobre que ele existiu (ADR 0008).
 async def _share_ativo(session: AsyncSession, share_id: str) -> tuple[Share, Conversation, User]:
     linha = (
@@ -94,7 +94,7 @@ async def _share_ativo(session: AsyncSession, share_id: str) -> tuple[Share, Con
     return share, conv, dono
 
 
-# REVISAR(human): o corte é o maior id de Mensagem no momento do share.
+# o corte é o maior id de Mensagem no momento do share.
 # messages.id é bigserial: Mensagem nova sempre tem id maior e fica fora do link.
 @router.post("/api/conversations/{cid}/share", status_code=201, response_model=ShareOut)
 async def criar(cid: uuid.UUID, session: Sessao, user: Usuario) -> ShareOut:
@@ -165,7 +165,7 @@ def _anexos_pelo_link(m: MensagemPublica, share_id: str) -> MensagemPublica:
     return m.model_copy(update={"parts": [parte(p) for p in m.parts]})
 
 
-# REVISAR(human): o anexo só sai pelo link se está ligado a uma Mensagem da Conversa do share até o corte.
+# o anexo só sai pelo link se está ligado a uma Mensagem da Conversa do share até o corte.
 # O join por message_id é a checagem de posse: Attachment não tem conversation_id. Anexo de outra
 # Conversa, posterior ao corte, solto (sem Mensagem), arquivo sumido e link revogado dão o mesmo 404.
 @router.get("/api/s/{share_id}/attachments/{aid}", include_in_schema=False)
@@ -203,7 +203,7 @@ class ForkOut(BaseModel):
     conversation_id: uuid.UUID
 
 
-# REVISAR(human): fork, não escrita na Conversa do dono (ADR 0020). A cópia é do Usuário logado e
+# fork, não escrita na Conversa do dono (ADR 0020). A cópia é do Usuário logado e
 # só leva o que não depende da conta do dono: Rascunho vira só leitura com o estado real do momento,
 # resultado de tool fica como histórico. Anexo vira arquivo novo do visitante (ADR 0021): o modelo da
 # cópia vê a imagem pelo ADR 0016. Não chama modelo, então não cobra.
@@ -290,7 +290,7 @@ def _draft_id(parte: dict[str, Any]) -> uuid.UUID | None:
         return None
 
 
-# REVISAR(human): a part gravada fica "pendente" para sempre; o estado real mora em email_drafts.
+# a part gravada fica "pendente" para sempre; o estado real mora em email_drafts.
 # O link troca só o campo estado, e só de Rascunho da mesma Conversa: nenhum dado além do que a Mensagem já mostra.
 async def _com_estado_dos_rascunhos(
     session: AsyncSession, cid: uuid.UUID, msgs: list[Message]

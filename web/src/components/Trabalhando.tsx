@@ -15,7 +15,7 @@ const ATRASOS = Array.from({ length: 9 }, (_, i) => ((i % 3) + Math.abs(Math.flo
 const ORBITA = [0, 1, 2, 5, 8, 7, 6, 3]
 const ATRASOS_ORBITA = Array.from({ length: 9 }, (_, i) => (ORBITA.includes(i) ? ORBITA.indexOf(i) * 110 : null))
 
-// REVISAR(human): decide se o indicador aparece no fim da última mensagem e com qual texto.
+// decide se o indicador aparece no fim da última mensagem e com qual texto.
 // Aparece só com o stream aberto, sem tool rodando (o card e o Buscando já mostram), sem
 // corte do ticket 30 e sem texto no fim (o próprio texto é o progresso). step-start e
 // partes data-* não contam como fim: o adaptador manda step-start logo depois da tool.

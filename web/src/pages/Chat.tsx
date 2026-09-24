@@ -81,7 +81,7 @@ export function Chat() {
   return id ? <CarregarConversa key={id} id={id} /> : <ChatNovo />
 }
 
-// REVISAR(human): em "/" a Conversa ainda não existe. Crio ela com o título tirado
+// em "/" a Conversa ainda não existe. Crio ela com o título tirado
 // do primeiro texto, guardo o texto em `pendentes` e navego para /c/:id. O chat de lá
 // envia uma vez. Alternativa descartada: criar a Conversa dentro do transporte do
 // useChat; a troca de rota remonta o componente e mata o stream.
