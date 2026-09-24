@@ -222,7 +222,7 @@ function Catalogo({
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-medium text-muted-foreground">Conectar em 1 clique</h2>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {CATALOGO_MCP.map((a) => {
           const s = servidores?.find((x) => x.url === a.url)
           return (
@@ -311,7 +311,7 @@ function OutroServidor({ nomes, onCadastrado }: { nomes: string[]; onCadastrado:
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="mcp-url">URL do servidor</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 md:flex-row">
                 <Input
                   id="mcp-url"
                   value={url}
@@ -325,7 +325,7 @@ function OutroServidor({ nomes, onCadastrado }: { nomes: string[]; onCadastrado:
                   className="font-mono"
                 />
                 {!pedeToken && (
-                  <Button type="submit" disabled={enviando || !pronto}>
+                  <Button type="submit" className="w-full md:w-auto" disabled={enviando || !pronto}>
                     {enviando ? <Spinner /> : <PlugIcon />} Conectar
                   </Button>
                 )}
@@ -342,7 +342,7 @@ function OutroServidor({ nomes, onCadastrado }: { nomes: string[]; onCadastrado:
                   <KeyRoundIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   Esse servidor não oferece login automático. Cole um token de acesso dele.
                 </p>
-                <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
+                <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
                   <div className="space-y-2">
                     <Label htmlFor="mcp-nome">Nome</Label>
                     <Input id="mcp-nome" value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={60} />
@@ -363,7 +363,7 @@ function OutroServidor({ nomes, onCadastrado }: { nomes: string[]; onCadastrado:
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground">Guardado cifrado. Nunca volta para a tela.</p>
-                  <Button type="submit" disabled={enviando || !pronto}>
+                  <Button type="submit" className="w-full md:w-auto" disabled={enviando || !pronto}>
                     {enviando ? <Spinner /> : <PlugIcon />} {enviando ? 'Conectando...' : 'Conectar e listar tools'}
                   </Button>
                 </div>

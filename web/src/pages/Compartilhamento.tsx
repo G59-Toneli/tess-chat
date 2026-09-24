@@ -85,7 +85,7 @@ function ConversaPublica({ share, shareId }: { share: SharePublico; shareId: str
   const visiveis = juntarTurnos(share.messages).filter((m) => m.parts.some(desenhavel))
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3">
+      <div className="mb-6 flex flex-col gap-3 rounded-lg border bg-muted/40 px-4 py-3 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold break-words">{share.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -131,7 +131,7 @@ function BotaoContinuar({ shareId }: { shareId: string }) {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button size="sm" disabled={enviando} onClick={() => void continuar()}>
+      <Button size="sm" className="w-full md:w-auto" disabled={enviando} onClick={() => void continuar()}>
         {enviando ? <Spinner /> : <MessageSquarePlusIcon />} Continuar esta conversa
       </Button>
       {erro && (

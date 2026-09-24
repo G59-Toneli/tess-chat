@@ -1,7 +1,7 @@
 # 65 — Telas de formulário e públicas responsivas
 
 **Type:** task (web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 62
 **Refs:** `docs/UI-GUIA.md`, ticket 62 (script `web/scripts/checar-responsivo.mjs`).
 
@@ -24,3 +24,9 @@ Não toca `components/ui/*`, `index.css`, `AppLayout.tsx` nem componentes do Cha
 - `checar-responsivo.mjs` em `/login`, `/config`, `/tools`, `/api-tools`, `/mcp`, `/conectores`, `/perfil` e `/s/<shareId existente>`: zero violações em 390, 768 e 1440.
 - Screenshots `.scratch/desafio/screens/65-*` em 390 de cada tela.
 - Gemini: 0. Não cadastrar nem remover MCP/API tool/conector da conta demo; não alterar a Configuração da conta demo.
+
+## Answer
+- Grids de cards e campos passam a 1 coluna abaixo de `md` (antes `sm`) em Configuração, Tools por API e MCP. Botões de ação do formulário (Salvar/Descartar, Testar/Salvar, Conectar) ocupam a largura toda no mobile; o campo de URL do MCP empilha com o botão.
+- `/tools`: o header do card empilha no mobile, o nome da tool quebra (`break-all`) e o badge desce de linha. Schema ganhou `max-h-96` com rolagem no próprio bloco. `/s/:id`: o botão "Continuar esta conversa" desce abaixo do título no mobile.
+- `checar-responsivo.mjs` nas 8 rotas do aceite x 390/768/1440: zero violações (antes 1, o badge de `/tools`). `tsc -b` e `vite build` limpos. Screenshots em `.scratch/desafio/screens/65-*`.
+- Ressalvas: o Login atual não tem botão de conta demo (saiu com o cadastro aberto); o card inteiro cabe em 390x844. Linhas rótulo + switch que cabem numa linha (Tema, Ligado do MCP) ficaram inline (DECISOES-AUTONOMAS). Conectores, Login e Placeholder já passavam e não mudaram. Sem REVISAR(human).

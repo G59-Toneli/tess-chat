@@ -147,7 +147,7 @@ export function Configuracao() {
                 Modelo e raciocínio {escopo}. Mais raciocínio deixa a resposta mais lenta e mais cara.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-5 sm:grid-cols-2">
+            <CardContent className="grid gap-5 md:grid-cols-2">
               <Campo
                 id="modelo"
                 rotulo="Modelo"
@@ -202,7 +202,7 @@ export function Configuracao() {
                 Quando a compactação dispara, quando o Roteador força uma tool e quantas tools cabem num turno.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-5 sm:grid-cols-2">
+            <CardContent className="grid gap-5 md:grid-cols-2">
               <Campo
                 id="compactacao"
                 rotulo="Limiar de compactação (tokens)"
@@ -251,7 +251,7 @@ export function Configuracao() {
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 md:flex-row md:items-center md:justify-end">
             <Button
               type="button"
               variant="outline"

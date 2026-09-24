@@ -197,7 +197,7 @@ function Modelos({ onUsar }: { onUsar: (m: ApiToolNova) => void }) {
       ) : !modelos ? (
         <EstadoCarregando />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           {modelos.map((m) => (
             <Card key={m.nome} className="gap-3 py-4">
               <CardContent className="flex h-full flex-col gap-3 px-4">
@@ -395,7 +395,7 @@ function Formulario({ inicial, onSalva }: { inicial: ApiToolNova | null; onSalva
                         />
                       </div>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+                    <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr]">
                       <div className="space-y-1.5">
                         <Label htmlFor={`desc-${p.nome}`} className="text-xs">
                           Descrição
@@ -454,7 +454,7 @@ function Formulario({ inicial, onSalva }: { inicial: ApiToolNova | null; onSalva
               </SelectContent>
             </Select>
             {auth.tipo === 'header' && (
-              <div className="grid gap-3 sm:grid-cols-[1fr_2fr]">
+              <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
                 <div className="space-y-1.5">
                   <Label htmlFor="auth-nome" className="text-xs">
                     Nome do header
@@ -579,11 +579,16 @@ function Formulario({ inicial, onSalva }: { inicial: ApiToolNova | null; onSalva
                   ? 'Teste passou. Pode salvar.'
                   : 'Teste com os valores de exemplo para liberar o Salvar.'}
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" disabled={testando || pendencias.length > 0} onClick={() => void testar()}>
+            <div className="flex w-full gap-2 md:w-auto">
+              <Button
+                variant="outline"
+                className="flex-1 md:flex-none"
+                disabled={testando || pendencias.length > 0}
+                onClick={() => void testar()}
+              >
                 {testando ? <Spinner /> : <FlaskConicalIcon />} Testar
               </Button>
-              <Button disabled={!ok || salvando} onClick={() => void salvar()}>
+              <Button className="flex-1 md:flex-none" disabled={!ok || salvando} onClick={() => void salvar()}>
                 {salvando ? <Spinner /> : <SaveIcon />} Salvar
               </Button>
             </div>

@@ -63,10 +63,10 @@ export function Tools() {
         <div className="space-y-4">
           {tools.map((t) => (
             <Card key={t.nome}>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
                 <div className="min-w-0 space-y-1.5">
-                  <CardTitle className="flex items-center gap-2 font-mono text-base">
-                    {t.nome}
+                  <CardTitle className="flex flex-wrap items-center gap-2 font-mono text-base">
+                    <span className="min-w-0 break-all">{t.nome}</span>
                     <Badge variant="secondary">{t.origem === 'mcp' ? 'MCP' : t.origem}</Badge>
                   </CardTitle>
                   <CardDescription>{t.descricao_usuario}</CardDescription>
@@ -89,7 +89,7 @@ export function Tools() {
                     <ChevronDownIcon className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
                     Ver schema
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-3 overflow-hidden rounded-md bg-muted/50">
+                  <CollapsibleContent className="mt-3 max-h-96 overflow-auto rounded-md bg-muted/50">
                     <CodeBlock code={JSON.stringify(t.schema, null, 2)} language="json" />
                   </CollapsibleContent>
                 </Collapsible>
