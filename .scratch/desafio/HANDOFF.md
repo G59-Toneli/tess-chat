@@ -38,6 +38,7 @@ Atualizado em 2026-09-23 ~13:40. Sessão encerrada a pedido do Toneli; retomar a
 - **Tickets da manhã de 23/09 (pedidos do Toneli):** 25 e-mail com confirmação, 26 e 27 UI/UX, 28 nav + descricao_usuario, 29 conta Google + erros do Gmail, 30 teto de tools visível/configurável, 31 e 33 erro de tool MCP e args do Stripe, 32 indicador de contexto. Stripe MCP validado ponta a ponta (link de pagamento real em sandbox).
 - **Chave Fernet regenerada** em 23/09 ~11:50 (a antiga se perdeu do .env local); Google e Stripe do demo local foram recadastrados.
 - **Rodando:** nenhum. Todos os agentes encerrados.
+- **Responsivo (23/09 noite):** 62 a 67 resolvidos e em produção. Corte em md, script `web/scripts/checar-responsivo.mjs` é o aceite de todo ticket de front. Checagem contra produção pendente: a senha da demo em prod não é a do `.env` do VPS.
 - **Suíte final do bloco (23/09 ~03:45, Postgres 5433 + mcp-demo 8765):** `uv run pytest` 141 passed / 0 failed; `npm run build` e `tsc --noEmit` limpos.
 - **Bloqueados em Toneli:** 02 e 16 (SSH do VPS, registro A `chat.toneli.dev.br`). Parte HITL do 18 (conectar conta Google e validar) e do 19 (gravar vídeo) no `MANHA.md`. Decisão sobre fallback OpenAI (ADR 0012 sem código) no `MANHA.md`.
 - **Próximo ticket de código:** 16 (deploy), assim que houver SSH. No deploy: `ENV=prod`, `PUBLIC_BASE_URL=https://chat.toneli.dev.br`, `CONNECTORS_KEY` própria, trocar `GITHUB_PAT` e recadastrar o GitHub em `/mcp`.
