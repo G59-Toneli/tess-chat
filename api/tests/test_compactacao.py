@@ -179,3 +179,85 @@ async def test_resumo_nao_corta_entre_tool_call_e_resultado(client, usar_modelo,
         assert pares_orfaos(msgs) == []
     # Cada chamada que sobrou literal tem o retorno junto, e a última vista ainda tem tool.
     assert any(isinstance(p, ToolReturnPart) for m in vistas[-1] for p in m.parts)
+
+
+# Ticket 60 (ADR 0025): o gatilho lê o input da última chamada do turno, não a soma do turno.
+class PorChamada(FunctionModel):
+    """Input fixo por chamada: `primeira` no pedido do usuário, `ultima` depois do retorno da tool."""
+
+    def __init__(self, stream_function, primeira: int, ultima: int, **kw):
+        super().__init__(stream_function=stream_function, **kw)
+        self.primeira, self.ultima = primeira, ultima
+
+    @asynccontextmanager
+    async def request_stream(self, messages, *args, **kwargs):
+        async with super().request_stream(messages, *args, **kwargs) as resp:
+            depois_da_tool = any(isinstance(p, ToolReturnPart) for p in messages[-1].parts)
+            resp._usage = RequestUsage(input_tokens=self.ultima if depois_da_tool else self.primeira)
+            yield resp
+
+
+def com_tool(primeira: int, ultima: int) -> PorChamada:
+    """Todo turno chama web_search no 1º request e responde texto no 2º."""
+    async def stream(msgs: list[ModelMessage], info: AgentInfo):
+        ultimo = msgs[-1]
+        if isinstance(ultimo, ModelRequest) and any(isinstance(p, UserPromptPart) for p in ultimo.parts):
+            yield {0: DeltaToolCall(name="web_search", json_args=json.dumps({"query": "x"}), tool_call_id="c")}
+            return
+        yield "resposta"
+
+    return PorChamada(stream, primeira, ultima, model_name=MODELO)
+
+
+async def quatro_turnos(client, h: dict, cid: str) -> None:
+    for t in ["um", "dois", "três", "quatro"]:
+        assert (await client.post(f"/api/chat/{cid}", json=corpo(t), headers=h)).status_code == 200
+
+
+async def test_soma_acima_e_ultima_abaixo_nao_compacta(client, usar_modelo, usar_rotas, limiar, resumidor):
+    usar_rotas(Rotas())
+    usar_modelo(com_tool(primeira=1_500, ultima=1_500))  # soma 3.000 > limiar 2.000 > última 1.500
+    uid, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+
+    await quatro_turnos(client, h, cid)
+
+    assert resumidor == []
+    assert await eventos("compaction", user_id=uid) == []
+    # Mensagem e rosca mostram a janela (última chamada); Ledger e llm_call seguem com a soma.
+    msgs = (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+    assert [m["input_tokens"] for m in msgs if m["role"] == "assistant" and m["model"]] == [1_500] * 4
+    assert (await client.get(f"/api/conversations/{cid}/contexto", headers=h)).json()["usado"] == 1_500
+    async with SessionLocal() as s:
+        ledger = (await s.scalars(select(CreditLedger.input_tokens).where(CreditLedger.user_id == uid))).all()
+    assert ledger == [3_000] * 4
+    assert [e.input_tokens for e in await eventos("llm_call", user_id=uid)] == [3_000] * 4
+
+
+async def test_ultima_chamada_acima_compacta(client, usar_modelo, usar_rotas, limiar, resumidor):
+    usar_rotas(Rotas())
+    usar_modelo(com_tool(primeira=100, ultima=2_500))
+    uid, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+
+    await quatro_turnos(client, h, cid)
+
+    assert len(resumidor) == 1
+    [ev] = await eventos("compaction", user_id=uid)
+    assert ev.payload["tokens_antes"] == 2_500
+    async with SessionLocal() as s:
+        modelos = (await s.scalars(select(CreditLedger.model).where(CreditLedger.user_id == uid))).all()
+    assert modelos.count(MODELO_RESUMO) == 1
+
+
+async def test_turno_de_uma_chamada_grava_o_mesmo_numero_na_mensagem_e_no_ledger(client, usar_modelo, resumidor):
+    usar_modelo(modelo_eco([]))
+    uid, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+
+    assert (await client.post(f"/api/chat/{cid}", json=corpo(LONGO), headers=h)).status_code == 200
+
+    [msg] = [m for m in (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json() if m["role"] == "assistant"]
+    async with SessionLocal() as s:
+        [ledger] = (await s.scalars(select(CreditLedger.input_tokens).where(CreditLedger.user_id == uid))).all()
+    assert msg["input_tokens"] == ledger > 0

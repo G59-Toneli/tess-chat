@@ -11,7 +11,7 @@ Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta.
 ## Compactação (ADR 0006)
 - ~~Marcador "histórico compactado aqui" no turno ao vivo só aparece após recarregar~~. **Resolvido nos tickets 49 e 51:** o separador "Histórico anterior resumido" aparece antes da pergunta do turno que compactou, sem recarregar.
 - Caminho de resumo de um resumo existe no código, sem teste nem verificação manual.
-- Em turno com tool, o input conta todos os requests somados; o gatilho pode disparar antes do esperado. Ticket 58: o turno Notion (msg 222) somou 1.251.511 com ~17 requests de ~75k cada; o turno seguinte compacta com uma janela real bem abaixo de 100k. Opções: (a) gatilho lê o `input_tokens` do último `llm_request` do turno anterior (maior fidelidade à janela; muda o gatilho, precisa de ADR); (b) manter a soma e subir o limiar (simples, mas o limiar perde significado de janela). Recomendo (a).
+- ~~Em turno com tool, o input conta todos os requests somados; o gatilho pode disparar antes do esperado~~. **Resolvido no ticket 60 ([ADR 0025](adr/0025-gatilho-le-ultima-chamada.md)):** a Mensagem guarda o uso da última chamada do turno; gatilho e rosca leem a janela real. Ledger e `llm_call` seguem com a soma.
 - Teste usa subclasse que mexe em atributo privado do Pydantic AI; pode quebrar em upgrade.
 
 ## Tools (ADR 0009)

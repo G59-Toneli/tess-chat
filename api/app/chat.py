@@ -255,10 +255,14 @@ async def _persistir(
             ultima = Message(conversation_id=cid, role="assistant", parts=[])
             linhas.append(ultima)
         ultima.model = nome
-        ultima.input_tokens = uso.input_tokens
-        ultima.output_tokens = uso.output_tokens  # já inclui thinking
-        ultima.thinking_tokens = uso.details.get("thoughts_tokens")
-        ultima.cache_read_tokens = uso.cache_read_tokens
+        # REVISAR(human): a Mensagem guarda o uso da última chamada do turno, não a soma (ADR 0025).
+        # O input dela é o tamanho real da janela: é o que o gatilho da Compactação e a rosca leem.
+        # A soma (custo) vai no Ledger e no llm_call. Parado antes do 1º token: sem resposta, fica a soma.
+        janela = resposta.usage if resposta else uso
+        ultima.input_tokens = janela.input_tokens
+        ultima.output_tokens = janela.output_tokens  # já inclui thinking
+        ultima.thinking_tokens = janela.details.get("thoughts_tokens")
+        ultima.cache_read_tokens = janela.cache_read_tokens
         if interrupcao:
             ultima.parts = [*ultima.parts, {"type": AVISO, "data": _aviso(interrupcao)}]
         s.add_all(linhas)
