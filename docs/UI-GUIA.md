@@ -13,7 +13,8 @@ Vale para todo ticket que toca `web/`. Meta do Toneli: tela bonita, clara e vis�
 - Todo estado tem tela: vazio ("nenhuma conversa ainda", com ação), carregando (skeleton ou loader do AI Elements), erro (mensagem em pt-BR, ação de tentar de novo).
 - Streaming: texto aparece token a token; indicador de "pensando" enquanto não chega o primeiro token; tool call aparece como bloco recolhível com nome, args e duração.
 - pt-BR em toda string visível. Data e hora no fuso do browser.
-- Desktop primeiro. Mobile só se sair de graça com o layout do shadcn (sidebar recolhível). Não gastar ticket com mobile.
+- **Responsivo obrigatório** (pedido do Toneli em 23/09, tickets 62 a 66). Corte desktop/mobile em `md` (768 px). Abaixo de `md`: sidebar vira Sheet (componente `Sidebar` do shadcn), header com `SidebarTrigger`, tabelas com rolagem horizontal própria ou lista de cards, grids em coluna única, popovers e dialogs cabem na tela. Altura em `dvh`/`svh`, nunca `100vh`. Alvo de toque mínimo 40 px. Desktop 1440 não pode regredir.
+- Primitivos compartilhados (`components/ui/*`, `index.css`) só mudam em ticket que declara isso. Página ajusta a si mesma com classes responsivas.
 - Acessibilidade básica: foco visível, labels em inputs, contraste do tema padrão.
 
 ## Telas
@@ -33,4 +34,4 @@ Vale para todo ticket que toca `web/`. Meta do Toneli: tela bonita, clara e vis�
 | `/admin` (só admin) | cap global, usuários, gasto total |
 
 ## Verificação visual
-Antes de fechar um ticket de front: rodar a app, abrir cada tela tocada com Playwright (MCP `plugin_playwright`), usando o **Brave** como browser (executável `C:Program FilesBraveSoftwareBrave-BrowserApplicationbrave.exe`), nunca o Google Chrome, tirar screenshot em dark mode 1440x900, salvar em `.scratch/desafio/screens/NN-<tela>.png`, e checar: sem texto cortado, sem overflow horizontal, estados vazio/carregando/erro visíveis. Screenshot vai no relatório ao orquestrador como caminho, não colado.
+Antes de fechar um ticket de front: rodar a app, abrir cada tela tocada com Playwright (MCP `plugin_playwright`), usando o **Brave** como browser (executável `C:Program FilesBraveSoftwareBrave-BrowserApplicationbrave.exe`), nunca o Google Chrome, tirar screenshot em dark mode em **390x844 e 1440x900**, salvar em `.scratch/desafio/screens/NN-<tela>-<largura>.png`, e checar: sem texto cortado, sem overflow horizontal, estados vazio/carregando/erro visíveis. Overflow é checado por script, não no olho: `document.documentElement.scrollWidth <= innerWidth` e nenhum elemento visível com `getBoundingClientRect().right > innerWidth + 1` (fora de containers com `overflow-x: auto`). Script de referência: `web/scripts/checar-responsivo.mjs` (ticket 62). Screenshot vai no relatório ao orquestrador como caminho, não colado.
