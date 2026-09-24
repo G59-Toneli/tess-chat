@@ -197,7 +197,7 @@ Nomes de tabela conferidos no `__tablename__` de cada módulo.
 
 ## Mapa de `REVISAR(human)`
 
-Funções que o agente implementou no lugar do Toneli. São as que mais caem em entrevista. Revisadas com o Toneli em 24/09: a marca saiu do código, o comentário ficou. Pendências da revisão: tickets 68 a 71.
+Funções que o agente implementou no lugar do Toneli. São as que mais caem em entrevista. Revisadas com o Toneli em 24/09: a marca saiu do código, o comentário ficou.
 
 | Módulo | Marcas | O que decidem |
 |---|---|---|
