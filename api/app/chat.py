@@ -51,6 +51,7 @@ from app.configuracao import MODELO_PADRAO, Configuracao, configuracao_do_turno
 from app.conversas import Conversation, Message, conversa_do_usuario
 from app.credito import acertar, reservar
 from app.db import SessionLocal, get_session
+from app.medicao import Medidor, auditar_requests
 from app.resiliencia import ERROS_PROVEDOR, Turno, cadeia, causa, resumo_erro
 from app.roteador import PRECO_JEV, Gate, apply_gate, cliente_jev, decidir, opcoes
 from app.tools import ComTeto, estado_da_conversa, toolset_da_conversa, transporte
@@ -229,6 +230,7 @@ async def _persistir(
     antes: int,
     comp: Compactacao | None = None,
     interrupcao: dict[str, Any] | None = None,
+    medidor: Medidor | None = None,
 ) -> None:
     latencia = int((time.perf_counter() - turno.t0) * 1000)
     # Mensagem e Ledger levam o modelo que respondeu, com o preço dele.
@@ -290,6 +292,7 @@ async def _persistir(
                 **(interrupcao or {}),
             },
         )
+        await auditar_requests(s, uid, cid, nome, novas, medidor)
         await s.commit()
 
 
@@ -462,13 +465,14 @@ async def _preparar_turno(
     turno = Turno(nome)
     modelos = cadeia(turno, [m, *([reserva] if reserva else [])])
     teto = ComTeto(tools, cfg.tool_calls_limite)
+    medidor = Medidor()
     pronto: asyncio.Future[Response | None] = asyncio.get_running_loop().create_future()
 
     async def eventos() -> AsyncIterator[Any]:
         try:
             async for ev in adapter.run_stream_native(
                 message_history=historico, model=modelos, model_settings=ajustes(cfg), conversation_id=str(cid),
-                toolsets=[teto], capabilities=[gate, *([comp.capability()] if comp else [])],
+                toolsets=[teto], capabilities=[gate, medidor, *([comp.capability()] if comp else [])],
                 cancellation_token=ativo.token,
             ):
                 if isinstance(ev, (PartStartEvent, PartDeltaEvent)):
@@ -505,7 +509,7 @@ async def _preparar_turno(
             yield ev
 
     async def ao_fim(result: AgentRunResult[Any]) -> None:
-        await _persistir(cid, uid, turno, result.all_messages(), result.usage, len(historico), comp)
+        await _persistir(cid, uid, turno, result.all_messages(), result.usage, len(historico), comp, medidor=medidor)
 
     async def ao_cancelar(cancelado: RunCancelled) -> AsyncIterator[BaseChunk]:
         """Turno cortado pelo ComTeto ou parado pelo Usuário: fecha a tool pendente, grava com aviso e cobra."""
@@ -514,7 +518,7 @@ async def _preparar_turno(
             return
         todas, pendentes = _fechar_pendentes(cancelado.all_messages())
         inter = {**interrupcao, "tool_call_ids": pendentes}
-        await _persistir(cid, uid, turno, todas, cancelado.usage, len(historico), comp, inter)
+        await _persistir(cid, uid, turno, todas, cancelado.usage, len(historico), comp, inter, medidor)
         yield DataChunk(type=AVISO, data=_aviso(inter))
 
     chunks = adapter.transform_stream(com_primeiro(), on_complete=ao_fim, on_cancel=ao_cancelar)
