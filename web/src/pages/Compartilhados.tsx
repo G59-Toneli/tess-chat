@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import { copiar, listarShares, revogarShare, urlAbsoluta, type Share } from '@/lib/shares'
 
 const fmtData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -55,7 +56,7 @@ export function Compartilhados() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="mx-auto max-w-4xl p-4 md:p-8">
       <h1 className="text-2xl font-semibold">Compartilhados</h1>
       <p className="mt-1 mb-6 text-sm text-muted-foreground">
         Links públicos das suas conversas. Cada link mostra a conversa até o momento em que foi criado.
@@ -140,7 +141,7 @@ function Acao({
           size="icon-sm"
           aria-label={rotulo}
           onClick={onClick}
-          className={destrutivo ? 'text-destructive hover:text-destructive' : undefined}
+          className={cn('size-10 md:size-8', destrutivo && 'text-destructive hover:text-destructive')}
         >
           {children}
         </Button>

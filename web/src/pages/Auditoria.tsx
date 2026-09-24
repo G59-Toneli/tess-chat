@@ -96,7 +96,7 @@ export function Auditoria() {
   const inicio = filtro.pagina * POR_PAGINA
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <h1 className="text-2xl font-semibold">Auditoria</h1>
       <p className="mt-1 mb-6 text-sm text-muted-foreground">
         {admin
@@ -104,11 +104,11 @@ export function Auditoria() {
           : 'Seus eventos, do mais recente para o mais antigo. Clique numa linha para ver o payload.'}
       </p>
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
         {admin && (
           <Filtro rotulo="Usuário" id="f-usuario">
             <Select value={filtro.usuario || TODOS} onValueChange={(v) => mudar('usuario', v)}>
-              <SelectTrigger id="f-usuario" className="w-44">
+              <SelectTrigger id="f-usuario" className="w-full md:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -124,7 +124,7 @@ export function Auditoria() {
         )}
         <Filtro rotulo="Conversa" id="f-conversa">
           <Select value={filtro.conversa || TODOS} onValueChange={(v) => mudar('conversa', v)}>
-            <SelectTrigger id="f-conversa" className="w-44">
+            <SelectTrigger id="f-conversa" className="w-full md:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -142,7 +142,7 @@ export function Auditoria() {
         </Filtro>
         <Filtro rotulo="Tipo" id="f-tipo">
           <Select value={filtro.tipo || TODOS} onValueChange={(v) => mudar('tipo', v)}>
-            <SelectTrigger id="f-tipo" className="w-40">
+            <SelectTrigger id="f-tipo" className="w-full md:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -156,10 +156,10 @@ export function Auditoria() {
           </Select>
         </Filtro>
         <Filtro rotulo="De" id="f-de">
-          <Input id="f-de" type="date" className="w-36" value={filtro.de} onChange={(e) => mudar('de', e.target.value)} />
+          <Input id="f-de" type="date" className="w-full md:w-36" value={filtro.de} onChange={(e) => mudar('de', e.target.value)} />
         </Filtro>
         <Filtro rotulo="Até" id="f-ate">
-          <Input id="f-ate" type="date" className="w-36" value={filtro.ate} onChange={(e) => mudar('ate', e.target.value)} />
+          <Input id="f-ate" type="date" className="w-full md:w-36" value={filtro.ate} onChange={(e) => mudar('ate', e.target.value)} />
         </Filtro>
         {temFiltro && (
           <Button variant="ghost" onClick={() => setParams({})}>
@@ -192,12 +192,12 @@ export function Auditoria() {
                 <TableRow>
                   <TableHead>Data e hora</TableHead>
                   <TableHead>Tipo</TableHead>
-                  {admin && <TableHead>Usuário</TableHead>}
+                  {admin && <TableHead className="hidden md:table-cell">Usuário</TableHead>}
                   <TableHead>Conversa</TableHead>
-                  <TableHead>Modelo</TableHead>
-                  <TableHead className="text-right">Tokens (entrada / saída)</TableHead>
+                  <TableHead className="hidden md:table-cell">Modelo</TableHead>
+                  <TableHead className="hidden text-right md:table-cell">Tokens (entrada / saída)</TableHead>
                   <TableHead className="text-right">Custo</TableHead>
-                  <TableHead className="text-right">Latência</TableHead>
+                  <TableHead className="hidden text-right md:table-cell">Latência</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -215,32 +215,33 @@ export function Auditoria() {
                         {rotuloEvento(e.event_type)}
                       </Badge>
                     </TableCell>
-                    {admin && <TableCell className="max-w-48 truncate">{e.user_email ?? '—'}</TableCell>}
+                    {admin && <TableCell className="hidden max-w-48 truncate md:table-cell">{e.user_email ?? '—'}</TableCell>}
                     <TableCell className="max-w-48 truncate">
                       {e.conversation_id ? (titulos.get(e.conversation_id) ?? `${e.conversation_id.slice(0, 8)}…`) : '—'}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{e.model ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="hidden text-muted-foreground md:table-cell">{e.model ?? '—'}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">
                       {e.input_tokens != null ? `${fmtNumero.format(e.input_tokens)} / ${fmtNumero.format(e.output_tokens ?? 0)}` : '—'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{e.cost_micro_usd != null ? usd(e.cost_micro_usd) : '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{e.latency_ms != null ? `${fmtNumero.format(e.latency_ms)} ms` : '—'}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">{e.latency_ms != null ? `${fmtNumero.format(e.latency_ms)} ms` : '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               {inicio + 1}–{inicio + pagina.items.length} de {fmtNumero.format(pagina.total)} eventos
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={filtro.pagina === 0} onClick={() => mudar('pagina', String(filtro.pagina - 1))}>
+              <Button variant="outline" size="sm" className="h-10 md:h-8" disabled={filtro.pagina === 0} onClick={() => mudar('pagina', String(filtro.pagina - 1))}>
                 <ChevronLeftIcon /> Anterior
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                className="h-10 md:h-8"
                 disabled={inicio + pagina.items.length >= pagina.total}
                 onClick={() => mudar('pagina', String(filtro.pagina + 1))}
               >
@@ -252,7 +253,7 @@ export function Auditoria() {
       )}
 
       <Sheet open={aberto !== null} onOpenChange={(a) => !a && setAberto(null)}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+        <SheetContent className="overflow-y-auto data-[side=right]:w-full sm:max-w-xl">
           {aberto && <DetalheEvento evento={aberto} tituloConversa={titulos.get(aberto.conversation_id ?? '')} />}
         </SheetContent>
       </Sheet>

@@ -50,8 +50,8 @@ export function Creditos() {
   useEffect(() => void carregar(), [carregar])
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Créditos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -59,7 +59,7 @@ export function Creditos() {
           </p>
         </div>
         {admin && (
-          <div className="flex shrink-0 rounded-lg border p-0.5" role="group" aria-label="Escopo">
+          <div className="flex shrink-0 self-start rounded-lg border p-0.5" role="group" aria-label="Escopo">
             {(['me', 'global'] as const).map((e) => (
               <Button key={e} size="sm" variant={escopo === e ? 'secondary' : 'ghost'} onClick={() => setEscopo(e)}>
                 {e === 'me' ? 'Meu crédito' : 'Global'}
@@ -146,8 +146,8 @@ export function Creditos() {
                         <TableHead>Modelo</TableHead>
                         <TableHead className="text-right">Entrada</TableHead>
                         <TableHead className="text-right">Saída</TableHead>
-                        <TableHead className="text-right">Raciocínio</TableHead>
-                        <TableHead className="text-right">Cache</TableHead>
+                        <TableHead className="hidden text-right md:table-cell">Raciocínio</TableHead>
+                        <TableHead className="hidden text-right md:table-cell">Cache</TableHead>
                         <TableHead className="text-right">Custo</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -158,8 +158,8 @@ export function Creditos() {
                           <TableCell>{l.model}</TableCell>
                           <TableCell className="text-right tabular-nums">{fmtNumero.format(l.input_tokens)}</TableCell>
                           <TableCell className="text-right tabular-nums">{fmtNumero.format(l.output_tokens)}</TableCell>
-                          <TableCell className="text-right tabular-nums">{fmtNumero.format(l.thinking_tokens)}</TableCell>
-                          <TableCell className="text-right tabular-nums">{fmtNumero.format(l.cache_read_tokens)}</TableCell>
+                          <TableCell className="hidden text-right tabular-nums md:table-cell">{fmtNumero.format(l.thinking_tokens)}</TableCell>
+                          <TableCell className="hidden text-right tabular-nums md:table-cell">{fmtNumero.format(l.cache_read_tokens)}</TableCell>
                           <TableCell className="text-right tabular-nums">{usd(l.cost_micro_usd)}</TableCell>
                         </TableRow>
                       ))}
@@ -182,7 +182,7 @@ export function Resumo({ saldo, global }: { saldo: Saldo; global: boolean }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-4">
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
           <Numero rotulo="Saldo" valor={usd(saldo.saldo_micro_usd)} destaque />
           <Numero rotulo="Gasto" valor={usd(saldo.gasto_micro_usd)} />
           <Numero rotulo={global ? 'Cap global' : 'Cap'} valor={usd(saldo.cap_micro_usd)} />

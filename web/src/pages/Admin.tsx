@@ -21,7 +21,7 @@ import { Resumo } from '@/pages/Creditos'
 /** Só admin: Cap global, gasto total e Usuários com gasto e Cap. */
 export function Admin() {
   const { usuario } = useContextoApp()
-  if (usuario === null) return <div className="mx-auto max-w-6xl p-8"><EstadoCarregando /></div>
+  if (usuario === null) return <div className="mx-auto max-w-6xl p-4 md:p-8"><EstadoCarregando /></div>
   if (!usuario.is_superuser) return <AcessoRestrito />
   return <PainelAdmin />
 }
@@ -45,7 +45,7 @@ function PainelAdmin() {
   useEffect(() => void carregar(), [carregar])
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <h1 className="text-2xl font-semibold">Administração</h1>
       <p className="mt-1 mb-6 text-sm text-muted-foreground">Cap global, gasto total e gasto de cada Usuário.</p>
       {erro ? (
@@ -65,52 +65,83 @@ function PainelAdmin() {
               {dados.usuarios.length === 0 ? (
                 <EstadoVazio titulo="Nenhum usuário" descricao="As contas cadastradas aparecem aqui." />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead className="text-right">Gasto</TableHead>
-                      <TableHead className="text-right">Cap</TableHead>
-                      <TableHead className="text-right">Uso</TableHead>
-                      <TableHead className="w-0" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <ul className="divide-y rounded-lg border md:hidden">
                     {dados.usuarios.map((u) => (
-                      <TableRow key={u.id}>
-                        <TableCell className="max-w-80">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate">{u.email}</span>
-                            {u.is_superuser && <Badge variant="outline">admin</Badge>}
+                      <li key={u.id} className="flex flex-col gap-3 p-4">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate font-medium">{u.email}</span>
+                          {u.is_superuser && <Badge variant="outline">admin</Badge>}
+                        </div>
+                        <dl className="grid grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <dt className="text-muted-foreground">Gasto</dt>
+                            <dd className="tabular-nums">{usd(u.gasto_micro_usd)}</dd>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{usd(u.gasto_micro_usd)}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="tabular-nums"
-                            aria-label={`Editar Cap de ${u.email}`}
-                            onClick={() => setEditando(u)}
-                          >
-                            {usd(u.cap_micro_usd)} <PencilIcon />
+                          <div>
+                            <dt className="text-muted-foreground">Cap</dt>
+                            <dd className="tabular-nums">{usd(u.cap_micro_usd)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">Uso</dt>
+                            <dd className="tabular-nums">{usoPct(u)}</dd>
+                          </div>
+                        </dl>
+                        <div className="flex gap-2">
+                          <Button variant="outline" className="h-10 flex-1" onClick={() => setEditando(u)}>
+                            <PencilIcon /> Editar Cap
                           </Button>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {((u.gasto_micro_usd / Math.max(1, u.cap_micro_usd)) * 100).toLocaleString('pt-BR', {
-                            maximumFractionDigits: 1,
-                          })}
-                          %
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" asChild>
+                          <Button variant="outline" className="h-10 flex-1" asChild>
                             <Link to={`/auditoria?usuario=${u.id}`}>Ver eventos</Link>
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </li>
                     ))}
-                  </TableBody>
-                </Table>
+                  </ul>
+                  <Table className="hidden md:table">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>E-mail</TableHead>
+                        <TableHead className="text-right">Gasto</TableHead>
+                        <TableHead className="text-right">Cap</TableHead>
+                        <TableHead className="text-right">Uso</TableHead>
+                        <TableHead className="w-0" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dados.usuarios.map((u) => (
+                        <TableRow key={u.id}>
+                          <TableCell className="max-w-80">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate">{u.email}</span>
+                              {u.is_superuser && <Badge variant="outline">admin</Badge>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{usd(u.gasto_micro_usd)}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="tabular-nums"
+                              aria-label={`Editar Cap de ${u.email}`}
+                              onClick={() => setEditando(u)}
+                            >
+                              {usd(u.cap_micro_usd)} <PencilIcon />
+                            </Button>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {usoPct(u)}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link to={`/auditoria?usuario=${u.id}`}>Ver eventos</Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
               )}
             </CardContent>
           </Card>
@@ -120,6 +151,10 @@ function PainelAdmin() {
     </div>
   )
 }
+
+/** Gasto sobre Cap, em %. Cap zero conta como 1 µUSD para não dividir por zero. */
+const usoPct = (u: UsuarioAdmin) =>
+  `${((u.gasto_micro_usd / Math.max(1, u.cap_micro_usd)) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
 
 /** Toggle global do cadastro. Fechado, /auth/register responde 403 e o Login esconde "Criar conta". */
 function CardCadastro() {
@@ -227,7 +262,7 @@ function DialogCap({
 
 function AcessoRestrito() {
   return (
-    <div className="mx-auto max-w-6xl p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-8">
       <h1 className="mb-6 text-2xl font-semibold">Administração</h1>
       <Empty>
         <EmptyHeader>

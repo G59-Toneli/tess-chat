@@ -1,7 +1,7 @@
 # 64 — Telas de tabela responsivas
 
 **Type:** task (web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 62
 **Refs:** `docs/UI-GUIA.md`, ticket 62 (script `web/scripts/checar-responsivo.mjs`).
 
@@ -23,3 +23,10 @@ Não toca `components/ui/*`, `index.css` nem `AppLayout.tsx`.
 - `checar-responsivo.mjs` nas 4 rotas: zero violações em 390, 768 e 1440 (admin só se a conta demo for superuser; senão registrar).
 - Screenshots `.scratch/desafio/screens/64-*` em 390 de cada tela, mais o drawer da auditoria aberto.
 - Gemini: 0. Não alterar a Configuração da conta demo.
+
+## Answer
+- Auditoria: tabela fica com rolagem horizontal (consulta densa); abaixo de `md` somem Usuário, Modelo, Tokens e Latência, que estão no drawer. Filtros empilham em coluna com largura total. Drawer ocupa 390 inteiro (`data-[side=right]:w-full`, porque o `w-3/4` do Sheet tem variante e não caía com `w-full`); JSON rola dentro dele.
+- Admin: Usuários viram cards abaixo de `md` (linha tem ação: Editar Cap, Ver eventos); tabela só em `md+`. Créditos: Resumo em 1 coluna até `lg` (em 768 com sidebar os 3 números encostavam), cabeçalho quebra linha, Ledger esconde Raciocínio e Cache no mobile. Compartilhados já era lista; só padding e alvo de toque.
+- Todas as 4: padding `p-4 md:p-8`; botões de ação/paginação com 40 px no mobile (UI-GUIA).
+- `checar-responsivo.mjs` nas 4 rotas x 390/768/1440: 0 violações. Ressalva: já dava 0 antes (o `Table` do shadcn já rola em x); o defeito real era sobreposição do Resumo, que o script não mede. Conferido no olho por screenshot.
+- Demo local é superuser no Postgres 5433 (API da 8000 é antiga e não rebaixa), então /admin foi medido com dados. Screenshots `.scratch/desafio/screens/64-*` + `64-auditoria-390-drawer.png`. Gemini 0. Sem REVISAR(human).
