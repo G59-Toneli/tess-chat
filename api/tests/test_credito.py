@@ -146,3 +146,41 @@ async def test_ledger_somente_insercao():
             assert "permission denied" in str(e)
         else:
             raise AssertionError("tess_app não devia poder alterar o Ledger")
+
+
+async def test_custo_da_conversa_soma_so_o_ledger_dela_por_origem(client):
+    uid, h = await usuario(client)
+    cid, outra = uuid.UUID((await criar(client, h))["id"]), uuid.UUID((await criar(client, h))["id"])
+    async with SessionLocal() as s:
+        preco = (await s.scalars(select(PrecoModelo).limit(1))).one()
+
+        def linha(conversa, custo, model=MODELO, message_id=None):
+            return CreditLedger(
+                user_id=uid, conversation_id=conversa, message_id=message_id, model=model, price_id=preco.id,
+                input_tokens=100, output_tokens=40, thinking_tokens=10, cache_read_tokens=5, cost_micro_usd=custo,
+            )
+
+        s.add_all([
+            linha(cid, 700, message_id=1),
+            linha(cid, 300, message_id=2),
+            linha(cid, 20, model="jev-latest"),
+            linha(cid, 50, model="gemini-3.1-flash-lite"),
+            linha(outra, 9_999, message_id=3),
+        ])
+        await s.commit()
+
+    r = await client.get(f"/api/credits/conversas/{cid}", headers=h)
+    assert r.status_code == 200, r.text
+    c = r.json()
+    assert c["total_micro_usd"] == 1_070
+    assert c["chamadas"] == 4
+    assert (c["input_tokens"], c["output_tokens"], c["thinking_tokens"], c["cache_read_tokens"]) == (400, 160, 40, 20)
+    assert [(o["origem"], o["custo_micro_usd"], o["chamadas"]) for o in c["por_origem"]] == [
+        ("resposta", 1_000, 2),
+        ("compactacao", 50, 1),
+        ("roteador", 20, 1),
+    ]
+    assert c["saldo"]["gasto_micro_usd"] == 1_070 + 9_999
+
+    _, intruso = await usuario(client)
+    assert (await client.get(f"/api/credits/conversas/{cid}", headers=intruso)).status_code == 404

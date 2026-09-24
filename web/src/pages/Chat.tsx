@@ -4,6 +4,7 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type ChatStatus, type FileUIPart, type UIMessage } from 'ai'
 import { toast } from 'sonner'
 import { MessageSquareIcon, OctagonPauseIcon, WalletIcon } from 'lucide-react'
+import { CustoConversa } from '@/components/CustoConversa'
 import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
 import { AnexoNaMensagem, AnexosDoPrompt, BotaoAnexar, previews } from '@/components/Anexos'
 import { SeletorTools } from '@/components/SeletorTools'
@@ -416,11 +417,14 @@ function Entrada({
           <IndicadorContexto conversaId={conversaId} status={status} />
           <span className="px-1 text-xs text-muted-foreground">Enter envia, Shift+Enter quebra linha</span>
         </div>
-        <PromptInputSubmit
-          status={status}
-          onStop={onParar}
-          aria-label={status === 'streaming' || status === 'submitted' ? 'Parar' : 'Enviar'}
-        />
+        <div className="flex items-center gap-1">
+          <CustoConversa conversaId={conversaId} status={status} />
+          <PromptInputSubmit
+            status={status}
+            onStop={onParar}
+            aria-label={status === 'streaming' || status === 'submitted' ? 'Parar' : 'Enviar'}
+          />
+        </div>
       </PromptInputFooter>
     </PromptInput>
   )

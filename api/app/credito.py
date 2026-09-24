@@ -15,7 +15,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.audit import audit
 from app.auth import User, current_superuser, current_user
 from app.config import settings
+from app.conversas import conversa_do_usuario
 from app.db import Base, SessionLocal, get_session
+from app.roteador import PRECO_JEV
 
 MILHAO = 1_000_000
 
@@ -288,3 +290,53 @@ async def painel_global(
 ) -> Painel:
     """O mesmo painel somando todos os Usuários, contra o Cap global. Só admin."""
     return await _painel(session, None, tz)
+
+
+class GastoOrigem(BaseModel):
+    origem: str  # resposta | roteador | compactacao
+    custo_micro_usd: int
+    chamadas: int
+
+
+class CustoConversa(BaseModel):
+    total_micro_usd: int
+    chamadas: int
+    input_tokens: int
+    output_tokens: int
+    thinking_tokens: int
+    cache_read_tokens: int
+    por_origem: list[GastoOrigem]
+    saldo: Saldo
+
+
+# REVISAR(human): a origem sai da linha do Ledger, sem coluna nova. Linha com message_id é a
+# resposta do modelo de chat; sem message_id, o modelo do Jev é o Roteador e o resto é a
+# Compactação (os dois únicos acertos sem Mensagem, ver chat.py e compactacao.py).
+@router.get("/conversas/{cid}")
+async def custo_da_conversa(
+    cid: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(current_user)],
+) -> CustoConversa:
+    """Soma do Ledger de uma Conversa do Usuário, por origem, com o saldo dele ao lado."""
+    await conversa_do_usuario(session, user, cid)
+    linhas = (await session.scalars(select(CreditLedger).where(CreditLedger.conversation_id == cid))).all()
+    origens: dict[str, list[int]] = {}
+    for linha in linhas:
+        origem = "resposta" if linha.message_id else "roteador" if linha.model == PRECO_JEV else "compactacao"
+        par = origens.setdefault(origem, [0, 0])
+        par[0] += linha.cost_micro_usd
+        par[1] += 1
+    return CustoConversa(
+        total_micro_usd=sum(linha.cost_micro_usd for linha in linhas),
+        chamadas=len(linhas),
+        input_tokens=sum(linha.input_tokens for linha in linhas),
+        output_tokens=sum(linha.output_tokens for linha in linhas),
+        thinking_tokens=sum(linha.thinking_tokens for linha in linhas),
+        cache_read_tokens=sum(linha.cache_read_tokens for linha in linhas),
+        por_origem=sorted(
+            (GastoOrigem(origem=o, custo_micro_usd=c, chamadas=n) for o, (c, n) in origens.items()),
+            key=lambda g: -g.custo_micro_usd,
+        ),
+        saldo=await _saldo(session, user.id),
+    )

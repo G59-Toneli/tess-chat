@@ -101,3 +101,16 @@ export const ROTULO_EVENTO: Record<string, string> = {
   cap_reached: 'Cap atingido',
 }
 export const rotuloEvento = (t: string) => ROTULO_EVENTO[t] ?? t
+
+export type OrigemGasto = 'resposta' | 'roteador' | 'compactacao'
+export type CustoConversa = {
+  total_micro_usd: number
+  chamadas: number
+  input_tokens: number
+  output_tokens: number
+  thinking_tokens: number
+  cache_read_tokens: number
+  por_origem: { origem: OrigemGasto; custo_micro_usd: number; chamadas: number }[]
+  saldo: Saldo
+}
+export const custoDaConversa = (conversa: string) => api<CustoConversa>(`/api/credits/conversas/${conversa}`)
