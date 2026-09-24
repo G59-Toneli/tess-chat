@@ -128,7 +128,7 @@ function BadgeInterrompida() {
   return (
     <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
       <OctagonPauseIcon className="size-4 text-amber-500" />
-      Interrompida
+      <span className="max-md:sr-only">Interrompida</span>
     </Badge>
   )
 }

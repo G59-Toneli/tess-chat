@@ -1134,9 +1134,10 @@ export const PromptInputButton = ({
   const newSize =
     size ?? (Children.count(props.children) > 1 ? "sm" : "icon-sm");
 
+  // Abaixo de md: 40 px de altura para toque (UI-GUIA). Largura fica 32 para a barra caber em 390.
   const button = (
     <InputGroupButton
-      className={cn(className)}
+      className={cn("max-md:h-10", className)}
       size={newSize}
       type="button"
       variant={variant}
@@ -1250,7 +1251,7 @@ export const PromptInputSubmit = ({
   return (
     <InputGroupButton
       aria-label={isGenerating ? "Stop" : "Submit"}
-      className={cn(className)}
+      className={cn("max-md:h-10", className)}
       onClick={handleClick}
       size={size}
       type={isGenerating && onStop ? "button" : "submit"}

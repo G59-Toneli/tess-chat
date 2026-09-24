@@ -67,7 +67,8 @@ const statusIcons: Record<ToolPart["state"], ReactNode> = {
 export const getStatusBadge = (status: ToolPart["state"]) => (
   <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
     {statusIcons[status]}
-    {statusLabels[status]}
+    {/* Abaixo de md só o ícone: o espaço vai para o nome da tool. Leitor de tela segue lendo. */}
+    <span className="max-md:sr-only">{statusLabels[status]}</span>
   </Badge>
 );
 

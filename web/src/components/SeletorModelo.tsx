@@ -47,7 +47,7 @@ function Lista({ titulo, itens, atual, onEscolher }: { titulo: string; itens: It
                 onMouseEnter={() => setSob(i.valor)}
                 onFocus={() => setSob(i.valor)}
                 onClick={() => onEscolher(i.valor)}
-                className="relative flex h-8 w-full items-center gap-2 rounded-md px-2 text-left outline-none"
+                className="relative flex h-10 w-full md:h-8 items-center gap-2 rounded-md px-2 text-left outline-none"
               >
                 <span className="min-w-0 flex-1 truncate font-medium">{i.rotulo}</span>
                 {i.tag && <span className="shrink-0 text-xs text-muted-foreground">{i.tag}</span>}

@@ -1,7 +1,7 @@
 # 66 — Validação end-to-end do responsivo
 
 **Type:** task (web/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 63, 64, 65
 **Refs:** `docs/UI-GUIA.md`, `web/scripts/checar-responsivo.mjs`.
 

@@ -55,7 +55,9 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
+      // wrap-anywhere: URL e hash longos quebram em vez de sumir no overflow-hidden (o wrap-anywhere
+      // do Streamdown não compila, o Tailwind não varre node_modules). Tabela mantém break-word e rola.
+      "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm wrap-anywhere [&_table]:wrap-break-word",
       "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
       "group-[.is-assistant]:text-foreground",
       className
