@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.anexos import router as anexos_router
+from app.api_tools import router as api_tools_router
 from app.config import settings
 from app.auditoria import router as auditoria_router
 from app.auth import (
@@ -86,6 +87,7 @@ app.include_router(configuracao_router)
 app.include_router(conectores_router)
 app.include_router(mcp_oauth_router)
 app.include_router(mcp_router)
+app.include_router(api_tools_router)
 
 
 @app.get("/health")

@@ -47,13 +47,14 @@ class Tool(Base):
     __tablename__ = "tools"
 
     nome: Mapped[str] = mapped_column(Text, primary_key=True)
-    origem: Mapped[str] = mapped_column(Text)  # nativa | mcp | google
+    origem: Mapped[str] = mapped_column(Text)  # nativa | mcp | google | api
     descricao: Mapped[str] = mapped_column(Text)  # o que o modelo recebe
     descricao_usuario: Mapped[str] = mapped_column(Text)  # o que a tela mostra (ticket 28)
     schema: Mapped[dict[str, Any]] = mapped_column(JSONB)
     ativa_global: Mapped[bool] = mapped_column(Boolean)
     padrao_ligada: Mapped[bool] = mapped_column(Boolean, default=True)  # estado sem toggle na Conversa
     mcp_server_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("mcp_servers.id", ondelete="CASCADE"))
+    api_tool_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("api_tools.id", ondelete="CASCADE"))
 
 
 class ConversationTool(Base):
@@ -156,8 +157,11 @@ def cortar(texto: str, limite: int) -> str:
 # gmail_send exige também o escopo gmail.send no Conector: conexão antiga não ganha a Tool (ticket 25).
 # Conta Google sem caixa Gmail (gmail_disponivel=false) perde as Tools do Gmail; Drive fica (ticket 29).
 # Tool de origem 'mcp' só existe para o dono do Servidor MCP, e só com o servidor ativo (ticket 17).
+# Tool de origem 'api' só existe para o dono da Tool por API (ticket 59).
 async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tuple[Tool, bool]]:
     """Cada Tool do registro com o estado efetivo na Conversa."""
+    from app.api_tools import ApiTool  # api_tools importa este módulo
+
     tem_conector = exists().where(
         conectores.Connector.user_id == Conversation.user_id,
         conectores.Connector.provedor == conectores.PROVEDOR,
@@ -171,13 +175,16 @@ async def estado_da_conversa(session: AsyncSession, cid: uuid.UUID) -> list[tupl
         mcp.McpServer.ativo,
         Conversation.id == cid,
     )
+    api_do_dono = exists().where(
+        ApiTool.id == Tool.api_tool_id, ApiTool.user_id == Conversation.user_id, Conversation.id == cid
+    )
     q = (
         select(Tool, ConversationTool.ativa)
         .outerjoin(
             ConversationTool,
             (ConversationTool.tool_nome == Tool.nome) & (ConversationTool.conversation_id == cid),
         )
-        .where(or_(Tool.origem == "nativa", and_(Tool.origem == conectores.PROVEDOR, tem_conector), servidor_do_dono))
+        .where(or_(Tool.origem == "nativa", and_(Tool.origem == conectores.PROVEDOR, tem_conector), servidor_do_dono, api_do_dono))
         .order_by(Tool.nome)
     )
     return [(t, t.ativa_global and (a if a is not None else t.padrao_ligada)) for t, a in (await session.execute(q)).all()]
@@ -311,8 +318,11 @@ async def toolset_da_conversa(
     session: AsyncSession, uid: uuid.UUID, cid: uuid.UUID, t: httpx.AsyncBaseTransport | None
 ) -> AbstractToolset[Any]:
     """Só as Tools ativas na Conversa, com a descrição do registro, embrulhadas na auditoria."""
+    from app import api_tools  # api_tools importa este módulo
+
     ts = FunctionToolset[Any]()
     por_servidor: dict[uuid.UUID, set[str]] = {}
+    de_api: dict[uuid.UUID, Tool] = {}
     ativas = [tool for tool, ativa in await estado_da_conversa(session, cid) if ativa]
     for tool in ativas:
         if tool.nome in NATIVAS:
@@ -321,6 +331,10 @@ async def toolset_da_conversa(
             ts.add_function(conectores.ligar(tool.nome, uid, t, cid), name=tool.nome, description=tool.descricao)
         elif tool.mcp_server_id is not None:
             por_servidor.setdefault(tool.mcp_server_id, set()).add(tool.nome)
+        elif tool.api_tool_id is not None:
+            de_api[tool.api_tool_id] = tool
+    for linha in (await session.scalars(select(api_tools.ApiTool).where(api_tools.ApiTool.id.in_(de_api)))).all():
+        ts.add_tool(api_tools.ligar(linha, de_api[linha.id], t))
     candidatos = (await session.scalars(select(mcp.McpServer).where(mcp.McpServer.id.in_(por_servidor)))).all()
     # OAuth vencendo renova antes da sonda; aguardando ou expirado sai do turno (ticket 52).
     usaveis = await asyncio.gather(*(mcp_oauth.renovar(s, t) for s in candidatos))
@@ -468,9 +482,17 @@ Admin = Annotated[User, Depends(current_superuser)]
 
 @router.get("/api/tools", response_model=list[ToolOut])
 async def catalogo(session: Sessao, user: Usuario) -> list[ToolOut]:
-    """Todas as Tools do registro, menos as MCP de outros Usuários."""
+    """Todas as Tools do registro, menos as MCP e as de API de outros Usuários."""
+    from app.api_tools import ApiTool  # api_tools importa este módulo
+
     meus = select(mcp.McpServer.id).where(mcp.McpServer.user_id == user.id)
-    q = select(Tool).where(or_(Tool.mcp_server_id.is_(None), Tool.mcp_server_id.in_(meus))).order_by(Tool.nome)
+    minhas = select(ApiTool.id).where(ApiTool.user_id == user.id)
+    q = (
+        select(Tool)
+        .where(or_(Tool.mcp_server_id.is_(None), Tool.mcp_server_id.in_(meus)))
+        .where(or_(Tool.api_tool_id.is_(None), Tool.api_tool_id.in_(minhas)))
+        .order_by(Tool.nome)
+    )
     tools = (await session.scalars(q)).all()
     return [ToolOut.model_validate(t, from_attributes=True) for t in tools]
 
