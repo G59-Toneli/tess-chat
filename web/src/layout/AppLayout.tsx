@@ -3,6 +3,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate, us
 import { toast } from 'sonner'
 import {
   CoinsIcon,
+  GlobeIcon,
   LogOutIcon,
   MoonIcon,
   MoreHorizontalIcon,
@@ -76,6 +77,7 @@ const gruposNav: { rotulo: string; itens: ItemNav[] }[] = [
     rotulo: 'Extensões',
     itens: [
       { to: '/tools', rotulo: 'Tools', icone: WrenchIcon },
+      { to: '/api-tools', rotulo: 'Tools por API', icone: GlobeIcon },
       { to: '/mcp', rotulo: 'Servidores MCP', icone: ServerIcon },
       { to: '/conectores', rotulo: 'Conectores', icone: PlugIcon },
     ],

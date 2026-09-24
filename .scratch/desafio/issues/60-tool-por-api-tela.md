@@ -1,7 +1,7 @@
 # 60 — Tool por API (tela): cadastro guiado com teste
 
 **Type:** task (web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 59
 **Refs:** ticket 59, ADR 0024, `docs/UI-GUIA.md`, padrão visual de `web/src/pages/Mcp.tsx` (ticket 56).
 
@@ -28,3 +28,10 @@
   - erro de teste 404 com a mensagem;
   - lista com 1 tool.
 - E2E local com a API do ticket 59 numa porta própria: cadastrar o ViaCEP pelo modelo e conferir que a tool aparece no pill de uma conversa. Chamada real ao ViaCEP é permitida (grátis). Gemini: 0.
+
+## Answer
+- Tela nova `/api-tools` ("Tools por API" em Extensões): 3 modelos com "Usar", formulário em 5 passos (parâmetros saem dos `{param}` da URL e do corpo na hora), Testar com status, ms e resposta formatada rolável, Salvar só com teste 2xx da definição atual, lista com Remover.
+- Pill da conversa: tool `api_xxxx_<nome>` aparece com badge `api` (igual ao `mcp`), conferido no `/` e numa conversa criada por API.
+- E2E no Brave com a API na 8007: modelo ViaCEP testado (200), 404 com o HTML do ViaCEP, cadastro, pill. 4 chamadas ViaCEP, 0 Gemini. Screenshots `.scratch/desafio/screens/60-*.png`.
+- Ressalva: não há vitest no `web/`; `nomeSugerido` e `placeholders` só foram checados pelo E2E.
+- REVISAR(human): `Formulario` em `web/src/pages/ApiTools.tsx` (parâmetros derivados e invalidação do teste pelo JSON do body).

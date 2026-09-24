@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { AppLayout } from '@/layout/AppLayout'
 import { Admin } from '@/pages/Admin'
+import { ApiTools } from '@/pages/ApiTools'
 import { Auditoria } from '@/pages/Auditoria'
 import { Chat } from '@/pages/Chat'
 import { Compartilhados } from '@/pages/Compartilhados'
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/auditoria" element={<Auditoria />} />
         <Route path="/creditos" element={<Creditos />} />
         <Route path="/tools" element={<Tools />} />
+        <Route path="/api-tools" element={<ApiTools />} />
         <Route path="/mcp" element={<Mcp />} />
         <Route path="/conectores" element={<Conectores />} />
         <Route path="/compartilhados" element={<Compartilhados />} />

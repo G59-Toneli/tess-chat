@@ -91,9 +91,9 @@ export function SeletorTools({ conversaId }: { conversaId?: string }) {
                       <span className="truncate" title={t.nome}>
                         {t.nome}
                       </span>
-                      {t.origem === 'mcp' && (
+                      {(t.origem === 'mcp' || t.origem === 'api') && (
                         <Badge variant="outline" className="shrink-0 font-sans" title={t.servidor ?? undefined}>
-                          mcp
+                          {t.origem}
                         </Badge>
                       )}
                     </Label>
