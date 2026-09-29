@@ -1,0 +1,419 @@
+trilha bea62f3b mic_fala +8080ms {'pico': 1771}
+trilha bea62f3b voice_activity +8421ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha bea62f3b mic_silencio +8436ms {'pico': 117}
+trilha bea62f3b mic_fala +9360ms {'pico': 988}
+trilha bea62f3b transcricao_usuario +9418ms 
+trilha bea62f3b voice_activity +9419ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha bea62f3b voice_activity +9718ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha bea62f3b mic_silencio +11057ms {'pico': 379}
+trilha bea62f3b mic_fala +11092ms {'pico': 1143}
+trilha bea62f3b mic_silencio +12307ms {'pico': 58}
+trilha bea62f3b mic_fala +12369ms {'pico': 937}
+trilha bea62f3b mic_silencio +12531ms {'pico': 409}
+trilha bea62f3b mic_fala +12561ms {'pico': 740}
+trilha bea62f3b mic_silencio +12815ms {'pico': 247}
+trilha bea62f3b mic_fala +12887ms {'pico': 1151}
+trilha bea62f3b mic_silencio +13109ms {'pico': 300}
+trilha bea62f3b mic_fala +13171ms {'pico': 9252}
+trilha bea62f3b mic_silencio +13933ms {'pico': 257}
+trilha bea62f3b mic_fala +14003ms {'pico': 600}
+trilha bea62f3b mic_silencio +14409ms {'pico': 236}
+trilha bea62f3b transcricao_usuario +15174ms 
+trilha bea62f3b voice_activity +15174ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha bea62f3b audio_gemini_1o +16149ms 
+trilha bea62f3b generation_complete +18322ms 
+trilha bea62f3b turn_complete +24443ms {'pensamento': 76}
+trilha bea62f3b mic_fala +27384ms {'pico': 1442}
+trilha bea62f3b voice_activity +27693ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha bea62f3b mic_silencio +27698ms {'pico': 376}
+trilha bea62f3b mic_fala +28684ms {'pico': 5258}
+trilha bea62f3b mic_silencio +29074ms {'pico': 371}
+trilha bea62f3b mic_fala +29100ms {'pico': 932}
+trilha bea62f3b mic_silencio +30352ms {'pico': 294}
+trilha bea62f3b mic_fala +30382ms {'pico': 995}
+trilha bea62f3b mic_silencio +31595ms {'pico': 196}
+trilha bea62f3b mic_fala +31655ms {'pico': 1317}
+trilha bea62f3b mic_silencio +31819ms {'pico': 436}
+trilha bea62f3b mic_fala +31849ms {'pico': 885}
+trilha bea62f3b mic_silencio +32105ms {'pico': 397}
+trilha bea62f3b mic_fala +32145ms {'pico': 799}
+trilha bea62f3b mic_silencio +32399ms {'pico': 385}
+trilha bea62f3b mic_fala +32429ms {'pico': 1182}
+trilha bea62f3b mic_silencio +33223ms {'pico': 410}
+trilha bea62f3b mic_fala +33297ms {'pico': 716}
+trilha bea62f3b mic_silencio +33743ms {'pico': 165}
+trilha bea62f3b transcricao_usuario +34481ms 
+trilha bea62f3b voice_activity +34484ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha bea62f3b audio_gemini_1o +35144ms 
+trilha bea62f3b generation_complete +36933ms 
+trilha bea62f3b turn_complete +43179ms {'pensamento': 85}
+trilha bea62f3b mic_fala +46672ms {'pico': 1504}
+trilha bea62f3b voice_activity +46982ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha bea62f3b mic_silencio +46988ms {'pico': 475}
+trilha bea62f3b mic_fala +47946ms {'pico': 2045}
+trilha bea62f3b mic_silencio +48364ms {'pico': 160}
+trilha bea62f3b mic_fala +48394ms {'pico': 1898}
+trilha bea62f3b mic_silencio +49626ms {'pico': 445}
+trilha bea62f3b mic_fala +49643ms {'pico': 728}
+trilha bea62f3b mic_silencio +50890ms {'pico': 183}
+trilha bea62f3b mic_fala +50920ms {'pico': 763}
+trilha bea62f3b mic_silencio +51115ms {'pico': 458}
+trilha bea62f3b mic_fala +51145ms {'pico': 3144}
+trilha bea62f3b mic_silencio +51399ms {'pico': 336}
+trilha bea62f3b mic_fala +51441ms {'pico': 1387}
+trilha bea62f3b mic_silencio +51695ms {'pico': 372}
+trilha bea62f3b mic_fala +51722ms {'pico': 1459}
+trilha bea62f3b mic_silencio +52521ms {'pico': 351}
+trilha bea62f3b mic_fala +52589ms {'pico': 2288}
+trilha bea62f3b mic_silencio +53009ms {'pico': 338}
+trilha bea62f3b transcricao_usuario +53753ms 
+trilha bea62f3b voice_activity +53755ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha bea62f3b audio_gemini_1o +54614ms 
+trilha bea62f3b generation_complete +56334ms 
+trilha bea62f3b turn_complete +62345ms {'pensamento': 145}
+trilha 68482db0 mic_fala +8080ms {'pico': 1771}
+trilha 68482db0 voice_activity +8404ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 68482db0 mic_silencio +8434ms {'pico': 117}
+trilha 68482db0 mic_fala +9363ms {'pico': 988}
+trilha 68482db0 transcricao_usuario +9504ms 
+trilha 68482db0 voice_activity +9504ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 68482db0 voice_activity +9983ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 68482db0 mic_silencio +11059ms {'pico': 379}
+trilha 68482db0 mic_fala +11089ms {'pico': 1143}
+trilha 68482db0 mic_silencio +12309ms {'pico': 58}
+trilha 68482db0 mic_fala +12369ms {'pico': 937}
+trilha 68482db0 mic_silencio +12532ms {'pico': 409}
+trilha 68482db0 mic_fala +12563ms {'pico': 740}
+trilha 68482db0 mic_silencio +12817ms {'pico': 247}
+trilha 68482db0 mic_fala +12889ms {'pico': 1151}
+trilha 68482db0 mic_silencio +13111ms {'pico': 300}
+trilha 68482db0 mic_fala +13173ms {'pico': 9252}
+trilha 68482db0 mic_silencio +13935ms {'pico': 257}
+trilha 68482db0 mic_fala +14005ms {'pico': 600}
+trilha 68482db0 mic_silencio +14409ms {'pico': 236}
+trilha 68482db0 transcricao_usuario +15412ms 
+trilha 68482db0 voice_activity +15417ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 68482db0 audio_gemini_1o +16820ms 
+trilha 68482db0 generation_complete +18327ms 
+trilha 68482db0 turn_complete +24751ms {'pensamento': None}
+trilha 68482db0 mic_fala +27416ms {'pico': 10670}
+trilha 68482db0 mic_silencio +27730ms {'pico': 162}
+trilha 68482db0 voice_activity +27770ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 68482db0 mic_fala +28681ms {'pico': 5258}
+trilha 68482db0 mic_silencio +29067ms {'pico': 371}
+trilha 68482db0 mic_fala +29101ms {'pico': 932}
+trilha 68482db0 mic_silencio +30355ms {'pico': 294}
+trilha 68482db0 mic_fala +30385ms {'pico': 995}
+trilha 68482db0 mic_silencio +31595ms {'pico': 196}
+trilha 68482db0 mic_fala +31657ms {'pico': 1317}
+trilha 68482db0 mic_silencio +31821ms {'pico': 436}
+trilha 68482db0 mic_fala +31852ms {'pico': 885}
+trilha 68482db0 mic_silencio +32105ms {'pico': 397}
+trilha 68482db0 mic_fala +32145ms {'pico': 799}
+trilha 68482db0 mic_silencio +32401ms {'pico': 385}
+trilha 68482db0 mic_fala +32431ms {'pico': 1182}
+trilha 68482db0 mic_silencio +33227ms {'pico': 410}
+trilha 68482db0 mic_fala +33297ms {'pico': 716}
+trilha 68482db0 mic_silencio +33745ms {'pico': 165}
+trilha 68482db0 transcricao_usuario +34512ms 
+trilha 68482db0 voice_activity +34513ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 68482db0 audio_gemini_1o +35788ms 
+trilha 68482db0 generation_complete +37486ms 
+trilha 68482db0 turn_complete +43682ms {'pensamento': None}
+trilha 68482db0 mic_fala +46674ms {'pico': 1504}
+trilha 68482db0 mic_silencio +46990ms {'pico': 475}
+trilha 68482db0 voice_activity +47129ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 68482db0 mic_fala +47947ms {'pico': 2045}
+trilha 68482db0 mic_silencio +48367ms {'pico': 160}
+trilha 68482db0 mic_fala +48397ms {'pico': 1898}
+trilha 68482db0 mic_silencio +49620ms {'pico': 445}
+trilha 68482db0 mic_fala +49646ms {'pico': 728}
+trilha 68482db0 mic_silencio +50893ms {'pico': 183}
+trilha 68482db0 mic_fala +50923ms {'pico': 763}
+trilha 68482db0 mic_silencio +51115ms {'pico': 458}
+trilha 68482db0 mic_fala +51147ms {'pico': 3144}
+trilha 68482db0 mic_silencio +51401ms {'pico': 336}
+trilha 68482db0 mic_fala +51443ms {'pico': 1387}
+trilha 68482db0 mic_silencio +51697ms {'pico': 372}
+trilha 68482db0 mic_fala +51727ms {'pico': 1459}
+trilha 68482db0 mic_silencio +52523ms {'pico': 351}
+trilha 68482db0 mic_fala +52593ms {'pico': 2288}
+trilha 68482db0 mic_silencio +53011ms {'pico': 338}
+trilha 68482db0 transcricao_usuario +55941ms 
+trilha 68482db0 voice_activity +55942ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 68482db0 audio_gemini_1o +58056ms 
+trilha 68482db0 generation_complete +59695ms 
+trilha 1cce624f mic_fala +8101ms {'pico': 6568}
+trilha 1cce624f mic_silencio +8430ms {'pico': 337}
+trilha 1cce624f voice_activity +8485ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 1cce624f mic_fala +9384ms {'pico': 4497}
+trilha 1cce624f transcricao_usuario +9468ms 
+trilha 1cce624f voice_activity +9469ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 1cce624f voice_activity +9714ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 1cce624f mic_silencio +9802ms {'pico': 269}
+trilha 1cce624f mic_fala +9832ms {'pico': 6863}
+trilha 1cce624f mic_silencio +11040ms {'pico': 418}
+trilha 1cce624f mic_fala +11077ms {'pico': 706}
+trilha 1cce624f mic_silencio +12330ms {'pico': 51}
+trilha 1cce624f mic_fala +12392ms {'pico': 5200}
+trilha 1cce624f mic_silencio +12556ms {'pico': 413}
+trilha 1cce624f mic_fala +12581ms {'pico': 4829}
+trilha 1cce624f mic_silencio +12838ms {'pico': 156}
+trilha 1cce624f mic_fala +12870ms {'pico': 1151}
+trilha 1cce624f mic_silencio +13134ms {'pico': 200}
+trilha 1cce624f mic_fala +13165ms {'pico': 861}
+trilha 1cce624f mic_silencio +13956ms {'pico': 151}
+trilha 1cce624f mic_fala +14028ms {'pico': 1037}
+trilha 1cce624f mic_silencio +14434ms {'pico': 176}
+trilha 1cce624f transcricao_usuario +15555ms 
+trilha 1cce624f voice_activity +15556ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 1cce624f audio_gemini_1o +15800ms 
+trilha 1cce624f generation_complete +18884ms 
+trilha 1cce624f turn_complete +25392ms {'pensamento': None}
+trilha 1cce624f mic_fala +27406ms {'pico': 8459}
+trilha 1cce624f mic_silencio +27722ms {'pico': 280}
+trilha 1cce624f voice_activity +27744ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 1cce624f mic_fala +28676ms {'pico': 4365}
+trilha 1cce624f mic_silencio +29094ms {'pico': 185}
+trilha 1cce624f mic_fala +29124ms {'pico': 6545}
+trilha 1cce624f mic_silencio +30334ms {'pico': 374}
+trilha 1cce624f mic_fala +30376ms {'pico': 706}
+trilha 1cce624f mic_silencio +31588ms {'pico': 238}
+trilha 1cce624f mic_fala +31650ms {'pico': 725}
+trilha 1cce624f mic_silencio +32128ms {'pico': 305}
+trilha 1cce624f mic_fala +32168ms {'pico': 1345}
+trilha 1cce624f mic_silencio +32422ms {'pico': 340}
+trilha 1cce624f mic_fala +32454ms {'pico': 5032}
+trilha 1cce624f mic_silencio +33248ms {'pico': 278}
+trilha 1cce624f mic_fala +33278ms {'pico': 729}
+trilha 1cce624f mic_silencio +33728ms {'pico': 215}
+trilha 1cce624f transcricao_usuario +34724ms 
+trilha 1cce624f voice_activity +34724ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 1cce624f audio_gemini_1o +35147ms 
+trilha 1cce624f generation_complete +38363ms 
+trilha 1cce624f turn_complete +44889ms {'pensamento': None}
+trilha 1cce624f mic_fala +46696ms {'pico': 9506}
+trilha 1cce624f mic_silencio +47014ms {'pico': 165}
+trilha 1cce624f mic_fala +47970ms {'pico': 5645}
+trilha 1cce624f mic_silencio +48358ms {'pico': 397}
+trilha 1cce624f mic_fala +48418ms {'pico': 8782}
+trilha 1cce624f mic_silencio +49640ms {'pico': 285}
+trilha 1cce624f mic_fala +49672ms {'pico': 1004}
+trilha 1cce624f mic_silencio +50884ms {'pico': 206}
+trilha 1cce624f mic_fala +50944ms {'pico': 1386}
+trilha 1cce624f mic_silencio +51108ms {'pico': 474}
+trilha 1cce624f mic_fala +51138ms {'pico': 920}
+trilha 1cce624f mic_silencio +51392ms {'pico': 415}
+trilha 1cce624f mic_fala +51424ms {'pico': 641}
+trilha 1cce624f mic_silencio +51688ms {'pico': 429}
+trilha 1cce624f mic_fala +51720ms {'pico': 1209}
+trilha 1cce624f mic_silencio +52510ms {'pico': 422}
+trilha 1cce624f mic_fala +52586ms {'pico': 736}
+trilha 1cce624f mic_silencio +53034ms {'pico': 173}
+trilha 4b54ff47 mic_fala +8132ms {'pico': 32765}
+trilha 4b54ff47 mic_silencio +8449ms {'pico': 173}
+trilha 4b54ff47 voice_activity +8607ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 4b54ff47 mic_fala +9403ms {'pico': 12065}
+trilha 4b54ff47 mic_silencio +11068ms {'pico': 318}
+trilha 4b54ff47 mic_fala +11099ms {'pico': 706}
+trilha 4b54ff47 mic_silencio +12318ms {'pico': 115}
+trilha 4b54ff47 mic_fala +12379ms {'pico': 698}
+trilha 4b54ff47 mic_silencio +12826ms {'pico': 466}
+trilha 4b54ff47 mic_fala +12898ms {'pico': 1151}
+trilha 4b54ff47 mic_silencio +13147ms {'pico': 182}
+trilha 4b54ff47 mic_fala +13182ms {'pico': 5362}
+trilha 4b54ff47 mic_silencio +13946ms {'pico': 348}
+trilha 4b54ff47 mic_fala +14046ms {'pico': 4832}
+trilha 4b54ff47 mic_silencio +14421ms {'pico': 497}
+trilha 4b54ff47 transcricao_usuario +17473ms 
+trilha 4b54ff47 voice_activity +17473ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 4b54ff47 audio_gemini_1o +18452ms 
+trilha 4b54ff47 generation_complete +20114ms 
+trilha 4b54ff47 turn_complete +26160ms {'pensamento': 113}
+trilha 4b54ff47 mic_fala +27424ms {'pico': 10670}
+trilha 4b54ff47 mic_silencio +27741ms {'pico': 162}
+trilha 4b54ff47 voice_activity +27850ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 4b54ff47 mic_fala +28694ms {'pico': 5258}
+trilha 4b54ff47 mic_silencio +29081ms {'pico': 371}
+trilha 4b54ff47 mic_fala +29108ms {'pico': 932}
+trilha 4b54ff47 mic_silencio +30363ms {'pico': 294}
+trilha 4b54ff47 mic_fala +30393ms {'pico': 995}
+trilha 4b54ff47 mic_silencio +31606ms {'pico': 196}
+trilha 4b54ff47 mic_fala +31666ms {'pico': 1317}
+trilha 4b54ff47 mic_silencio +31831ms {'pico': 436}
+trilha 4b54ff47 mic_fala +31861ms {'pico': 885}
+trilha 4b54ff47 mic_silencio +32117ms {'pico': 397}
+trilha 4b54ff47 mic_fala +32152ms {'pico': 799}
+trilha 4b54ff47 mic_silencio +32411ms {'pico': 385}
+trilha 4b54ff47 mic_fala +32437ms {'pico': 1182}
+trilha 4b54ff47 mic_silencio +33236ms {'pico': 410}
+trilha 4b54ff47 mic_fala +33307ms {'pico': 716}
+trilha 4b54ff47 mic_silencio +33757ms {'pico': 165}
+trilha 4b54ff47 transcricao_usuario +38640ms 
+trilha 4b54ff47 voice_activity +38641ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 4b54ff47 audio_gemini_1o +39539ms 
+trilha 4b54ff47 generation_complete +41061ms 
+trilha 4b54ff47 mic_fala +46684ms {'pico': 1496}
+trilha 4b54ff47 turn_complete +46913ms {'pensamento': 80}
+trilha 4b54ff47 mic_silencio +46996ms {'pico': 475}
+trilha 4b54ff47 voice_activity +47012ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha 4b54ff47 mic_fala +47957ms {'pico': 2045}
+trilha 4b54ff47 mic_silencio +48377ms {'pico': 160}
+trilha 4b54ff47 mic_fala +48405ms {'pico': 1898}
+trilha 4b54ff47 mic_silencio +49627ms {'pico': 445}
+trilha 4b54ff47 mic_fala +49659ms {'pico': 728}
+trilha 4b54ff47 mic_silencio +50901ms {'pico': 183}
+trilha 4b54ff47 mic_fala +50931ms {'pico': 763}
+trilha 4b54ff47 mic_silencio +51124ms {'pico': 458}
+trilha 4b54ff47 mic_fala +51156ms {'pico': 3144}
+trilha 4b54ff47 mic_silencio +51412ms {'pico': 336}
+trilha 4b54ff47 mic_fala +51452ms {'pico': 1387}
+trilha 4b54ff47 mic_silencio +51707ms {'pico': 372}
+trilha 4b54ff47 mic_fala +51737ms {'pico': 1459}
+trilha 4b54ff47 mic_silencio +52538ms {'pico': 351}
+trilha 4b54ff47 mic_fala +52603ms {'pico': 2289}
+trilha 4b54ff47 mic_silencio +53019ms {'pico': 338}
+trilha 4b54ff47 transcricao_usuario +53850ms 
+trilha 4b54ff47 voice_activity +53851ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha 4b54ff47 audio_gemini_1o +54803ms 
+trilha 4b54ff47 generation_complete +56483ms 
+trilha 4b54ff47 turn_complete +62105ms {'pensamento': 76}
+trilha b9636fb0 mic_fala +8133ms {'pico': 32765}
+trilha b9636fb0 mic_silencio +8449ms {'pico': 173}
+trilha b9636fb0 voice_activity +8503ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b9636fb0 mic_fala +9403ms {'pico': 12065}
+trilha b9636fb0 transcricao_usuario +9562ms 
+trilha b9636fb0 voice_activity +9562ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b9636fb0 voice_activity +9753ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b9636fb0 mic_silencio +11069ms {'pico': 318}
+trilha b9636fb0 mic_fala +11099ms {'pico': 706}
+trilha b9636fb0 mic_silencio +12319ms {'pico': 115}
+trilha b9636fb0 mic_fala +12379ms {'pico': 698}
+trilha b9636fb0 mic_silencio +12827ms {'pico': 466}
+trilha b9636fb0 mic_fala +12897ms {'pico': 1151}
+trilha b9636fb0 mic_silencio +13148ms {'pico': 182}
+trilha b9636fb0 mic_fala +13183ms {'pico': 5362}
+trilha b9636fb0 mic_silencio +13944ms {'pico': 348}
+trilha b9636fb0 mic_fala +14046ms {'pico': 4832}
+trilha b9636fb0 mic_silencio +14422ms {'pico': 497}
+trilha b9636fb0 transcricao_usuario +15474ms 
+trilha b9636fb0 voice_activity +15474ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b9636fb0 audio_gemini_1o +15721ms 
+trilha b9636fb0 generation_complete +18944ms 
+trilha b9636fb0 turn_complete +26434ms {'pensamento': None}
+trilha b9636fb0 mic_fala +27426ms {'pico': 8444}
+trilha b9636fb0 mic_silencio +27739ms {'pico': 210}
+trilha b9636fb0 voice_activity +27838ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b9636fb0 mic_fala +28695ms {'pico': 4358}
+trilha b9636fb0 mic_silencio +29081ms {'pico': 431}
+trilha b9636fb0 mic_fala +29143ms {'pico': 6545}
+trilha b9636fb0 mic_silencio +30363ms {'pico': 374}
+trilha b9636fb0 mic_fala +30393ms {'pico': 706}
+trilha b9636fb0 mic_silencio +31605ms {'pico': 236}
+trilha b9636fb0 mic_fala +31667ms {'pico': 822}
+trilha b9636fb0 mic_silencio +32115ms {'pico': 499}
+trilha b9636fb0 mic_fala +32187ms {'pico': 1317}
+trilha b9636fb0 mic_silencio +32441ms {'pico': 405}
+trilha b9636fb0 mic_fala +32473ms {'pico': 5656}
+trilha b9636fb0 mic_silencio +33263ms {'pico': 273}
+trilha b9636fb0 mic_fala +33305ms {'pico': 717}
+trilha b9636fb0 mic_silencio +33756ms {'pico': 211}
+trilha b9636fb0 transcricao_usuario +34789ms 
+trilha b9636fb0 voice_activity +34790ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b9636fb0 audio_gemini_1o +35204ms 
+trilha b9636fb0 generation_complete +41304ms 
+trilha b9636fb0 turn_complete +46146ms {'pensamento': None}
+trilha b9636fb0 mic_fala +46715ms {'pico': 11173}
+trilha b9636fb0 voice_activity +47021ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b9636fb0 mic_silencio +47029ms {'pico': 162}
+trilha b9636fb0 mic_fala +47989ms {'pico': 5547}
+trilha b9636fb0 mic_silencio +48375ms {'pico': 391}
+trilha b9636fb0 mic_fala +48407ms {'pico': 870}
+trilha b9636fb0 mic_silencio +49659ms {'pico': 302}
+trilha b9636fb0 mic_fala +49690ms {'pico': 1026}
+trilha b9636fb0 mic_silencio +50903ms {'pico': 210}
+trilha b9636fb0 mic_fala +50963ms {'pico': 1415}
+trilha b9636fb0 mic_silencio +51125ms {'pico': 484}
+trilha b9636fb0 mic_fala +51157ms {'pico': 939}
+trilha b9636fb0 mic_silencio +51411ms {'pico': 423}
+trilha b9636fb0 mic_fala +51451ms {'pico': 682}
+trilha b9636fb0 mic_silencio +51709ms {'pico': 407}
+trilha b9636fb0 mic_fala +51737ms {'pico': 1240}
+trilha b9636fb0 mic_silencio +52531ms {'pico': 429}
+trilha b9636fb0 mic_fala +52603ms {'pico': 748}
+trilha b9636fb0 mic_silencio +53051ms {'pico': 176}
+trilha b9636fb0 transcricao_usuario +53984ms 
+trilha b9636fb0 voice_activity +53984ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b9636fb0 audio_gemini_1o +54401ms 
+trilha b9636fb0 generation_complete +57675ms 
+trilha b1620949 mic_fala +8094ms {'pico': 1771}
+trilha b1620949 voice_activity +8384ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b1620949 mic_silencio +8450ms {'pico': 117}
+trilha b1620949 transcricao_usuario +9373ms 
+trilha b1620949 voice_activity +9373ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b1620949 mic_fala +9377ms {'pico': 988}
+trilha b1620949 voice_activity +9908ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b1620949 mic_silencio +11069ms {'pico': 379}
+trilha b1620949 mic_fala +11101ms {'pico': 1143}
+trilha b1620949 mic_silencio +12319ms {'pico': 58}
+trilha b1620949 mic_fala +12377ms {'pico': 937}
+trilha b1620949 mic_silencio +12539ms {'pico': 409}
+trilha b1620949 mic_fala +12573ms {'pico': 740}
+trilha b1620949 mic_silencio +12827ms {'pico': 247}
+trilha b1620949 mic_fala +12899ms {'pico': 1151}
+trilha b1620949 mic_silencio +13123ms {'pico': 300}
+trilha b1620949 mic_fala +13183ms {'pico': 9252}
+trilha b1620949 mic_silencio +13945ms {'pico': 257}
+trilha b1620949 mic_fala +14017ms {'pico': 600}
+trilha b1620949 mic_silencio +14423ms {'pico': 236}
+trilha b1620949 transcricao_usuario +15355ms 
+trilha b1620949 voice_activity +15356ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b1620949 audio_gemini_1o +17313ms 
+trilha b1620949 generation_complete +19415ms 
+trilha b1620949 turn_complete +24562ms {'pensamento': 153}
+trilha b1620949 mic_fala +27396ms {'pico': 1442}
+trilha b1620949 mic_silencio +27710ms {'pico': 376}
+trilha b1620949 voice_activity +27820ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b1620949 mic_fala +28666ms {'pico': 1941}
+trilha b1620949 mic_silencio +29082ms {'pico': 153}
+trilha b1620949 mic_fala +29112ms {'pico': 1805}
+trilha b1620949 mic_silencio +30325ms {'pico': 440}
+trilha b1620949 mic_fala +30364ms {'pico': 706}
+trilha b1620949 mic_silencio +31608ms {'pico': 171}
+trilha b1620949 mic_fala +31638ms {'pico': 710}
+trilha b1620949 mic_silencio +31831ms {'pico': 431}
+trilha b1620949 mic_fala +31861ms {'pico': 2961}
+trilha b1620949 mic_silencio +32116ms {'pico': 316}
+trilha b1620949 mic_fala +32156ms {'pico': 1314}
+trilha b1620949 mic_silencio +32411ms {'pico': 353}
+trilha b1620949 mic_fala +32443ms {'pico': 1391}
+trilha b1620949 mic_silencio +33238ms {'pico': 335}
+trilha b1620949 mic_fala +33309ms {'pico': 2189}
+trilha b1620949 mic_silencio +33717ms {'pico': 329}
+trilha b1620949 transcricao_usuario +34596ms 
+trilha b1620949 voice_activity +34597ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b1620949 audio_gemini_1o +35463ms 
+trilha b1620949 generation_complete +37000ms 
+trilha b1620949 turn_complete +43096ms {'pensamento': 106}
+trilha b1620949 mic_fala +46684ms {'pico': 7473}
+trilha b1620949 voice_activity +46945ms {'tipo': 'VoiceActivityType.ACTIVITY_START'}
+trilha b1620949 mic_silencio +47002ms {'pico': 294}
+trilha b1620949 mic_fala +47958ms {'pico': 4572}
+trilha b1620949 mic_silencio +48376ms {'pico': 194}
+trilha b1620949 mic_fala +48408ms {'pico': 6881}
+trilha b1620949 mic_silencio +49630ms {'pico': 381}
+trilha b1620949 mic_fala +49660ms {'pico': 728}
+trilha b1620949 mic_silencio +50873ms {'pico': 253}
+trilha b1620949 mic_fala +50933ms {'pico': 770}
+trilha b1620949 mic_silencio +51413ms {'pico': 318}
+trilha b1620949 mic_fala +51453ms {'pico': 1387}
+trilha b1620949 mic_silencio +51707ms {'pico': 348}
+trilha b1620949 mic_fala +51739ms {'pico': 5161}
+trilha b1620949 mic_silencio +52534ms {'pico': 286}
+trilha b1620949 mic_fala +52575ms {'pico': 748}
+trilha b1620949 mic_silencio +53023ms {'pico': 223}
+trilha b1620949 transcricao_usuario +53752ms 
+trilha b1620949 voice_activity +53752ms {'tipo': 'VoiceActivityType.ACTIVITY_END'}
+trilha b1620949 audio_gemini_1o +54918ms 
+trilha b1620949 generation_complete +56393ms 
+trilha b1620949 turn_complete +62205ms {'pensamento': 105}

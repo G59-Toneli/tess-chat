@@ -23,6 +23,7 @@ Ambiente de cada número vem junto. Número sem ambiente não vale.
 | Pensamento | 80 a 452 tokens por turno, **fora** do `total_token_count`; cobrado como saída de texto (US$ 4,50/1M) | INFERIDO. O modelo base também pensa, não só o `-extended-thinking` |
 | Latência (fim da fala → 1º áudio), script direto | 0,5 a 0,6 s (503 e 626 ms); spike 426 a 918 ms | Windows do Toneli, servidor local, sem browser. Outra régua que a de baixo; o script do 76 não foi commitado |
 | Latência pela harness do browser | **1,7 s local; 1,9 s e 3,3 s em produção (80); 2,3 a 3,9 s em produção depois do fix do 83 (n=3)** | medida no browser, rede residencial → VPS `<ip-do-vps>`. A rede soma <50 ms; o tempo está no VAD (1,3 s) e no pensamento do modelo (0,4 a 3,0 s). `docs/LATENCIA-LIGACAO.md` |
+| Latência, rodada 2 (ticket 85) | **padrão 1,8 s de mediana (n=6); `m31` 1,4 s (n=5); indicador "pensando" aos 0,42 s** | produção, mesma harness, uma tarde (29/09). O padrão de manhã tinha dado 2,3 a 3,9 s: o Gemini varia mais de 1 s entre horas. `docs/LATENCIA-LIGACAO.md`, "Rodada 2" |
 | Custo real de uma Ligação | ~US$ 0,006 por minuto a preço de tabela (6012 micro-USD em 63 s); R$ 0 na chave free | smoke 80, produção |
 
 ## O caminho completo, em sequência
@@ -234,7 +235,7 @@ Browser (React)               Servidor (FastAPI, api/app/voz.py)          Gemini
   - **Reserva não segura saldo.** Próximo passo: gravar uma linha de reserva no Ledger e ajustar no acerto.
   - **Sem tools e sem Jev.** Ver parada 16.
   - **Free tier treina com o conteúdo.** Voz e tela vão para o Google. Aceito para demo; não compartilhe dado sensível.
-  - **Sem `thinking_level`.** O `gemini-3.8-live` não aceita. O pensamento (100 a 450 tokens por turno) é o que mais pesa e varia; sem alavanca de config. `thinking_budget` não foi testado.
+  - **Sem `thinking_level`.** O `gemini-3.8-live` não aceita. O pensamento (100 a 450 tokens por turno) varia. `thinking_budget=0` foi testado no ticket 85: aceito, zera o pensamento, e o tempo não cai (parada 26).
   - **Frame repetido não é detectado.** Custa centavos; não compensa.
 - **Onde:** ADR 0026 (Consequências), ADR 0028 (Consequências), `docs/DECISOES-AUTONOMAS.md` (linhas do ticket 76).
 - **Pergunta de entrevista:** "O que você faria com mais uma semana?"
@@ -253,3 +254,24 @@ Browser (React)               Servidor (FastAPI, api/app/voz.py)          Gemini
 - **Onde:** `api/app/voz.py` `_conectar`; `api/app/config.py` `ligacao_silencio_ms`; `docs/DECISOES-AUTONOMAS.md` (ticket 83).
 - **Pergunta de entrevista:** "Por que 500 ms de silêncio e não menos?"
   **Resposta:** Abaixo de 500 ms o VAD parte a frase em pausas normais de respiração. 500 ms é o piso do que o Gemini recomenda. Mesmo nesse valor vi uma pergunta partida em 3. É troca de latência por corte, e deixei o valor em variável de ambiente para ajustar sem código.
+
+### 26. Pensamento: desligar não corta o tempo
+- **Conceito:** o modelo Live gera "pensamento" (tokens de raciocínio) antes do primeiro som. `thinking_budget=0` diz ao `gemini-3.8-live` para não pensar; `thinking_level="minimal"` faz o mesmo no `gemini-3.1-flash-live-preview`. O `thoughts_token_count` do `turn_complete` prova se o pensamento existiu.
+- **Por quê:** a hipótese era simples: menos pensamento, menos espera. Medi. Com `budget=0` o pensamento foi a zero e o tempo do modelo (do `ACTIVITY_END` ao 1º áudio) foi 1403 ms de mediana, contra 920 do padrão (n=3 contra n=6). Zerar o pensamento não ajudou. Já o modelo 3.1 respondeu em 414 ms de mediana. A diferença não é o pensamento: é o modelo. O preço: o 3.1 ignora o `silence_duration_ms` (VAD de ~1,0 s contra 0,75 s), é `preview`, não tem preço na Tabela de Preço e em 1 de 2 sessões não respondeu à 3ª pergunta. Ganho líquido no browser: ~380 ms. Ficou como `?v=m31`, opt-in.
+- **Onde:** `api/app/voz.py` `Variante`, `VARIANTES`, `_pensamento`; `docs/LATENCIA-LIGACAO.md` "Rodada 2"; `docs/DECISOES-AUTONOMAS.md` (ticket 85).
+- **Pergunta de entrevista:** "Vocês tentaram desligar o pensamento?"
+  **Resposta:** Tentei. O `gemini-3.8-live` aceita `thinking_budget=0` e o pensamento vai a zero, mas o tempo até o primeiro som não cai; o modelo parece ter perfil de latência fixo (INFERIDO). O que cortou tempo foi trocar de modelo, para o 3.1 flash live: meio segundo a menos no modelo. Só que o 3.1 ignora minha config de silêncio, é preview e perdeu uma pergunta numa das duas sessões. Deixei atrás de uma flag e medi n pequeno, então não é decisão fechada.
+
+### 27. Latência percebida: acender "pensando" antes do modelo
+- **Conceito:** a espera dói mais em silêncio. O browser vê o fim da sua fala antes do servidor: pico do microfone abaixo de 500 por 400 ms depois de fala. Nesse instante acende "pensando…" no avatar do Assistente. Apaga no primeiro chunk de áudio do agente, no `interrompido` ou em 10 s.
+- **Por quê:** o servidor só declara o fim da fala uns 0,75 s depois do silêncio, e o modelo ainda leva ~0,9 s. Sem indicador, o usuário fica ~1,8 s ouvindo nada. Com ele, vê reação em ~0,42 s (409 a 419 ms, 18 de 18 perguntas, medido no DOM). Não reduz a latência real: só a sensação. Digo isso no vídeo, porque é mascaramento. Não pus som ("hmm"): som falso em cima de voz atrapalha mais que ajuda e vira ruído para quem usa leitor de tela.
+- **Onde:** `web/src/lib/ligacao/useLigacao.ts` `marcarFala`; `web/src/lib/ligacao/config.ts` (`PICO_FALA`, `SILENCIO_LOCAL_MS`, `PENSANDO_MAX_MS`); `web/src/components/LigacaoPainel.tsx` `Participante`; `web/scripts/e2e-ligacao.mjs` (checagem "pensando").
+- **Pergunta de entrevista:** "Isso deixa o agente mais rápido?"
+  **Resposta:** Não. Deixa parecer mais rápido. A latência real ficou em cerca de 1,8 s de mediana; o indicador acende aos 0,42 s. É mascaramento e eu digo que é. O ganho de verdade veio do que medi por salto: rede menos de 50 ms, VAD e modelo dentro do Gemini.
+
+### 28. Variante nomeada na query, nunca modelo livre
+- **Conceito:** o WebSocket aceita `?v=<nome>`. O servidor procura o nome em `VARIANTES`, um dicionário fixo. Nome que não existe cai no comportamento padrão, sem erro. O cliente nunca manda o nome do modelo nem um parâmetro solto.
+- **Por quê:** medir três variantes em produção com um deploy só, sem editar o `.env` da VPS. Se a query aceitasse o modelo direto, qualquer usuário escolheria o mais caro, e o Cap mede o preço do 3.8. Lista fechada resolve isso e ainda serve de documentação do que foi testado. Não é truque de latência: é a forma segura de testá-los. O `Conector` passou a receber `(instrucao, variante)`.
+- **Onde:** `api/app/voz.py` `VARIANTES`, `ligacao()`; `api/tests/test_voz.py` `test_variante_nomeada_chega_ao_conector_e_desconhecida_cai_no_padrao`; `docs/DECISOES-AUTONOMAS.md` (ticket 85).
+- **Pergunta de entrevista:** "Por que não deixar o cliente escolher o modelo?"
+  **Resposta:** Porque a query string é entrada do usuário. Deixo só nomes que estão numa lista no servidor, e nome desconhecido vira o padrão. O usuário nunca escolhe o que custa mais.

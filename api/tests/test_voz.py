@@ -7,7 +7,6 @@ import math
 import uuid
 from contextlib import asynccontextmanager
 from fractions import Fraction
-from types import SimpleNamespace
 
 import pytest
 from google.genai import types
@@ -499,34 +498,5 @@ async def test_variante_nomeada_chega_ao_conector_e_desconhecida_cai_no_padrao(c
 
     b = await ligar(client, h, cid, v="gemini-qualquer-coisa")
     assert gemini.variante == voz.PADRAO
-    b.json({"tipo": "desligar"})
-    await b.fechamento()
-
-
-async def test_variante_fq_manda_frame_so_com_fala_recente_ou_a_cada_3s(client, gemini, monkeypatch):
-    _, h = await usuario(client)
-    cid = (await criar(client, h))["id"]
-    relogio = [1000.0]
-    # Troca o módulo `time` só dentro de voz: patchar `time.monotonic` global pararia o loop do asyncio.
-    monkeypatch.setattr(voz, "time", SimpleNamespace(monotonic=lambda: relogio[0]))
-    b = await ligar(client, h, cid, v="fq")
-    frame = lambda n: b.json({"tipo": "frame", "jpeg": base64.b64encode(n).decode()})  # noqa: E731
-    fala, silencio = (1000).to_bytes(2, "little", signed=True) * 512, bytes(1024)
-
-    frame(b"ocioso-1")  # sem fala e sem frame antes: passa (o 1º da tela)
-    await esperar(lambda: gemini.frames == [b"ocioso-1"])
-    relogio[0] += 1.0
-    b.audio(silencio)
-    frame(b"ocioso-2")  # 1 s depois, sem fala: cai
-    relogio[0] += 1.0
-    b.audio(fala)
-    await esperar(lambda: gemini.audio)
-    relogio[0] += 1.0
-    frame(b"falando-3")  # fala há 1 s: passa
-    await esperar(lambda: len(gemini.frames) == 2)
-    relogio[0] += 4.0
-    frame(b"ocioso-4")  # fala há 4 s, último frame há 4 s: passa (ocioso de 3 s)
-    await esperar(lambda: len(gemini.frames) == 3)
-    assert gemini.frames == [b"ocioso-1", b"falando-3", b"ocioso-4"]
     b.json({"tipo": "desligar"})
     await b.fechamento()
