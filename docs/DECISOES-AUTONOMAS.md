@@ -282,3 +282,9 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 - Descartado: `--auto-select-tab-capture-source-by-title` com uma aba de texto.
 - Por quê: o WAV como microfone exige `--use-fake-device-for-media-stream`, e com essa flag o `getDisplayMedia` do Brave entrega um padrão verde falso (1º smoke: o modelo disse que não via nada; gastou uma sessão Live). Trilha, 1 fps e JPEG 1280 seguem reais; só a origem dos pixels é falsa.
 - Sem defeito de produto achado. Sessão que desliga antes do `turn_complete` cai no custo estimado (comportamento já previsto no ticket 76).
+
+## Ticket 83: config de VAD na Ligação e trilha de latência por flag
+- Decisão: `_conectar` passa `realtime_input_config.automatic_activity_detection` com `end_of_speech_sensitivity=HIGH` e `silence_duration_ms=500` (`LIGACAO_SILENCIO_MS`). A trilha de latência liga só com `?trace=1` no WebSocket e escreve no log do servidor tempos e tipos de evento.
+- Descartado: `thinking_level` (o `gemini-3.8-live` não aceita, segundo o guia do Gemini); VAD manual no cliente com `activity_start/end` (troca a decisão do ADR 0026, código maior); flag da trilha por variável de ambiente (exigiria editar o `.env` da VPS, fora do escopo do ticket).
+- Por quê: o VAD do Gemini respondia por 1,3 s dos 1,7 s medidos e é o único salto com alavanca de config. A trilha por query param mede em produção sem tocar na VPS; ela só loga ms e tipo de evento.
+- Risco declarado: 500 ms pode partir fala com pausa (visto 1 vez em 3, com WAV que tem pausa de ~1 s). Dois parâmetros mudados juntos. O total em produção não caiu na amostra (n=3): o pensamento do modelo variou mais. Ver `docs/LATENCIA-LIGACAO.md`.

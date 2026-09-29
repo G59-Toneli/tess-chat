@@ -103,7 +103,7 @@ Objetivo: o avaliador sai sabendo o que trafega em cada ponto e por que cada esc
 
 ### 8:40 a 9:40. Limites assumidos e próximos passos
 - **Limites:** 9 minutos. Sem session resumption. Um processo só: restart derruba a Ligação. Reserva não segura saldo. Free tier treina com o conteúdo.
-- **Próximos passos, em ordem:** session resumption; reserva gravada no Ledger; testar `thinking_level` baixo e medir a latência; mover a sessão para fora do processo [23].
+- **Próximos passos, em ordem:** session resumption; reserva gravada no Ledger; medir a latência com mais perguntas por sessão e testar `thinking_budget`; mover a sessão para fora do processo [23].
 - Fecho: "Está tudo nos ADRs 0026 a 0028 e em `docs/ESTUDO-VOZ.md`."
 
 ---
@@ -116,8 +116,8 @@ Objetivo: o avaliador sai sabendo o que trafega em cada ponto e por que cada esc
 ### 2. "Sua reserva de 9 minutos não segura nada. Então o Cap não vale durante a chamada."
 **Resposta curta:** "Certo. Ela só confere que o gasto de agora mais US$ 0,345 cabe no Cap, no ticket e na conexão. Não grava nem bloqueia saldo. Duas chamadas simultâneas podem passar juntas, e 0,345 não é teto real, porque cada turno cobra o contexto de novo (INFERIDO). Com uma Ligação por Usuário, o risco é pequeno. O próximo passo é gravar uma linha de reserva no Ledger e ajustar no acerto."
 
-### 3. "Um segundo e meio de espera para uma voz é lento. Por que o seu está em 1,9 s?"
-**Resposta curta:** "Medi no browser, da minha rede residencial até o VPS: 1,9 s em produção e 0,5 a 0,6 s com o servidor local. Inclui a pausa que o Gemini espera para ter certeza de que eu parei. Não isolei a causa: rede, o salto do proxy ou o modelo. O modelo base também pensa antes de falar, e o `thinking_level` baixo é a alavanca que ainda não testei."
+### 3. "Um segundo e meio de espera para uma voz é lento. Por que o seu passa de 2 s?"
+**Resposta curta:** "Medi por salto, no browser, da minha rede residencial até o VPS. A rede soma menos de 50 ms. Com o servidor local a mesma medição dá 1,7 s, então não é o VPS. O tempo está dentro do Gemini: cerca de 1,3 s esperando ter certeza de que parei de falar, e de 0,4 a 3 s do modelo pensando. Reduzi a espera em 400 ms com a config do VAD e o total não caiu, porque o pensamento variou mais. O `thinking_level` não existe nesse modelo Live. Os 0,5 s que apareceram antes vinham de um script sem browser, outra régua."
 
 ## Depois de gravar
 

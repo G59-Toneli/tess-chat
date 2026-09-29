@@ -21,8 +21,8 @@ Ambiente de cada número vem junto. Número sem ambiente não vale.
 | Áudio em tokens | ~25 tokens por segundo, entrada e saída | spike 75 |
 | Reserva de 9 min | **US$ 0,345** (não os ~US$ 0,25 do ADR 0027) | 25 t/s de áudio in e out + 264 tokens × 1 Frame/s, ao preço de tabela |
 | Pensamento | 80 a 452 tokens por turno, **fora** do `total_token_count`; cobrado como saída de texto (US$ 4,50/1M) | INFERIDO. O modelo base também pensa, não só o `-extended-thinking` |
-| Latência (fim da fala → 1º áudio) | **0,5 a 0,6 s local** (503 e 626 ms); spike 426 a 918 ms | Windows do Toneli, servidor na própria máquina |
-| Latência em produção | **1,9 s** (sessão que leu a tela); 3,3 s na sessão sem tela | medida no browser, rede residencial → VPS `<ip-do-vps>`. Causa da diferença não isolada, INFERIDO |
+| Latência (fim da fala → 1º áudio), script direto | 0,5 a 0,6 s (503 e 626 ms); spike 426 a 918 ms | Windows do Toneli, servidor local, sem browser. Outra régua que a de baixo; o script do 76 não foi commitado |
+| Latência pela harness do browser | **1,7 s local; 1,9 s e 3,3 s em produção (80); 2,3 a 3,9 s em produção depois do fix do 83 (n=3)** | medida no browser, rede residencial → VPS `<ip-do-vps>`. A rede soma <50 ms; o tempo está no VAD (1,3 s) e no pensamento do modelo (0,4 a 3,0 s). `docs/LATENCIA-LIGACAO.md` |
 | Custo real de uma Ligação | ~US$ 0,006 por minuto a preço de tabela (6012 micro-USD em 63 s); R$ 0 na chave free | smoke 80, produção |
 
 ## O caminho completo, em sequência
@@ -214,10 +214,10 @@ Browser (React)               Servidor (FastAPI, api/app/voz.py)          Gemini
 
 ### 21. Latência: o que foi medido
 - **Conceito:** a latência que o usuário sente é do fim da fala até o primeiro som do agente. Ela inclui a pausa que o VAD espera para ter certeza de que a pessoa parou, a geração do modelo e a rede. O script de smoke embrulha o `WebSocket` no browser e guarda o instante do último chunk de microfone com sinal e o do primeiro chunk de áudio recebido.
-- **Por quê:** medir no servidor esconderia a rede. Medir no browser mostra o que o usuário sente. Resultado: 0,5 a 0,6 s com servidor local; 1,9 s em produção (rede residencial → VPS), 3,3 s na sessão em que o modelo não viu tela. A causa da diferença entre local e produção não foi isolada: pode ser a rede, o salto extra pelo VPS, ou a variação do modelo (INFERIDO). O `thinking_level` baixo aparece no guia do Gemini como alavanca de latência. Não foi testado.
-- **Onde:** `web/scripts/smoke-ligacao-prod.mjs` (`window.__ws`); `spike/live/RESULTADO.md`, linha de latência.
+- **Por quê:** medir no servidor esconderia a rede. Medir no browser mostra o que o usuário sente. Resultado com a mesma harness: 1,7 s local e 1,9 s em produção. Os 0,5 s dos tickets 75 e 76 vinham de outra régua. A rede não pesa: cliente → VPS 12 ms, VPS → Google 2 ms. Os marcos do servidor (`?trace=1`) separam o resto em duas partes: o VAD do Gemini leva 1,3 s para fechar a fala, e o modelo leva de 0,4 a 3,0 s para começar a falar.
+- **Onde:** `web/scripts/smoke-ligacao-prod.mjs` (`window.__ws`); `api/app/voz.py` (`Trilha`); `docs/LATENCIA-LIGACAO.md`; `spike/live/RESULTADO.md`, linha de latência.
 - **Pergunta de entrevista:** "Quanto demora o agente para começar a falar?"
-  **Resposta:** Local, 0,5 a 0,6 s. Em produção, 1,9 s na sessão em que ele leu a tela, medido no browser, da minha rede residencial até o VPS. Não isolei se é rede, o salto do proxy ou o modelo. O próximo experimento é `thinking_level` baixo e medir de uma rede melhor.
+  **Resposta:** De 1,7 a 3,9 s, medido no browser, do fim da fala ao primeiro som. A rede é menos de 50 ms. O resto é o Gemini: cerca de 1,3 s esperando ter certeza de que parei de falar, mais o tempo do modelo pensar, que varia de 0,4 a 3 s. Reduzi a espera do VAD em 400 ms e o total não caiu, porque o pensamento variou mais que isso. O `thinking_level` não existe no modelo Live que uso.
 
 ### 22. Como testei sem gastar crédito
 - **Conceito:** três níveis. (1) `pytest` com um Gemini falso injetado pelo seam `conectar_gemini` (`dependency_overrides`): 15 testes. (2) O front real no Brave contra um servidor WebSocket falso que segue o protocolo, com microfone falso. (3) E2E com a API real e um Gemini roteirizado, e o smoke de produção com um WAV de pergunta tocado como microfone e um canvas com o pedido de compra no lugar da tela.
@@ -234,8 +234,22 @@ Browser (React)               Servidor (FastAPI, api/app/voz.py)          Gemini
   - **Reserva não segura saldo.** Próximo passo: gravar uma linha de reserva no Ledger e ajustar no acerto.
   - **Sem tools e sem Jev.** Ver parada 16.
   - **Free tier treina com o conteúdo.** Voz e tela vão para o Google. Aceito para demo; não compartilhe dado sensível.
-  - **Sem `thinking_level`.** Latência pode cair; não foi testado.
+  - **Sem `thinking_level`.** O `gemini-3.8-live` não aceita. O pensamento (100 a 450 tokens por turno) é o que mais pesa e varia; sem alavanca de config. `thinking_budget` não foi testado.
   - **Frame repetido não é detectado.** Custa centavos; não compensa.
 - **Onde:** ADR 0026 (Consequências), ADR 0028 (Consequências), `docs/DECISOES-AUTONOMAS.md` (linhas do ticket 76).
 - **Pergunta de entrevista:** "O que você faria com mais uma semana?"
-  **Resposta:** Primeiro, session resumption, para Ligações acima de 9 minutos. Segundo, reserva gravada no Ledger, para o Cap valer de verdade durante a chamada. Terceiro, testar `thinking_level` baixo e medir a latência de novo. Depois, mover a sessão para fora do processo para poder escalar.
+  **Resposta:** Primeiro, session resumption, para Ligações acima de 9 minutos. Segundo, reserva gravada no Ledger, para o Cap valer de verdade durante a chamada. Terceiro, medir a latência com 5 ou mais perguntas por sessão para separar o VAD do pensamento do modelo, e testar `thinking_budget`. Depois, mover a sessão para fora do processo para poder escalar.
+
+### 24. Latência: onde o tempo ia
+- **Conceito:** do último som da sua fala ao primeiro som do agente há dois esperas dentro do Gemini. A primeira é o VAD: ele só declara "acabou" depois de um silêncio, e o silêncio padrão é ~800 ms. A segunda é o modelo: pensa (100 a 450 tokens) e só então gera o primeiro áudio. O servidor vê os dois marcos: `voice_activity` `ACTIVITY_END` e o primeiro `inline_data`.
+- **Por quê:** antes de medir, a hipótese natural era rede ou proxy. Os números descartam: cliente → VPS 12 ms, VPS → Google 2 ms, ida e volta pelo relay 40 a 50 ms. A mesma harness local deu 1,7 s, igual à produção. O que mudou entre o "0,5 s" e o "1,9 s" foi a régua: script direto contra medição no browser.
+- **Onde:** `docs/LATENCIA-LIGACAO.md` (tabela por salto); `api/app/voz.py` `Trilha`; `web/scripts/sonda-mic-falso.mjs`.
+- **Pergunta de entrevista:** "Vocês mediram onde vai a latência?"
+  **Resposta:** Medi por salto. Rede menos de 50 ms, reprodução 0 ms. Com o servidor local a harness já dava 1,7 s, então não era o VPS. O tempo está dentro do Gemini: 1,3 s do VAD esperando silêncio e de 0,4 a 3 s do modelo pensando.
+
+### 25. VAD: por que 500 ms e o risco
+- **Conceito:** `silence_duration_ms` é quanto silêncio o VAD do Gemini espera antes de fechar a fala; `end_of_speech_sensitivity` diz o quão fácil ele declara o fim. Configurei 500 ms e HIGH. O silêncio até o `ACTIVITY_END` caiu de 1292 para 823 a 926 ms.
+- **Por quê:** menor espera é menos latência, mas pausa no meio da frase vira fim de fala. Numa das três perguntas em produção o VAD partiu a pergunta em duas e o modelo respondeu só à segunda metade. O guia do Gemini recomenda 500 a 800 ms. Escolhi o piso da faixa porque a latência era o pedido; se o uso real mostrar corte, sobe para 700 ms (`LIGACAO_SILENCIO_MS`). Mudei duas coisas juntas e não sei o peso de cada. O total não caiu na sessão de produção (2,3 a 3,9 s), porque o pensamento do modelo variou mais (1,3 a 3,0 s).
+- **Onde:** `api/app/voz.py` `_conectar`; `api/app/config.py` `ligacao_silencio_ms`; `docs/DECISOES-AUTONOMAS.md` (ticket 83).
+- **Pergunta de entrevista:** "Por que 500 ms de silêncio e não menos?"
+  **Resposta:** Abaixo de 500 ms o VAD parte a frase em pausas normais de respiração. 500 ms é o piso do que o Gemini recomenda. Mesmo nesse valor vi uma pergunta partida em 3. É troca de latência por corte, e deixei o valor em variável de ambiente para ajustar sem código.
