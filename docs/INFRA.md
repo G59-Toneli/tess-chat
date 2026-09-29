@@ -69,6 +69,16 @@ O site em `sites-available` foi alterado pelo certbot (bloco 443). Copie à mão
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+**Nginx da Ligação (WebSocket, ticket 79):** o site precisa de uma `location /api/voz/ws` com upgrade. Sem ela o nginx derruba o handshake e a Ligação não abre.
+```
+sudo cp /etc/nginx/sites-available/tess-chat /etc/nginx/sites-available/tess-chat.bak-$(date +%Y%m%d-%H%M%S)
+# copie a location /api/voz/ws de deploy/nginx-tess-chat.conf para o bloco 443, antes de "location / {"
+sudo nginx -t && sudo systemctl reload nginx   # nginx -t falhou: restaure o backup, sem reload
+echo "GEMINI_LIVE_API_KEY=<chave>" >> /opt/tess-chat/.env   # só se a linha não existir; o compose repassa pelo env_file
+bash deploy/deploy.sh   # recria o app e lê o .env novo
+```
+Teste: um cliente WS em `wss://chat.toneli.dev.br/api/voz/ws?ticket=invalido` recebe close `4401`. Não gasta Gemini.
+
 **Logs:**
 ```
 docker compose -f deploy/docker-compose.yml logs -f app

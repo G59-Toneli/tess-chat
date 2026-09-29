@@ -1,7 +1,7 @@
 # 80 — Ligação ponta a ponta: E2E com mídia falsa e smoke real em produção
 
 **Type:** task (web/ + api/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 76, 78, 79
 **Refs:** ADR 0026 a 0028, `docs/PROTOCOLO-LIGACAO.md`.
 
