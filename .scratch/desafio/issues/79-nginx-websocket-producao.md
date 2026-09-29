@@ -1,7 +1,7 @@
 # 79 — nginx de produção repassa o WebSocket da Ligação
 
 **Type:** task (deploy/ + VPS)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 76
 **Refs:** ADR 0014, 0026. `docs/INFRA.md`. Regras da VM em `<arquivo-de-acesso>` (ler antes de qualquer comando). Autorizado pelo Toneli em 28/09 (Q30, opção a).
 

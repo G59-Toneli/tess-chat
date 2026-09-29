@@ -43,6 +43,10 @@ class PrecoModelo(Base):
     output_micro_usd_1m: Mapped[int] = mapped_column(BigInteger)
     cache_micro_usd_1m: Mapped[int] = mapped_column(BigInteger)
     thinking_micro_usd_1m: Mapped[int] = mapped_column(BigInteger)
+    # Só a Ligação (migração 0024). Nulo nos modelos de texto.
+    audio_input_micro_usd_1m: Mapped[int | None] = mapped_column(BigInteger)
+    image_input_micro_usd_1m: Mapped[int | None] = mapped_column(BigInteger)
+    audio_output_micro_usd_1m: Mapped[int | None] = mapped_column(BigInteger)
     vigente_desde: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -131,6 +135,14 @@ async def reservar(
     """Garante que a chamada cabe nos Caps. Recusa com CapAtingido e evento `cap_reached`."""
     preco = await preco_vigente(session, model)
     reserva = debit(RunUsage(input_tokens=input_estimado, output_tokens=settings.max_output_tokens), preco)
+    await caber(session, user_id, conversation_id, model, reserva)
+    return preco
+
+
+async def caber(
+    session: AsyncSession, user_id: uuid.UUID, conversation_id: uuid.UUID, model: str, reserva: int
+) -> None:
+    """Recusa com CapAtingido e evento `cap_reached` se a reserva passa do Cap do Usuário ou do global."""
     for escopo, uid in (("usuario", user_id), ("global", None)):
         gasto, cap = await _gasto(session, uid), await _cap(session, uid)
         if gasto + reserva > cap:
@@ -146,7 +158,6 @@ async def reservar(
                 )
                 await s.commit()
             raise CapAtingido(f"Cap de crédito atingido ({escopo}).")
-    return preco
 
 
 async def acertar(

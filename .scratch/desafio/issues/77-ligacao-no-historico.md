@@ -1,7 +1,7 @@
 # 77 — Falas da Ligação no histórico e histórico na Ligação
 
 **Type:** task (api/ + web/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 76
 **Refs:** ADR 0026. Q4 e Q21 do grilling de 28/09. É o primeiro item a cair se o prazo apertar.
 

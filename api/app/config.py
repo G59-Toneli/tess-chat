@@ -49,6 +49,16 @@ class Settings(BaseSettings):
     connectors_key: str | None = None
     # dev libera http:// para o servidor MCP demo (ticket 23). Produção define ENV=prod.
     env: str = "dev"
+    # Ligação (ADR 0026, 0028). Nomes do SDK em spike/live/RESULTADO.md. Sem chave, abrir o Gemini falha (4500).
+    gemini_live_api_key: str | None = None
+    gemini_live_modelo: str = "gemini-3.8-live"
+    gemini_live_voz: str = "Kore"
+    ligacao_limite_s: int = 540
+    ligacao_ticket_s: int = 30
+    ligacao_teto_global: int = 3
+    # O browser captura; o servidor descarta Frame acima do fps.
+    ligacao_fps: int = 1
+    ligacao_resolucao: int = 1280
 
     # Em prod, o boot falha com o segredo de dev ou curto: quem conhece o segredo forja o JWT de qualquer conta.
     @model_validator(mode="after")
