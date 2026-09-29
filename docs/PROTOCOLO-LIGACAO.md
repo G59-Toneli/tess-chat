@@ -28,8 +28,8 @@ Contrato entre `web/` (ticket 78) e `api/app/voz.py` (ticket 76). Os dois lados 
 ## 4. Servidor → browser
 - **Binário:** áudio do agente, PCM 16-bit little-endian, 24 kHz, mono.
 - **Texto JSON:**
-  - `{"tipo":"pronto","limite_s":540}`
-  - `{"tipo":"transcricao","origem":"usuario"|"agente","texto":"...","final":true|false}`
+  - `{"tipo":"pronto","limite_s":540}`. Fps (1) e resolução (1280) são constantes do front.
+  - `{"tipo":"transcricao","origem":"usuario"|"agente","texto":"...","final":true|false}`. Agente: texto **acumulado**; cada mensagem `final:false` traz a fala inteira até agora e substitui a anterior; o fim do turno manda a fala inteira com `final:true`. Usuário: uma mensagem só, `final:true`.
   - `{"tipo":"interrompido"}`: o usuário falou por cima; o browser esvazia a fila de áudio.
   - `{"tipo":"fim","motivo":"desligou"|"limite"|"erro"|"queda"}`: o servidor fecha em seguida com close code `1000`.
   - `{"tipo":"erro","mensagem":"..."}`: legível para o usuário.
