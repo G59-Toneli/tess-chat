@@ -15,11 +15,12 @@ from pydantic_ai.models.function import FunctionModel
 from app import turnos, voz
 from app.chat import MODELO
 from app.config import settings
+from app.conversas import Message
 from app.credito import Cap
 from app.db import SessionLocal
 from app.main import app
 from tests.test_auth import eventos
-from tests.test_chat import _nunca, corpo
+from tests.test_chat import _nunca, corpo, textos
 from tests.test_conversas import criar, usuario
 from tests.test_credito import linhas
 
@@ -366,3 +367,118 @@ async def test_gemini_que_nao_abre_fecha_4500_e_libera_a_vaga(client):
         app.dependency_overrides.pop(voz.conectar_gemini, None)
     assert livre(uid, cid)
     assert await eventos("voice_call_ended", user_id=uid) == []
+
+
+def fala(usuario: str, agente: str) -> list[types.LiveServerMessage]:
+    return [
+        conteudo(input_transcription=types.Transcription(text=usuario)),
+        conteudo(output_transcription=types.Transcription(text=agente)),
+        conteudo(turn_complete=True),
+    ]
+
+
+async def mensagens_da(client, h: dict, cid: str) -> list[dict]:
+    return (await client.get(f"/api/conversations/{cid}/messages", headers=h)).json()
+
+
+async def test_falas_viram_um_par_por_troca_com_a_marca_de_ligacao(client, gemini):
+    uid, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    b = await ligar(client, h, cid)
+    gemini.mandar(*fala("Qual o prazo?", "São dois dias."), *fala("E o preço?", "Cento e vinte reais."))
+    # Fala do agente cortada pelo desligar entra como veio.
+    gemini.mandar(conteudo(input_transcription=types.Transcription(text="Obrigado")))
+    gemini.mandar(conteudo(output_transcription=types.Transcription(text="Por nada")))
+    await asyncio.sleep(0.05)
+    b.json({"tipo": "desligar"})
+    assert await b.fechamento() == 1000
+
+    msgs = await mensagens_da(client, h, cid)
+    assert [(m["role"], m["parts"][0]["text"]) for m in msgs] == [
+        ("user", "Qual o prazo?"),
+        ("assistant", "São dois dias."),
+        ("user", "E o preço?"),
+        ("assistant", "Cento e vinte reais."),
+        ("user", "Obrigado"),
+        ("assistant", "Por nada"),
+    ]
+    assert all(m["parts"][1]["type"] == "data-ligacao" for m in msgs)
+    [ev] = await eventos("voice_call_ended", user_id=uid)
+    assert ev.payload["mensagens"] == 6
+
+
+async def test_ligacao_sem_fala_nao_grava_mensagem(client, gemini):
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    b = await ligar(client, h, cid)
+    gemini.mandar(conteudo(input_transcription=types.Transcription(text="  ")), conteudo(turn_complete=True))
+    await asyncio.sleep(0.05)
+    b.json({"tipo": "desligar"})
+    assert await b.fechamento() == 1000
+    assert await mensagens_da(client, h, cid) == []
+
+
+async def _semear(cid: str, *msgs: tuple[str, list[dict]]) -> None:
+    async with SessionLocal() as s:
+        for role, partes in msgs:
+            s.add(Message(conversation_id=uuid.UUID(cid), role=role, parts=partes))
+        await s.commit()
+
+
+def texto(t: str) -> dict:
+    return {"type": "text", "text": t}
+
+
+async def test_ligacao_leva_o_historico_so_em_texto(client, gemini):
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    await _semear(
+        cid,
+        ("user", [texto("Meu pedido é o 4827"), {"type": "file", "mediaType": "image/png", "url": "/api/attachments/x", "filename": "foto.png"}]),
+        ("assistant", [texto("Anotei o pedido 4827."), {"type": "data-turno-interrompido", "data": {"texto": "corte"}}]),
+    )
+    b = await ligar(client, h, cid)
+    assert "Usuário: Meu pedido é o 4827" in gemini.instrucao
+    assert "Assistente: Anotei o pedido 4827." in gemini.instrucao
+    assert gemini.instrucao.index("Usuário:") < gemini.instrucao.index("Assistente:")
+    assert "foto.png" not in gemini.instrucao and "image/png" not in gemini.instrucao and "corte" not in gemini.instrucao
+    b.json({"tipo": "desligar"})
+    await b.fechamento()
+
+
+async def test_historico_da_ligacao_respeita_o_teto_e_corta_o_mais_antigo(client, gemini, monkeypatch):
+    monkeypatch.setattr(settings, "ligacao_historico_tokens", 20)  # 60 caracteres
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    await _semear(
+        cid,
+        ("user", [texto("velhice " * 20)]),
+        ("assistant", [texto("meio")]),
+        ("user", [texto("recente")]),
+    )
+    b = await ligar(client, h, cid)
+    assert "Usuário: recente" in gemini.instrucao and "Assistente: meio" in gemini.instrucao
+    assert "velhice" not in gemini.instrucao
+    b.json({"tipo": "desligar"})
+    await b.fechamento()
+
+
+async def test_texto_depois_da_ligacao_ve_as_falas_como_historico(client, gemini, usar_modelo):
+    vistas = []
+
+    async def stream(msgs, _info):
+        vistas.append(msgs)
+        yield "ok"
+
+    usar_modelo(FunctionModel(stream_function=stream, model_name=MODELO))
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    b = await ligar(client, h, cid)
+    gemini.mandar(*fala("Meu nome é Ana", "Prazer, Ana."))
+    await asyncio.sleep(0.05)
+    b.json({"tipo": "desligar"})
+    assert await b.fechamento() == 1000
+
+    r = await client.post(f"/api/chat/{cid}", json=corpo("qual meu nome?"), headers=h)
+    assert r.status_code == 200, r.text
+    assert textos(vistas[0]) == [("user", "Meu nome é Ana"), ("assistant", "Prazer, Ana."), ("user", "qual meu nome?")]

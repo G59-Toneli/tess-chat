@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     ligacao_limite_s: int = 540
     ligacao_ticket_s: int = 30
     ligacao_teto_global: int = 3
+    # Teto do histórico em texto que a Ligação leva ao Gemini (ticket 77).
+    ligacao_historico_tokens: int = 4000
     # O browser captura; o servidor descarta Frame acima do fps.
     ligacao_fps: int = 1
     ligacao_resolucao: int = 1280

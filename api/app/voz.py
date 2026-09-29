@@ -21,13 +21,14 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import turnos
 from app.audit import audit
 from app.auth import User, current_user
 from app.config import settings
-from app.conversas import conversa_do_usuario
+from app.conversas import Conversation, Message, conversa_do_usuario
 from app.credito import MILHAO, CapAtingido, CreditLedger, PrecoAusente, PrecoModelo, caber, preco_vigente
 from app.db import SessionLocal, get_session
 
@@ -46,6 +47,10 @@ BYTES_AUDIO_OUT_S = 48_000
 # Medidos no spike 75: ~25 tokens por segundo de áudio, 264 tokens por Frame.
 TOKENS_AUDIO_S = 25
 TOKENS_FRAME = 264
+# Parte que marca a Mensagem como falada. Mesmo padrão `data-*` do aviso de turno interrompido.
+MARCA_LIGACAO = "data-ligacao"
+# ~3 caracteres por token em pt-BR, a mesma estimativa do chat (INFERIDO).
+CHARS_POR_TOKEN = 3
 
 
 class SessaoLive(Protocol):
@@ -152,6 +157,32 @@ async def _reservar(session: AsyncSession, user_id: uuid.UUID, cid: uuid.UUID) -
     await caber(session, user_id, cid, settings.gemini_live_modelo, debit_ligacao(uso_maximo(), preco))
 
 
+# REVISAR(human): monta o histórico que a Ligação leva no início. Só texto das Mensagens de usuário e
+# assistente: imagem, PDF e tool ficam fora, o Gemini Live recebe o contexto como texto na instrução.
+# O teto conta do fim para o começo, porque a conversa recente pesa mais que a antiga. Mensagem que
+# estoura o teto é cortada inteira, não pela metade: meia frase confunde mais do que ajuda.
+async def historico_em_texto(session: AsyncSession, cid: uuid.UUID) -> str:
+    q = select(Message).where(Message.conversation_id == cid, Message.role.in_(("user", "assistant")))
+    linhas = (await session.scalars(q.order_by(Message.created_at.desc(), Message.id.desc()).limit(200))).all()
+    sobra, saida = settings.ligacao_historico_tokens * CHARS_POR_TOKEN, []
+    for m in linhas:
+        texto = "\n".join(p["text"].strip() for p in m.parts if p.get("type") == "text" and p.get("text", "").strip())
+        if not texto:
+            continue
+        linha = f"{'Usuário' if m.role == 'user' else 'Assistente'}: {texto}"
+        if len(linha) > sobra:
+            break
+        sobra -= len(linha)
+        saida.append(linha)
+    return "\n".join(reversed(saida))
+
+
+def _instrucao(historico: str) -> str:
+    if not historico:
+        return ADENDO_VOZ
+    return f"{ADENDO_VOZ}\n\nConversa até aqui, só texto, da mais antiga para a mais recente:\n{historico}"
+
+
 @dataclass
 class Ticket:
     user_id: uuid.UUID
@@ -171,7 +202,7 @@ class Ligacao:
     frames: int = 0
     ultimo_frame: float = 0.0
     tela: bool = False
-    # Falas em memória. O ticket 77 grava como Mensagens no fim único.
+    # Falas em memória. `_encerrar` grava como Mensagens.
     falas: list[dict[str, str]] = field(default_factory=list)
     fala_agente: str = ""
     encerrada: bool = False
@@ -251,7 +282,8 @@ async def ligacao(websocket: WebSocket, conectar: Annotated[Conector, Depends(co
         try:
             async with SessionLocal() as s:
                 await _reservar(s, t.user_id, t.cid)
-            sessao = await pilha.enter_async_context(conectar(ADENDO_VOZ))
+                instrucao = _instrucao(await historico_em_texto(s, t.cid))
+            sessao = await pilha.enter_async_context(conectar(instrucao))
         except CapAtingido:
             await _liberar(lig)
             return await websocket.close(4402)
@@ -434,6 +466,49 @@ async def _acertar(session: AsyncSession, lig: Ligacao, duracao_s: float) -> tup
     return uso, custo, estimado
 
 
+# REVISAR(human): grava as falas como Mensagens, um par usuário/assistente por troca. Uma troca é o que o
+# usuário disse (falas seguidas se juntam) e a resposta que veio depois. Fala do agente ainda aberta
+# (desligou no meio) entra como veio. Texto vazio não vira Mensagem. Cada Mensagem leva a parte
+# `data-ligacao`, que o front lê para mostrar "por voz". Custo fica no Ledger da Ligação, não aqui.
+def _trocas(falas: list[dict[str, str]], aberta: str) -> list[tuple[str, str]]:
+    if aberta.strip():
+        falas = [*falas, {"origem": "agente", "texto": aberta.strip()}]
+    trocas: list[tuple[str, str]] = []
+    usuario: list[str] = []
+    for f in falas:
+        if not f["texto"]:
+            continue
+        if f["origem"] == "usuario":
+            usuario.append(f["texto"])
+        else:
+            trocas.append((" ".join(usuario), f["texto"]))
+            usuario = []
+    if usuario:
+        trocas.append((" ".join(usuario), ""))
+    return trocas
+
+
+def _mensagem(cid: uuid.UUID, role: str, texto: str) -> Message:
+    partes = [{"type": "text", "text": texto}, {"type": MARCA_LIGACAO, "data": {}}]
+    return Message(conversation_id=cid, role=role, parts=partes)
+
+
+async def gravar_falas(session: AsyncSession, lig: Ligacao) -> int:
+    mensagens = []
+    for usuario, agente in _trocas(lig.falas, lig.fala_agente):
+        if usuario:
+            mensagens.append(_mensagem(lig.cid, "user", usuario))
+        if agente:
+            mensagens.append(_mensagem(lig.cid, "assistant", agente))
+    if not mensagens:
+        return 0
+    session.add_all(mensagens)
+    conv = await session.get(Conversation, lig.cid)
+    if conv is not None:
+        conv.updated_at = func.now()
+    return len(mensagens)
+
+
 # REVISAR(human): fim único. Desligar, limite, queda do browser e queda do Gemini passam aqui,
 # chamado do `finally`. Ordem: acerto e voice_call_ended com commit, depois libera a vaga, depois
 # manda `fim`. Quem recebe o `fim` já pode mandar texto. `encerrada` segura a segunda chamada.
@@ -443,6 +518,13 @@ async def _encerrar(websocket: WebSocket, lig: Ligacao, motivo: str) -> None:
         return
     lig.encerrada = True
     duracao = time.monotonic() - lig.inicio
+    mensagens = 0
+    try:
+        async with SessionLocal() as s:
+            mensagens = await gravar_falas(s, lig)
+            await s.commit()
+    except Exception:
+        log.exception("gravação das falas da Ligação %s falhou", lig.cid)
     try:
         async with SessionLocal() as s:
             if lig.tela:
@@ -465,6 +547,7 @@ async def _encerrar(websocket: WebSocket, lig: Ligacao, motivo: str) -> None:
                     "estimado": estimado,
                     "turnos": lig.turnos_com_uso,
                     "frames": lig.frames,
+                    "mensagens": mensagens,
                 },
             )
             await s.commit()

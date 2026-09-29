@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type ChatStatus, type FileUIPart, type UIMessage } from 'ai'
 import { toast } from 'sonner'
-import { MessageSquareIcon, OctagonPauseIcon, WalletIcon } from 'lucide-react'
+import { MessageSquareIcon, MicIcon, OctagonPauseIcon, WalletIcon } from 'lucide-react'
 import { CustoConversa } from '@/components/CustoConversa'
 import { BadgeUso, BlocoTool, Buscando, LinhaRoteador, nomeDaTool, partesDeTool, toolRodando, useDuracoes } from '@/components/BlocoTool'
 import { AnexoNaMensagem, AnexosDoPrompt, BotaoAnexar, previews } from '@/components/Anexos'
@@ -142,8 +142,10 @@ function CarregarConversa({ id }: { id: string }) {
     usos: Map<string, Uso>
   } | null>(null)
   const [erro, setErro] = useState(false)
+  // Muda a cada recarga do histórico: o useChat só lê `messages` na montagem, então a Conversa remonta.
+  const [versao, setVersao] = useState(0)
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (remontar = false) => {
     setErro(false)
     try {
       const [linhas, decisoes] = await Promise.all([
@@ -157,8 +159,10 @@ function CarregarConversa({ id }: { id: string }) {
         mensagens,
         horarios: new Map(visiveis.map((m) => [String(m.id), new Date(m.created_at)])),
       })
+      if (remontar) setVersao((v) => v + 1)
     } catch {
-      setErro(true)
+      // Recarga depois da Ligação: se falhar, a tela segue com o que tinha.
+      if (!remontar) setErro(true)
     }
   }, [id])
 
@@ -169,7 +173,7 @@ function CarregarConversa({ id }: { id: string }) {
   if (erro)
     return (
       <LayoutChat>
-        <EstadoErro mensagem="Não foi possível carregar a conversa." onTentarDeNovo={carregar} />
+        <EstadoErro mensagem="Não foi possível carregar a conversa." onTentarDeNovo={() => carregar()} />
       </LayoutChat>
     )
   if (!inicial)
@@ -178,7 +182,16 @@ function CarregarConversa({ id }: { id: string }) {
         <EstadoCarregando />
       </LayoutChat>
     )
-  return <ChatConversa id={id} inicial={inicial.mensagens} horarios={inicial.horarios} usosIniciais={inicial.usos} />
+  return (
+    <ChatConversa
+      key={versao}
+      id={id}
+      inicial={inicial.mensagens}
+      horarios={inicial.horarios}
+      usosIniciais={inicial.usos}
+      aoFecharLigacao={() => carregar(true)}
+    />
+  )
 }
 
 const COMPACTANDO = 'data-compactando'
@@ -194,11 +207,13 @@ function ChatConversa({
   inicial,
   horarios,
   usosIniciais,
+  aoFecharLigacao,
 }: {
   id: string
   inicial: UIMessage[]
   horarios: Map<string, Date>
   usosIniciais: Map<string, Uso>
+  aoFecharLigacao: () => void
 }) {
   const { usuario, recarregarConversas } = useContextoApp()
   const [usos, setUsos] = useState(usosIniciais)
@@ -210,7 +225,9 @@ function ChatConversa({
   const fecharLigacao = useCallback(() => {
     setEmLigacao(false)
     setLigacaoAtiva(false)
-  }, [])
+    // As falas da Ligação viram Mensagens no servidor: recarrega o histórico para elas aparecerem.
+    aoFecharLigacao()
+  }, [aoFecharLigacao])
 
   useEffect(() => {
     let vivo = true
@@ -505,6 +522,8 @@ function LinhaMensagem({
   const interrompidas = new Set(corte?.tool_call_ids ?? [])
   const rodando = toolRodando(mensagem) ? tools.find((p) => p.state !== 'output-available') : undefined
   // Decisão que forçou a Tool, ou que passou do limiar em Tool MCP (sugerida). Abaixo do limiar quem decidiu foi o Gemini.
+  // A API marca com uma parte `data-ligacao` a Mensagem que veio da Ligação (ticket 77).
+  const porVoz = mensagem.parts.some((p) => p.type === 'data-ligacao')
   const decisao = uso?.decisao?.forcada || uso?.decisao?.sugerida ? uso.decisao : undefined
   return (
     <div className={cn('flex gap-3', usuario && 'flex-row-reverse')}>
@@ -537,12 +556,18 @@ function LinhaMensagem({
           {corte && <AvisoTurnoInterrompido corte={corte} />}
           {aguardando && <Trabalhando texto={aguardando} />}
         </MessageContent>
-        {(quando || uso) && (
+        {(quando || uso || porVoz) && (
           <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1', usuario && 'justify-end')}>
             {quando && (
               <time dateTime={quando.toISOString()} className="text-xs text-muted-foreground">
                 {hora(quando)}
               </time>
+            )}
+            {porVoz && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MicIcon className="size-3" aria-hidden />
+                por voz
+              </span>
             )}
             {uso && !usuario && <BadgeUso uso={uso} />}
           </div>
