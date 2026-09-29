@@ -9,6 +9,8 @@
 - Corte de escopo: qua 30/09 18h é código congelado. Primeiro a cair: 77.
 - Autorizado: o agente do 79 aplica o nginx no VPS (backup, `nginx -t`, reload, só o site `tess-chat`).
 - Pendente com o Toneli: sessão guiada sobre Jev e MCP (perguntas que ele não respondeu na entrevista).
+- **29/09 ~10:20:** 75 a 82 resolvidos e em produção. Estudo em `docs/ESTUDO-VOZ.md` (23 paradas), roteiro em `docs/ROTEIRO-VIDEOS.md`. Chamadas reais: 7 de 10, R$ 0. Subagentes agora em Sonnet 5.5 (pedido do Toneli, 29/09).
+- Em aberto: latência 1,9 s em produção vs 0,5 s local (causa não isolada); reserva de crédito só compara, não segura saldo (`LACUNAS.md`); barra `chart-4` da Ligação quase invisível no dark; conta demo não entra em produção.
 
 Atualizado em 2026-09-23 ~13:40. Sessão encerrada a pedido do Toneli; retomar a partir daqui (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
 
