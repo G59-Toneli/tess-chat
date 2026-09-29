@@ -82,7 +82,8 @@ const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'previ
 })
 const browser = await chromium.launch({
   executablePath: BRAVE,
-  args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
+  // Microfone: WAV pt-BR (7,3 s de fala, SAPI) uma vez; o Gemini falso responde depois do silêncio.
+  args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${path.resolve('../spike/live/pergunta.wav')}%noloop`],
 })
 try {
   if (!(await ate(() => fetch(BASE).then((r) => r.ok, () => false), 15000))) throw new Error('vite preview não subiu')
@@ -92,6 +93,15 @@ try {
     localStorage.setItem('token', t)
   }, token)
   await ctx.addInitScript(telaFalsa)
+  // Ticket 85: registra se o indicador "pensando" (data-pensando) apareceu em algum momento.
+  await ctx.addInitScript(() => {
+    window.__pensou = false
+    addEventListener('DOMContentLoaded', () => {
+      new MutationObserver(() => {
+        if (document.querySelector('[data-pensando]')) window.__pensou = true
+      }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-pensando'] })
+    })
+  })
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.log(`  [pageerror] ${e.message}`))
   await page.goto(`${BASE}/c/${conv.id}`, { waitUntil: 'networkidle' })
@@ -107,6 +117,7 @@ try {
   checar(await ate(async () => (await transcricao.innerText()).includes('R$ 1.350,90.'), 15000), 'transcrição do agente chega inteira', (await transcricao.innerText()).replace(/\n+/g, ' | '))
   checar((await transcricao.innerText()).includes('Qual o total do pedido?'), 'transcrição do usuário chega')
   checar(await ate(async () => Number(await painel.getAttribute('data-fila')) > 0 || (await page.locator('[data-falando]').count()) > 0, 3000), 'áudio do agente chegou ao player')
+    checar(await page.evaluate(() => window.__pensou), 'pensando: o indicador acende depois que a fala do usuário para (WAV falado, depois silêncio)')
   await page.screenshot({ path: path.join(args.saida, '80-e2e-em-ligacao-1440.png') })
 
   await page.getByRole('button', { name: 'Desligar' }).click()

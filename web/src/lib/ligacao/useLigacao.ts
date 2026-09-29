@@ -1,7 +1,7 @@
 // Estado de uma Ligação: microfone, WebSocket, fila de áudio e tela. Montar liga; desmontar encerra tudo.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { abrirMicrofone, type Microfone } from './captura'
-import { LIMITE_PADRAO_S } from './config'
+import { LIMITE_PADRAO_S, PENSANDO_MAX_MS, PICO_FALA, SILENCIO_LOCAL_MS } from './config'
 import {
   ErroLigacao,
   TEXTO_MICROFONE,
@@ -32,6 +32,8 @@ type Recursos = {
   motivo: MotivoFim | null
   erro: string | null
   desligou: boolean
+  /** Instante do último chunk com fala; 0 = não está no meio de uma fala. */
+  ultimaFala: number
 }
 
 let ultimoId = 0
@@ -65,12 +67,31 @@ export function useLigacao(conversaId: string) {
   const [fila, setFila] = useState(0)
   const [tela, setTela] = useState<MediaStream | null>(null)
   const [desligouAqui, setDesligouAqui] = useState(false)
+  const [pensando, setPensando] = useState(false)
   const atual = useRef<Recursos | null>(null)
 
   useEffect(() => {
-    const x: Recursos = { ws: null, mic: null, fila: null, tela: null, pronto: false, motivo: null, erro: null, desligou: false }
+    const x: Recursos = { ws: null, mic: null, fila: null, tela: null, pronto: false, motivo: null, erro: null, desligou: false, ultimaFala: 0 }
     atual.current = x
     let vivo = true
+    let apagar: ReturnType<typeof setTimeout> | undefined
+    // Mascaramento de latência (ticket 85): o servidor só fecha a fala ~0,8 s depois do silêncio e o modelo
+    // ainda pensa. O browser vê o silêncio antes e acende "pensando" até o 1º áudio do agente.
+    const marcarFala = (x: Recursos, pcm: ArrayBuffer) => {
+      const agora = performance.now()
+      let pico = 0
+      for (const v of new Int16Array(pcm)) pico = Math.max(pico, Math.abs(v))
+      if (pico > PICO_FALA) {
+        x.ultimaFala = agora
+        clearTimeout(apagar)
+        if (vivo) setPensando(false)
+      } else if (x.ultimaFala && agora - x.ultimaFala > SILENCIO_LOCAL_MS) {
+        x.ultimaFala = 0
+        if (vivo) setPensando(true)
+        clearTimeout(apagar)
+        apagar = setTimeout(() => vivo && setPensando(false), PENSANDO_MAX_MS)
+      }
+    }
     const falhar = (texto: string, ehCap = false) => {
       liberar(x)
       if (!vivo) return
@@ -86,6 +107,7 @@ export function useLigacao(conversaId: string) {
       try {
         mic = await abrirMicrofone((pcm) => {
           if (x.pronto && x.ws?.readyState === WebSocket.OPEN) x.ws.send(pcm)
+          marcarFala(x, pcm)
         })
       } catch {
         return falhar(TEXTO_MICROFONE)
@@ -106,7 +128,10 @@ export function useLigacao(conversaId: string) {
       ws.binaryType = 'arraybuffer'
       x.ws = ws
       ws.onmessage = (ev: MessageEvent<ArrayBuffer | string>) => {
-        if (typeof ev.data !== 'string') return x.fila?.tocar(ev.data)
+        if (typeof ev.data !== 'string') {
+          setPensando(false)
+          return x.fila?.tocar(ev.data)
+        }
         let m: MensagemServidor
         try {
           m = JSON.parse(ev.data)
@@ -123,6 +148,7 @@ export function useLigacao(conversaId: string) {
         } else if (m.tipo === 'interrompido') {
           // A fala cortada do agente segue aberta: o servidor fecha no turn_complete.
           x.fila?.esvaziar()
+          setPensando(false)
         } else if (m.tipo === 'fim') {
           x.motivo = m.motivo
         } else if (m.tipo === 'erro') {
@@ -151,6 +177,7 @@ export function useLigacao(conversaId: string) {
     window.addEventListener('pagehide', aoSairDaPagina)
     return () => {
       vivo = false
+      clearTimeout(apagar)
       window.removeEventListener('pagehide', aoSairDaPagina)
       enviar(x, { tipo: 'desligar' })
       x.ws?.close()
@@ -220,6 +247,8 @@ export function useLigacao(conversaId: string) {
     mudo,
     /** Chunks de áudio do agente ainda na fila. */
     fila,
+    /** O usuário parou de falar e o agente ainda não respondeu. Medido no browser. */
+    pensando,
     tela,
     telaSuportada: suportaTela(),
     desligouAqui,

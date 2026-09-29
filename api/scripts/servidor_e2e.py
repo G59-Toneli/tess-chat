@@ -31,7 +31,8 @@ def _msg(**campos) -> types.LiveServerMessage:
 
 class GeminiRoteirizado:
     def __init__(self) -> None:
-        self.chunks = 0
+        self.falou = False
+        self.mudos = 0
         self.frames = 0
         self.fila: asyncio.Queue[types.LiveServerMessage] = asyncio.Queue()
 
@@ -39,9 +40,16 @@ class GeminiRoteirizado:
         if video is not None:
             self.frames += 1
         if audio is not None:
-            self.chunks += 1
-            if self.chunks % 30 == 0:
-                self._turno()
+            # Imita o VAD: 25 chunks (0,8 s) de silêncio depois de fala fecham a fala, e o modelo "pensa" 1,5 s
+            # antes de responder (ticket 85: dá tempo do "pensando" do browser acender).
+            pico = max((abs(v) for v in memoryview(audio.data[: len(audio.data) // 2 * 2]).cast("h")), default=0)
+            if pico > 500:
+                self.falou, self.mudos = True, 0
+            elif self.falou:
+                self.mudos += 1
+                if self.mudos == 25:
+                    self.falou = False
+                    asyncio.get_running_loop().call_later(1.5, self._turno)
 
     def _turno(self) -> None:
         m = self.fila.put_nowait
@@ -74,7 +82,7 @@ class GeminiRoteirizado:
 
 def _conector():
     @asynccontextmanager
-    async def abrir(instrucao: str):
+    async def abrir(instrucao: str, variante: voz.Variante):
         yield GeminiRoteirizado()
 
     return abrir

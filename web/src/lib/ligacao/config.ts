@@ -14,3 +14,9 @@ export const LADO_MAIOR = 1280
 
 /** Limite da Ligação até o `pronto` dizer o dele. */
 export const LIMITE_PADRAO_S = 540
+
+/** "Pensando": pico de amostra acima disto é fala, e este silêncio depois da fala acende o indicador (ticket 85). */
+export const PICO_FALA = 500
+export const SILENCIO_LOCAL_MS = 400
+/** O indicador apaga sozinho se o agente não falar (fala partida, ruído). */
+export const PENSANDO_MAX_MS = 10000

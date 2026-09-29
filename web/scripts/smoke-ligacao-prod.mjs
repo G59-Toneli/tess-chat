@@ -23,6 +23,8 @@ const { values: a } = parseArgs({
     rotulo: { type: 'string', default: '1' },
     espera: { type: 'string', default: '60' },
     trace: { type: 'boolean', default: false },
+    // Ticket 85: variante de latência (`?v=`): pens0, m31, fq. Vazio = produção.
+    v: { type: 'string', default: '' },
     // Segundos de espera fixa (WAV com várias perguntas): não desliga na 1ª resposta.
     fixo: { type: 'string' },
   },
@@ -85,9 +87,18 @@ try {
   })
   // Embrulha o WebSocket da Ligação: tempo de cada chunk enviado (com pico) e recebido.
   await ctx.addInitScript((trace) => {
-    window.__trace = trace
+    window.__trace = trace.trace
+    window.__v = trace.v
     const Original = window.WebSocket
-    window.__ws = { enviados: [], recebidos: [], textos: [], toques: [] }
+    window.__ws = { enviados: [], recebidos: [], textos: [], toques: [], pensando: [] }
+    // Ticket 85: instante em que o indicador "pensando" liga e desliga.
+    addEventListener('DOMContentLoaded', () => {
+      let ligado = false
+      new MutationObserver(() => {
+        const agora = !!document.querySelector('[data-pensando]')
+        if (agora !== ligado) window.__ws.pensando.push({ t: performance.now(), on: (ligado = agora) })
+      }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-pensando'] })
+    })
     const iniciar = AudioBufferSourceNode.prototype.start
     AudioBufferSourceNode.prototype.start = function (...args) {
       window.__ws.toques.push(performance.now())
@@ -96,7 +107,7 @@ try {
     window.WebSocket = class extends Original {
       constructor(url, ...args) {
         // Ticket 83: `?trace=1` liga a trilha de latência no servidor (log por marco, sem dado sensível).
-        super(window.__trace && String(url).includes('/api/voz/ws') ? `${url}&trace=1` : url, ...args)
+        super(String(url).includes('/api/voz/ws') ? `${url}${window.__trace ? '&trace=1' : ''}${window.__v ? `&v=${window.__v}` : ''}` : url, ...args)
         this.addEventListener('message', (e) => {
           if (typeof e.data !== 'string') window.__ws.recebidos.push(performance.now())
           else window.__ws.textos.push({ t: performance.now(), m: JSON.parse(e.data).tipo })
@@ -112,7 +123,7 @@ try {
         super.send(d)
       }
     }
-  }, a.trace)
+  }, { trace: a.trace, v: a.v })
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.log(`  [pageerror] ${e.message}`))
   await page.goto(`${a.base}/c/${conv.id}`, { waitUntil: 'networkidle' })
@@ -140,12 +151,14 @@ try {
   await page.getByRole('button', { name: 'Desligar' }).click()
   await page.getByRole('button', { name: 'Iniciar ligação' }).waitFor({ timeout: 15000 })
 
-  const { enviados, recebidos, textos, toques } = await page.evaluate(() => window.__ws)
+  const { enviados, recebidos, textos, toques, pensando } = await page.evaluate(() => window.__ws)
   const falou = enviados.filter((e) => e.pico > 500)
   // Uma latência por pergunta: falas separadas por mais de 3 s de silêncio.
   const latencias = []
+  const fimsDeFala = []
   falou.forEach((e, i) => {
     if (i + 1 < falou.length && falou[i + 1].t - e.t < 3000) return
+    fimsDeFala.push(e.t)
     const r = recebidos.find((t) => t > e.t)
     latencias.push(r ? Math.round(r - e.t) : null)
   })
@@ -159,6 +172,8 @@ try {
     fimFalaAteTranscricaoUsuarioMs: (() => { const t = textos.find((x) => x.m === 'transcricao' && fimFala && x.t > fimFala); return t ? Math.round(t.t - fimFala) : null })(),
     primeiroAudioAteToqueMs: (() => { const t = toques.find((x) => primeiro && x >= primeiro); return t ? Math.round(t - primeiro) : null })(),
     latenciasPorPerguntaMs: latencias,
+    // Por pergunta: quanto depois do fim da fala o "pensando" acendeu (browser), e depois do 1º áudio apagou.
+    pensandoLigouAposFimFalaMs: fimsDeFala.map((f) => { const p = pensando.find((x) => x.on && x.t > f - 200); return p ? Math.round(p.t - f) : null }),
     latenciaMs: primeiro ? Math.round(primeiro - fimFala) : null,
   })
   const eventos = await api(`/api/audit?event_type=voice_call_ended&conversation_id=${conv.id}`, { headers: auth })

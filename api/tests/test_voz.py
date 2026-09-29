@@ -7,6 +7,7 @@ import math
 import uuid
 from contextlib import asynccontextmanager
 from fractions import Fraction
+from types import SimpleNamespace
 
 import pytest
 from google.genai import types
@@ -59,6 +60,7 @@ class GeminiFalso:
         self.audio: list[bytes] = []
         self.frames: list[bytes] = []
         self.instrucao: str | None = None
+        self.variante: voz.Variante | None = None
         self.fila: asyncio.Queue[types.LiveServerMessage | Exception] = asyncio.Queue()
 
     async def send_realtime_input(self, *, audio=None, video=None) -> None:
@@ -85,8 +87,9 @@ class GeminiFalso:
 
     def conector(self):
         @asynccontextmanager
-        async def abrir(instrucao: str):
+        async def abrir(instrucao: str, variante: voz.Variante):
             self.instrucao = instrucao
+            self.variante = variante
             yield self
 
         return abrir
@@ -103,7 +106,7 @@ def gemini():
 class Browser:
     """Cliente WebSocket direto no ASGI, no mesmo loop do pytest (o pool do asyncpg é do loop)."""
 
-    def __init__(self, ticket: str) -> None:
+    def __init__(self, ticket: str, v: str = "") -> None:
         self.entrada: asyncio.Queue[dict] = asyncio.Queue()
         self.saida: asyncio.Queue[dict] = asyncio.Queue()
         self.entrada.put_nowait({"type": "websocket.connect"})
@@ -114,7 +117,7 @@ class Browser:
             "scheme": "ws",
             "path": "/api/voz/ws",
             "raw_path": b"/api/voz/ws",
-            "query_string": f"ticket={ticket}".encode(),
+            "query_string": f"ticket={ticket}&v={v}".encode(),
             "root_path": "",
             "headers": [],
             "server": ("test", 80),
@@ -157,11 +160,11 @@ async def pedir_ticket(client, h: dict, cid: str):
     return await client.post("/api/voz/ticket", json={"conversa_id": cid}, headers=h)
 
 
-async def ligar(client, h: dict, cid: str) -> Browser:
+async def ligar(client, h: dict, cid: str, v: str = "") -> Browser:
     r = await pedir_ticket(client, h, cid)
     assert r.status_code == 200, r.text
     assert r.json()["expira_em"] == 30
-    b = Browser(r.json()["ticket"])
+    b = Browser(r.json()["ticket"], v)
     assert await b.texto() == {"tipo": "pronto", "limite_s": settings.ligacao_limite_s}
     return b
 
@@ -355,7 +358,7 @@ async def test_queda_do_gemini_manda_erro_e_fim_erro(client, gemini):
 
 async def test_gemini_que_nao_abre_fecha_4500_e_libera_a_vaga(client):
     @asynccontextmanager
-    async def falha(_instrucao: str):
+    async def falha(_instrucao: str, _variante: voz.Variante):
         raise ConnectionError("sem chave")
         yield
 
@@ -484,3 +487,46 @@ async def test_texto_depois_da_ligacao_ve_as_falas_como_historico(client, gemini
     r = await client.post(f"/api/chat/{cid}", json=corpo("qual meu nome?"), headers=h)
     assert r.status_code == 200, r.text
     assert textos(vistas[0]) == [("user", "Meu nome é Ana"), ("assistant", "Prazer, Ana."), ("user", "qual meu nome?")]
+
+
+async def test_variante_nomeada_chega_ao_conector_e_desconhecida_cai_no_padrao(client, gemini):
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    b = await ligar(client, h, cid, v="m31")
+    assert gemini.variante == voz.VARIANTES["m31"]
+    b.json({"tipo": "desligar"})
+    await b.fechamento()
+
+    b = await ligar(client, h, cid, v="gemini-qualquer-coisa")
+    assert gemini.variante == voz.PADRAO
+    b.json({"tipo": "desligar"})
+    await b.fechamento()
+
+
+async def test_variante_fq_manda_frame_so_com_fala_recente_ou_a_cada_3s(client, gemini, monkeypatch):
+    _, h = await usuario(client)
+    cid = (await criar(client, h))["id"]
+    relogio = [1000.0]
+    # Troca o módulo `time` só dentro de voz: patchar `time.monotonic` global pararia o loop do asyncio.
+    monkeypatch.setattr(voz, "time", SimpleNamespace(monotonic=lambda: relogio[0]))
+    b = await ligar(client, h, cid, v="fq")
+    frame = lambda n: b.json({"tipo": "frame", "jpeg": base64.b64encode(n).decode()})  # noqa: E731
+    fala, silencio = (1000).to_bytes(2, "little", signed=True) * 512, bytes(1024)
+
+    frame(b"ocioso-1")  # sem fala e sem frame antes: passa (o 1º da tela)
+    await esperar(lambda: gemini.frames == [b"ocioso-1"])
+    relogio[0] += 1.0
+    b.audio(silencio)
+    frame(b"ocioso-2")  # 1 s depois, sem fala: cai
+    relogio[0] += 1.0
+    b.audio(fala)
+    await esperar(lambda: gemini.audio)
+    relogio[0] += 1.0
+    frame(b"falando-3")  # fala há 1 s: passa
+    await esperar(lambda: len(gemini.frames) == 2)
+    relogio[0] += 4.0
+    frame(b"ocioso-4")  # fala há 4 s, último frame há 4 s: passa (ocioso de 3 s)
+    await esperar(lambda: len(gemini.frames) == 3)
+    assert gemini.frames == [b"ocioso-1", b"falando-3", b"ocioso-4"]
+    b.json({"tipo": "desligar"})
+    await b.fechamento()

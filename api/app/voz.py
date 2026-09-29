@@ -61,11 +61,43 @@ class SessaoLive(Protocol):
     def receive(self) -> AsyncIterator[types.LiveServerMessage]: ...
 
 
-Conector = Callable[[str], AbstractAsyncContextManager[SessaoLive]]
+@dataclass(frozen=True)
+class Variante:
+    """Ajuste de latência escolhido por `?v=<nome>` no WebSocket (ticket 85). Só nomes de VARIANTES valem:
+    o cliente nunca escolhe modelo nem parâmetro solto. Vazio = o comportamento de produção."""
+
+    modelo: str | None = None
+    # Config de pensamento. `orcamento=0` desliga (3.8); `nivel` vale para o 3.1.
+    pensamento_orcamento: int | None = None
+    pensamento_nivel: str | None = None
+    # `fala`: Frame só enquanto o microfone tem sinal, e 1 a cada 3 s fora disso (o padrão do plugin do LiveKit).
+    frames: str | None = None
 
 
-def _conectar(instrucao: str) -> AbstractAsyncContextManager[SessaoLive]:
+PADRAO = Variante()
+VARIANTES: dict[str, Variante] = {
+    "pens0": Variante(pensamento_orcamento=0),
+    "m31": Variante(modelo="gemini-3.1-flash-live-preview", pensamento_nivel="minimal"),
+    "fq": Variante(frames="fala"),
+}
+# Frame fora da fala: 1 a cada 3 s. Sinal recente = fala nos últimos 2 s.
+FRAME_OCIOSO_S = 3.0
+SINAL_RECENTE_S = 2.0
+
+Conector = Callable[[str, Variante], AbstractAsyncContextManager[SessaoLive]]
+
+
+def _pensamento(v: Variante) -> types.ThinkingConfig | None:
+    if v.pensamento_orcamento is not None:
+        return types.ThinkingConfig(thinking_budget=v.pensamento_orcamento)
+    if v.pensamento_nivel:
+        return types.ThinkingConfig(thinking_level=v.pensamento_nivel)
+    return None
+
+
+def _conectar(instrucao: str, variante: Variante = PADRAO) -> AbstractAsyncContextManager[SessaoLive]:
     config = types.LiveConnectConfig(
+        thinking_config=_pensamento(variante),
         response_modalities=[types.Modality.AUDIO],
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(
@@ -86,7 +118,7 @@ def _conectar(instrucao: str) -> AbstractAsyncContextManager[SessaoLive]:
         system_instruction=instrucao,
     )
     cliente = genai.Client(api_key=settings.gemini_live_api_key)
-    return cliente.aio.live.connect(model=settings.gemini_live_modelo, config=config)
+    return cliente.aio.live.connect(model=variante.modelo or settings.gemini_live_modelo, config=config)
 
 
 def conectar_gemini() -> Conector:
@@ -190,6 +222,10 @@ def _instrucao(historico: str) -> str:
     return f"{ADENDO_VOZ}\n\nConversa até aqui, só texto, da mais antiga para a mais recente:\n{historico}"
 
 
+def _pico(pcm: bytes) -> int:
+    return max((abs(v) for v in memoryview(pcm[: len(pcm) // 2 * 2]).cast("h")), default=0)
+
+
 @dataclass
 class Ticket:
     user_id: uuid.UUID
@@ -212,7 +248,7 @@ class Trilha:
 
     def mic(self, pcm: bytes) -> None:
         """Marca a virada fala/silêncio do microfone, medida por pico (>500) no chunk que chegou."""
-        pico = max((abs(v) for v in memoryview(pcm[: len(pcm) // 2 * 2]).cast("h")), default=0)
+        pico = _pico(pcm)
         if (pico > 500) != self.falando:
             self.falando = pico > 500
             self.marca("mic_fala" if self.falando else "mic_silencio", pico=pico)
@@ -246,6 +282,8 @@ class Ligacao:
     cid: uuid.UUID
     turno: turnos.TurnoAtivo
     trilha: Trilha | None = None
+    variante: Variante = PADRAO
+    ultimo_sinal: float = float("-inf")
     inicio: float = field(default_factory=time.monotonic)
     uso: UsoLigacao = field(default_factory=UsoLigacao)
     turnos_com_uso: int = 0
@@ -319,7 +357,11 @@ def _consumir(codigo: str) -> Ticket | None:
 
 @router.websocket("/ws")
 async def ligacao(
-    websocket: WebSocket, conectar: Annotated[Conector, Depends(conectar_gemini)], ticket: str = "", trace: int = 0
+    websocket: WebSocket,
+    conectar: Annotated[Conector, Depends(conectar_gemini)],
+    ticket: str = "",
+    trace: int = 0,
+    v: str = "",
 ) -> None:
     """Uma Ligação. Recusa depois do upgrade, com close code do protocolo: close antes do accept vira 403."""
     await websocket.accept()
@@ -330,13 +372,14 @@ async def ligacao(
     if recusa := _vaga(t.user_id, t.cid):
         return await websocket.close(4000 + recusa[0])
     lig = Ligacao(t.user_id, t.cid, turnos.reservar(t.cid), trilha=Trilha(str(t.cid)[:8]) if trace else None)
+    lig.variante = VARIANTES.get(v, PADRAO)
     LIGACOES[t.user_id] = lig
     async with AsyncExitStack() as pilha:
         try:
             async with SessionLocal() as s:
                 await _reservar(s, t.user_id, t.cid)
                 instrucao = _instrucao(await historico_em_texto(s, t.cid))
-            sessao = await pilha.enter_async_context(conectar(instrucao))
+            sessao = await pilha.enter_async_context(conectar(instrucao, lig.variante))
         except CapAtingido:
             await _liberar(lig)
             return await websocket.close(4402)
@@ -395,6 +438,8 @@ async def _browser_para_gemini(websocket: WebSocket, sessao: SessaoLive, lig: Li
         if (pcm := msg.get("bytes")) is not None:
             if lig.trilha:
                 lig.trilha.mic(pcm)
+            if lig.variante.frames == "fala" and _pico(pcm) > 500:
+                lig.ultimo_sinal = time.monotonic()
             await sessao.send_realtime_input(audio=types.Blob(data=pcm, mime_type=AUDIO_IN))
             continue
         try:
@@ -415,6 +460,8 @@ def _frame(lig: Ligacao, b64: Any) -> bytes | None:
     """Frame acima do fps da config é descartado (folga de 20% para o timer do browser)."""
     agora = time.monotonic()
     if not isinstance(b64, str) or agora - lig.ultimo_frame < 0.8 / settings.ligacao_fps:
+        return None
+    if lig.variante.frames == "fala" and agora - lig.ultimo_sinal > SINAL_RECENTE_S and agora - lig.ultimo_frame < FRAME_OCIOSO_S:
         return None
     try:
         jpeg = base64.b64decode(b64, validate=True)

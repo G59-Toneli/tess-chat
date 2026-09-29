@@ -98,7 +98,7 @@ function Painel({
               }
               mudo={l.mudo}
             />
-            <Participante nome="Assistente" avatar={<IconeApp className="size-12 rounded-full" />} falando={l.fila > 0} />
+            <Participante nome="Assistente" avatar={<IconeApp className="size-12 rounded-full" />} falando={l.fila > 0} pensando={l.pensando && l.fila === 0} />
             {l.tela && <PreviaTela stream={l.tela} />}
           </div>
           <Transcricao falas={l.falas} />
@@ -147,16 +147,19 @@ function Participante({
   nome,
   avatar,
   falando,
+  pensando,
   mudo,
 }: {
   nome: string
   avatar: React.ReactNode
   falando?: boolean
+  pensando?: boolean
   mudo?: boolean
 }) {
   return (
     <div
       data-falando={falando || undefined}
+      data-pensando={pensando || undefined}
       className="flex h-24 flex-col items-center justify-center gap-1.5 rounded-lg bg-muted/60 md:h-28"
     >
       <span
@@ -171,6 +174,11 @@ function Participante({
         {nome}
         {mudo && <MicOffIcon className="size-3 text-destructive" aria-label="microfone mudo" />}
         {falando && <span className="sr-only">falando</span>}
+        {pensando && (
+          <span className="flex items-center gap-1">
+            <Spinner className="size-3" /> pensando…
+          </span>
+        )}
       </span>
     </div>
   )

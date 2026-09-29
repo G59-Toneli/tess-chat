@@ -288,3 +288,9 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 - Descartado: `thinking_level` (o `gemini-3.8-live` não aceita, segundo o guia do Gemini); VAD manual no cliente com `activity_start/end` (troca a decisão do ADR 0026, código maior); flag da trilha por variável de ambiente (exigiria editar o `.env` da VPS, fora do escopo do ticket).
 - Por quê: o VAD do Gemini respondia por 1,3 s dos 1,7 s medidos e é o único salto com alavanca de config. A trilha por query param mede em produção sem tocar na VPS; ela só loga ms e tipo de evento.
 - Risco declarado: 500 ms pode partir fala com pausa (visto 1 vez em 3, com WAV que tem pausa de ~1 s). Dois parâmetros mudados juntos. O total em produção não caiu na amostra (n=3): o pensamento do modelo variou mais. Ver `docs/LATENCIA-LIGACAO.md`.
+
+## Ticket 85: variantes de latência por `?v=` e "pensando" no browser
+- Decisão: o WebSocket da Ligação aceita `?v=<nome>` com nomes fixos (`pens0`, `m31`, `fq`, em `VARIANTES` de `api/app/voz.py`). Nome fora da lista vira o padrão, sem erro. O cliente nunca escolhe modelo nem parâmetro solto. O `Conector` passou a receber `(instrucao, variante)`. `m31` usa o modelo `gemini-3.1-flash-live-preview` mas o Ledger e a reserva seguem no preço do `gemini-3.8-live` (não há linha de preço do 3.1; sem migração neste ticket).
+- Descartado: variante por variável de ambiente (exige editar o `.env` da VPS e deploy por variante); modelo livre na query (qualquer usuário escolheria o modelo mais caro); migração de preço do 3.1 (só se o 3.1 virar padrão).
+- Por quê: medir três variantes em produção com um deploy só. As variantes ficam no código enquanto o ticket 85 decide o que vira padrão.
+- Decisão: indicador "pensando" no browser acende 400 ms depois do último chunk com pico > 500 e apaga no 1º áudio do agente (ou em 10 s). É mascaramento, não ganho de latência; o vídeo deve dizer isso.
