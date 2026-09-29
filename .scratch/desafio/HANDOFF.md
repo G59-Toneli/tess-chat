@@ -1,5 +1,15 @@
 # Handoff do orquestrador
 
+## Etapa 2: Ligação (voz + tela), aberta em 28/09 ~23:00
+- Pedido da Tess: conversa por voz com o agente e compartilhamento de tela durante a ligação. Entrega até **qua 30/09 23h59**: repositório, vídeo de demo, vídeo de arquitetura.
+- Decisões do grilling de 28/09: ADR 0026, 0027, 0028; contrato em `docs/PROTOCOLO-LIGACAO.md`; termos Ligação, Ticket de Ligação e Frame no `CONTEXT.md`.
+- Tickets 75 a 81. Ordem: 75 (spike) → 76 (back) ∥ 78 (front) → 77 (histórico) ∥ 79 (nginx) → 80 (E2E + smoke) → 81 (estudo + roteiro).
+- Modo: 100% autônomo. Cada ticket registra "Paradas de estudo"; o 81 consolida em `docs/ESTUDO-VOZ.md`. O Toneli só estuda (trabalha 8h às 18h).
+- Teto de gasto da etapa: R$ 30. Teto de chamadas reais: 10 sessões de até 2 min. Chave `GEMINI_LIVE_API_KEY` = free (`GEMINI_API_KEY`); se a free não servir no Live, usar a paga sem perguntar.
+- Corte de escopo: qua 30/09 18h é código congelado. Primeiro a cair: 77.
+- Autorizado: o agente do 79 aplica o nginx no VPS (backup, `nginx -t`, reload, só o site `tess-chat`).
+- Pendente com o Toneli: sessão guiada sobre Jev e MCP (perguntas que ele não respondeu na entrevista).
+
 Atualizado em 2026-09-23 ~13:40. Sessão encerrada a pedido do Toneli; retomar a partir daqui (horário local -03:00). Sessão atual: orquestrador Fable (a5f6122f), recebeu handoff de `desafio-a7` às 02:45.
 
 ## Como orquestrar (ciclo)

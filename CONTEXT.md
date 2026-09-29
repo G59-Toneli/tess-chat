@@ -21,4 +21,7 @@ Termos do produto. Um significado por termo. Sem detalhe de implementação.
 - **Compartilhamento**: link público somente-leitura de uma Conversa, cortado na última Mensagem existente no momento da criação. Pode ser revogado.
 - **Evento de auditoria**: registro somente-inserção de uma ação relevante: login, mensagem, chamada de modelo, chamada de tool, compactação, compartilhamento, conector, cap atingido.
 - **Configuração**: parâmetros persistidos por Usuário e por Conversa: modelo, nível de raciocínio, limiar de Compactação, Cap.
+- **Ligação**: conversa por voz em tempo real do Usuário com o assistente, dentro de uma Conversa. Pode carregar a tela compartilhada. Ocupa o turno da Conversa enquanto dura. As falas viram Mensagens da Conversa (ADR 0026).
+- **Ticket de Ligação**: código de uso único, curto, que autoriza abrir a conexão de uma Ligação.
+- **Frame**: uma imagem da tela compartilhada enviada ao modelo durante a Ligação (ADR 0028).
 - **Configuração global**: parâmetros da instância, uma linha só, que só admin altera. Hoje: cadastro aberto ou fechado.
