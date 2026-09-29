@@ -22,6 +22,9 @@ const { values: a } = parseArgs({
     saida: { type: 'string', default: '../.scratch/desafio/screens' },
     rotulo: { type: 'string', default: '1' },
     espera: { type: 'string', default: '60' },
+    trace: { type: 'boolean', default: false },
+    // Segundos de espera fixa (WAV com várias perguntas): não desliga na 1ª resposta.
+    fixo: { type: 'string' },
   },
 })
 const { SMOKE_EMAIL: email, SMOKE_SENHA: senha } = process.env
@@ -81,12 +84,19 @@ try {
     }
   })
   // Embrulha o WebSocket da Ligação: tempo de cada chunk enviado (com pico) e recebido.
-  await ctx.addInitScript(() => {
+  await ctx.addInitScript((trace) => {
+    window.__trace = trace
     const Original = window.WebSocket
-    window.__ws = { enviados: [], recebidos: [], textos: [] }
+    window.__ws = { enviados: [], recebidos: [], textos: [], toques: [] }
+    const iniciar = AudioBufferSourceNode.prototype.start
+    AudioBufferSourceNode.prototype.start = function (...args) {
+      window.__ws.toques.push(performance.now())
+      return iniciar.apply(this, args)
+    }
     window.WebSocket = class extends Original {
-      constructor(...args) {
-        super(...args)
+      constructor(url, ...args) {
+        // Ticket 83: `?trace=1` liga a trilha de latência no servidor (log por marco, sem dado sensível).
+        super(window.__trace && String(url).includes('/api/voz/ws') ? `${url}&trace=1` : url, ...args)
         this.addEventListener('message', (e) => {
           if (typeof e.data !== 'string') window.__ws.recebidos.push(performance.now())
           else window.__ws.textos.push({ t: performance.now(), m: JSON.parse(e.data).tipo })
@@ -102,7 +112,7 @@ try {
         super.send(d)
       }
     }
-  })
+  }, a.trace)
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.log(`  [pageerror] ${e.message}`))
   await page.goto(`${a.base}/c/${conv.id}`, { waitUntil: 'networkidle' })
@@ -119,9 +129,9 @@ try {
   const transcricao = page.getByLabel('Transcrição')
   const inicio = Date.now()
   let texto = ''
-  while (Date.now() - inicio < Number(a.espera) * 1000) {
+  while (Date.now() - inicio < Number(a.fixo ?? a.espera) * 1000) {
     texto = await transcricao.innerText()
-    if (texto.includes('Assistente') && /1\.?350/.test(texto)) break
+    if (!a.fixo && texto.includes('Assistente') && /1\.?350/.test(texto)) break
     await page.waitForTimeout(500)
   }
   await page.waitForTimeout(2500)
@@ -130,8 +140,15 @@ try {
   await page.getByRole('button', { name: 'Desligar' }).click()
   await page.getByRole('button', { name: 'Iniciar ligação' }).waitFor({ timeout: 15000 })
 
-  const { enviados, recebidos, textos } = await page.evaluate(() => window.__ws)
+  const { enviados, recebidos, textos, toques } = await page.evaluate(() => window.__ws)
   const falou = enviados.filter((e) => e.pico > 500)
+  // Uma latência por pergunta: falas separadas por mais de 3 s de silêncio.
+  const latencias = []
+  falou.forEach((e, i) => {
+    if (i + 1 < falou.length && falou[i + 1].t - e.t < 3000) return
+    const r = recebidos.find((t) => t > e.t)
+    latencias.push(r ? Math.round(r - e.t) : null)
+  })
   const fimFala = falou.at(-1)?.t
   const primeiro = recebidos.find((t) => fimFala && t > fimFala)
   Object.assign(saida, {
@@ -140,6 +157,8 @@ try {
     chunksMic: enviados.length,
     chunksComFala: falou.length,
     fimFalaAteTranscricaoUsuarioMs: (() => { const t = textos.find((x) => x.m === 'transcricao' && fimFala && x.t > fimFala); return t ? Math.round(t.t - fimFala) : null })(),
+    primeiroAudioAteToqueMs: (() => { const t = toques.find((x) => primeiro && x >= primeiro); return t ? Math.round(t - primeiro) : null })(),
+    latenciasPorPerguntaMs: latencias,
     latenciaMs: primeiro ? Math.round(primeiro - fimFala) : null,
   })
   const eventos = await api(`/api/audit?event_type=voice_call_ended&conversation_id=${conv.id}`, { headers: auth })

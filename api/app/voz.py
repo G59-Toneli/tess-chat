@@ -74,6 +74,13 @@ def _conectar(instrucao: str) -> AbstractAsyncContextManager[SessaoLive]:
         ),
         input_audio_transcription=types.AudioTranscriptionConfig(),
         output_audio_transcription=types.AudioTranscriptionConfig(),
+        # Fim de fala mais cedo (ticket 83): o padrão do servidor espera ~0,8 s de silêncio e somava 1,3 s ao 1º áudio.
+        realtime_input_config=types.RealtimeInputConfig(
+            automatic_activity_detection=types.AutomaticActivityDetection(
+                end_of_speech_sensitivity=types.EndSensitivity.END_SENSITIVITY_HIGH,
+                silence_duration_ms=settings.ligacao_silencio_ms,
+            )
+        ),
         # Sem compressão, sessão com vídeo morre em 2 min (ADR 0026 item 5).
         context_window_compression=types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
         system_instruction=instrucao,
@@ -191,10 +198,54 @@ class Ticket:
 
 
 @dataclass
+class Trilha:
+    """Latência por salto (ticket 83). Só existe com `?trace=1` no WebSocket: uma linha de log por
+    marco, em ms desde o início da Ligação, relógio monotônico do servidor. Sem áudio nem texto no log."""
+
+    cid: str
+    t0: float = field(default_factory=time.monotonic)
+    falando: bool = False
+    audio_visto: bool = False
+
+    def marca(self, evento: str, **extra: Any) -> None:
+        log.warning("trilha %s %s +%.0fms %s", self.cid, evento, (time.monotonic() - self.t0) * 1000, extra or "")
+
+    def mic(self, pcm: bytes) -> None:
+        """Marca a virada fala/silêncio do microfone, medida por pico (>500) no chunk que chegou."""
+        pico = max((abs(v) for v in memoryview(pcm[: len(pcm) // 2 * 2]).cast("h")), default=0)
+        if (pico > 500) != self.falando:
+            self.falando = pico > 500
+            self.marca("mic_fala" if self.falando else "mic_silencio", pico=pico)
+
+    def gemini(self, m: types.LiveServerMessage) -> None:
+        """Marca o que o Gemini mandou. Áudio só no 1º chunk de cada turno."""
+        if m.voice_activity:
+            self.marca("voice_activity", tipo=str(m.voice_activity.voice_activity_type))
+        if m.voice_activity_detection_signal:
+            self.marca("vad_signal", tipo=str(m.voice_activity_detection_signal.vad_signal_type))
+        sc = m.server_content
+        if sc is None:
+            return
+        if sc.input_transcription and sc.input_transcription.text:
+            self.marca("transcricao_usuario")
+        partes = (sc.model_turn.parts or []) if sc.model_turn else []
+        if not self.audio_visto and any(p.inline_data and p.inline_data.data for p in partes):
+            self.audio_visto = True
+            self.marca("audio_gemini_1o")
+        if sc.generation_complete:
+            self.marca("generation_complete")
+        if sc.turn_complete:
+            self.audio_visto = False
+            pensou = m.usage_metadata.thoughts_token_count if m.usage_metadata else None
+            self.marca("turn_complete", pensamento=pensou)
+
+
+@dataclass
 class Ligacao:
     user_id: uuid.UUID
     cid: uuid.UUID
     turno: turnos.TurnoAtivo
+    trilha: Trilha | None = None
     inicio: float = field(default_factory=time.monotonic)
     uso: UsoLigacao = field(default_factory=UsoLigacao)
     turnos_com_uso: int = 0
@@ -267,7 +318,9 @@ def _consumir(codigo: str) -> Ticket | None:
 
 
 @router.websocket("/ws")
-async def ligacao(websocket: WebSocket, conectar: Annotated[Conector, Depends(conectar_gemini)], ticket: str = "") -> None:
+async def ligacao(
+    websocket: WebSocket, conectar: Annotated[Conector, Depends(conectar_gemini)], ticket: str = "", trace: int = 0
+) -> None:
     """Uma Ligação. Recusa depois do upgrade, com close code do protocolo: close antes do accept vira 403."""
     await websocket.accept()
     t = _consumir(ticket)
@@ -276,7 +329,7 @@ async def ligacao(websocket: WebSocket, conectar: Annotated[Conector, Depends(co
     # Sem await entre a checagem e o registro: dois WebSockets não passam juntos.
     if recusa := _vaga(t.user_id, t.cid):
         return await websocket.close(4000 + recusa[0])
-    lig = Ligacao(t.user_id, t.cid, turnos.reservar(t.cid))
+    lig = Ligacao(t.user_id, t.cid, turnos.reservar(t.cid), trilha=Trilha(str(t.cid)[:8]) if trace else None)
     LIGACOES[t.user_id] = lig
     async with AsyncExitStack() as pilha:
         try:
@@ -340,6 +393,8 @@ async def _browser_para_gemini(websocket: WebSocket, sessao: SessaoLive, lig: Li
         if msg["type"] == "websocket.disconnect":
             return "queda"
         if (pcm := msg.get("bytes")) is not None:
+            if lig.trilha:
+                lig.trilha.mic(pcm)
             await sessao.send_realtime_input(audio=types.Blob(data=pcm, mime_type=AUDIO_IN))
             continue
         try:
@@ -391,6 +446,8 @@ async def _gemini_para_browser(websocket: WebSocket, sessao: SessaoLive, lig: Li
         vazio = True
         async for m in sessao.receive():
             vazio = False
+            if lig.trilha:
+                lig.trilha.gemini(m)
             for saida in _traduzir(lig, m):
                 try:
                     if isinstance(saida, bytes):
