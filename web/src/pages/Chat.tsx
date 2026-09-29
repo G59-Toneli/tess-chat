@@ -25,6 +25,7 @@ import { textoTrabalhando, Trabalhando } from '@/components/Trabalhando'
 import { EstadoCarregando, EstadoErro } from '@/components/estados'
 import { IconeApp } from '@/components/Logo'
 import { MarcadorCompactacao } from '@/components/MarcadorCompactacao'
+import { BotaoLigacao, LigacaoPainel } from '@/components/LigacaoPainel'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useContextoApp } from '@/layout/AppLayout'
@@ -203,6 +204,13 @@ function ChatConversa({
   const [usos, setUsos] = useState(usosIniciais)
   // Id (no useChat) da pergunta do turno que compactou: o separador vai antes dela.
   const [corte, setCorte] = useState<string | null>(null)
+  const [emLigacao, setEmLigacao] = useState(false)
+  // Painel aberto com a Ligação no ar: o input trava. No erro ou no fim, o painel fica e o input volta.
+  const [ligacaoAtiva, setLigacaoAtiva] = useState(false)
+  const fecharLigacao = useCallback(() => {
+    setEmLigacao(false)
+    setLigacaoAtiva(false)
+  }, [])
 
   useEffect(() => {
     let vivo = true
@@ -318,7 +326,16 @@ function ChatConversa({
 
   return (
     <LayoutChat
-      entrada={<Entrada conversaId={id} status={status} onEnviar={enviar} onParar={parar} />}
+      topo={
+        emLigacao ? (
+          <LigacaoPainel conversaId={id} email={usuario?.email} onFechar={fecharLigacao} onAtiva={setLigacaoAtiva} />
+        ) : (
+          <div className="flex justify-end pt-2">
+            <BotaoLigacao onClick={() => setEmLigacao(true)} disabled={status === 'submitted' || status === 'streaming'} />
+          </div>
+        )
+      }
+      entrada={<Entrada conversaId={id} status={status} onEnviar={enviar} onParar={parar} desabilitada={emLigacao && ligacaoAtiva} />}
     >
       {visiveis.length === 0 && !pensando && !cap ? (
         <TelaVazia onEscolher={enviar} />
@@ -346,13 +363,16 @@ function ChatConversa({
 function LayoutChat({
   children,
   entrada,
+  topo,
 }: {
   children: React.ReactNode
   entrada?: React.ReactNode
+  topo?: React.ReactNode
 }) {
   return (
     <div className="flex h-full">
       <div className="mx-auto flex h-full min-w-0 max-w-3xl flex-1 flex-col px-4 pb-4">
+        {topo}
         <Conversation className="flex-1">
           <ConversationContent className="gap-6 py-6">{children}</ConversationContent>
           <ConversationScrollButton />
@@ -387,6 +407,7 @@ function Entrada({
   onParar,
   escolha,
   onEscolha,
+  desabilitada,
 }: {
   conversaId?: string
   status: ChatStatus
@@ -394,6 +415,8 @@ function Entrada({
   onParar?: () => void
   escolha?: EscolhaModelo
   onEscolha?: (e: EscolhaModelo) => void
+  /** Durante a Ligação o texto recebe 409 no servidor (ADR 0026): o input trava. */
+  desabilitada?: boolean
 }) {
   return (
     <PromptInput
@@ -407,7 +430,12 @@ function Entrada({
     >
       <AnexosDoPrompt />
       <PromptInputBody>
-        <PromptInputTextarea placeholder="Digite sua mensagem..." aria-label="Mensagem" autoFocus />
+        <PromptInputTextarea
+          placeholder={desabilitada ? 'Em ligação. O texto volta quando a ligação terminar.' : 'Digite sua mensagem...'}
+          aria-label="Mensagem"
+          disabled={desabilitada}
+          autoFocus
+        />
       </PromptInputBody>
       <PromptInputFooter>
         <div className="flex items-center gap-1">
@@ -421,6 +449,7 @@ function Entrada({
           <PromptInputSubmit
             status={status}
             onStop={onParar}
+            disabled={desabilitada}
             aria-label={status === 'streaming' || status === 'submitted' ? 'Parar' : 'Enviar'}
           />
         </div>
