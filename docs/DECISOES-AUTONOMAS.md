@@ -271,3 +271,8 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 | 77 | Histórico da Ligação vai como texto no fim da instrução do sistema, sem mudar o seam `Conector`. Teto `ligacao_historico_tokens` = 4000 (3 caracteres por token, INFERIDO); corta do mais antigo, Mensagem inteira. | Mandar como turnos com `send_client_content`. | O seam do Gemini falso recebe só a instrução e o teste vê o texto. Turnos no Live pedem outro caminho na sessão. |
 | 77 | Falas seguidas do usuário viram uma Mensagem só; fala do agente ainda aberta ao desligar entra; usuário sem resposta entra sozinho. | Uma Mensagem por fala; descartar a fala cortada. | Uma Mensagem por fala quebraria "um par por troca" e a contagem de turnos da Compactação. A fala cortada é o que o usuário ouviu. |
 | 77 | Ao fechar o painel da Ligação (qualquer motivo), o front recarrega o histórico e remonta `ChatConversa` (`key`). Falha na recarga mantém a tela. | Injetar as Mensagens no estado do `useChat`. | O `useChat` só lê `messages` na montagem; remontar é o caminho que já carrega usos e horários. |
+
+## Ticket 82: origem `ligacao` sem coluna
+- Decisão: derivar a origem no `GET /api/credits/conversas/{cid}` (`credito._origem`): sem `message_id` e modelo == `settings.gemini_live_modelo` vira `ligacao`.
+- Descartado: coluna `origem` no `credit_ledger` (migração 0025).
+- Por quê: ADR de origem já é derivada da linha, sem coluna nova; o modelo Live é único da Ligação. Custo: trocar o modelo Live na config reclassifica Ligações antigas como Compactação.

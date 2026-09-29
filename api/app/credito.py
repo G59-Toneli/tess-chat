@@ -304,7 +304,7 @@ async def painel_global(
 
 
 class GastoOrigem(BaseModel):
-    origem: str  # resposta | roteador | compactacao
+    origem: str  # resposta | roteador | compactacao | ligacao
     custo_micro_usd: int
     chamadas: int
 
@@ -320,9 +320,17 @@ class CustoConversa(BaseModel):
     saldo: Saldo
 
 
+def _origem(linha: CreditLedger) -> str:
+    if linha.message_id:
+        return "resposta"
+    if linha.model == PRECO_JEV:
+        return "roteador"
+    return "ligacao" if linha.model == settings.gemini_live_modelo else "compactacao"
+
+
 # a origem sai da linha do Ledger, sem coluna nova. Linha com message_id é a
-# resposta do modelo de chat; sem message_id, o modelo do Jev é o Roteador e o resto é a
-# Compactação (os dois únicos acertos sem Mensagem, ver chat.py e compactacao.py).
+# resposta do modelo de chat; sem message_id, o modelo do Jev é o Roteador, o modelo Live é a
+# Ligação (voz.py) e o resto é a Compactação.
 @router.get("/conversas/{cid}")
 async def custo_da_conversa(
     cid: uuid.UUID,
@@ -334,7 +342,7 @@ async def custo_da_conversa(
     linhas = (await session.scalars(select(CreditLedger).where(CreditLedger.conversation_id == cid))).all()
     origens: dict[str, list[int]] = {}
     for linha in linhas:
-        origem = "resposta" if linha.message_id else "roteador" if linha.model == PRECO_JEV else "compactacao"
+        origem = _origem(linha)
         par = origens.setdefault(origem, [0, 0])
         par[0] += linha.cost_micro_usd
         par[1] += 1

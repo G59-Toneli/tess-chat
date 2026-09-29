@@ -9,6 +9,7 @@ from pydantic_ai.usage import RunUsage
 from sqlalchemy import func, select, text
 
 from app.chat import MODELO
+from app.config import settings
 from app.credito import Cap, CreditLedger, PrecoModelo, debit
 from app.db import SessionLocal
 from tests.test_auth import eventos
@@ -165,6 +166,7 @@ async def test_custo_da_conversa_soma_so_o_ledger_dela_por_origem(client):
             linha(cid, 300, message_id=2),
             linha(cid, 20, model="jev-latest"),
             linha(cid, 50, model="gemini-3.1-flash-lite"),
+            linha(cid, 400, model=settings.gemini_live_modelo),
             linha(outra, 9_999, message_id=3),
         ])
         await s.commit()
@@ -172,15 +174,16 @@ async def test_custo_da_conversa_soma_so_o_ledger_dela_por_origem(client):
     r = await client.get(f"/api/credits/conversas/{cid}", headers=h)
     assert r.status_code == 200, r.text
     c = r.json()
-    assert c["total_micro_usd"] == 1_070
-    assert c["chamadas"] == 4
-    assert (c["input_tokens"], c["output_tokens"], c["thinking_tokens"], c["cache_read_tokens"]) == (400, 160, 40, 20)
+    assert c["total_micro_usd"] == 1_470
+    assert c["chamadas"] == 5
+    assert (c["input_tokens"], c["output_tokens"], c["thinking_tokens"], c["cache_read_tokens"]) == (500, 200, 50, 25)
     assert [(o["origem"], o["custo_micro_usd"], o["chamadas"]) for o in c["por_origem"]] == [
         ("resposta", 1_000, 2),
+        ("ligacao", 400, 1),
         ("compactacao", 50, 1),
         ("roteador", 20, 1),
     ]
-    assert c["saldo"]["gasto_micro_usd"] == 1_070 + 9_999
+    assert c["saldo"]["gasto_micro_usd"] == 1_470 + 9_999
 
     _, intruso = await usuario(client)
     assert (await client.get(f"/api/credits/conversas/{cid}", headers=intruso)).status_code == 404

@@ -311,6 +311,8 @@ async def test_desligar_soma_os_turnos_no_ledger_e_audita_o_fim(client, gemini):
     assert linha.model == "gemini-3.8-live" and linha.conversation_id == uuid.UUID(cid)
     assert linha.cost_micro_usd == esperado
     assert (linha.input_tokens, linha.output_tokens, linha.thinking_tokens) == (958 + 877 + 528, 413 + 167, 167)
+    por_origem = (await client.get(f"/api/credits/conversas/{cid}", headers=h)).json()["por_origem"]
+    assert [(o["origem"], o["custo_micro_usd"]) for o in por_origem] == [("ligacao", esperado)]
     [ev] = await eventos("voice_call_ended", user_id=uid)
     assert ev.payload["motivo"] == "desligou"
     assert ev.payload["tokens"] == {"texto_in": 958, "audio_in": 877, "imagem_in": 528, "texto_out": 0, "audio_out": 413, "pensamento": 167}

@@ -1,7 +1,7 @@
 # 82 — Origem `ligacao` no Ledger e no custo da Conversa
 
 **Type:** task (api/ + web/)
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 78
 **Refs:** ADR 0027. Ressalva 2 do ticket 76.
 
@@ -18,3 +18,6 @@
 
 ## Paradas de estudo
 Nenhuma obrigatória.
+
+## Answer
+Sem coluna nem migração: a origem já sai da linha do Ledger (`credito.py`). Linha sem `message_id` com o modelo Live vira `ligacao`; o resto segue como antes. Front: `ligacao` em `OrigemGasto`, rótulo "Ligação"; origem desconhecida mostra o nome cru (`origemDe`). Testes: `test_credito` e `test_voz` (fluxo real do desligar) afirmam `ligacao`. Migração 0025 não foi usada. Nenhum `REVISAR(human)` novo. Screenshot: `.scratch/desafio/screens/82-custo-ligacao-1440.png`.

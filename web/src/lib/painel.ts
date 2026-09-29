@@ -102,7 +102,7 @@ export const ROTULO_EVENTO: Record<string, string> = {
 }
 export const rotuloEvento = (t: string) => ROTULO_EVENTO[t] ?? t
 
-export type OrigemGasto = 'resposta' | 'roteador' | 'compactacao'
+export type OrigemGasto = 'resposta' | 'roteador' | 'compactacao' | 'ligacao'
 export type CustoConversa = {
   total_micro_usd: number
   chamadas: number

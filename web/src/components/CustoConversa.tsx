@@ -12,7 +12,11 @@ const ORIGEM: Record<OrigemGasto, { rotulo: string; dica: string; cor: string }>
   resposta: { rotulo: 'Respostas', dica: 'O modelo respondendo você', cor: 'bg-chart-1' },
   compactacao: { rotulo: 'Resumo do histórico', dica: 'Compactação das mensagens antigas', cor: 'bg-chart-2' },
   roteador: { rotulo: 'Escolha de tool', dica: 'Roteador decidindo a tool', cor: 'bg-chart-3' },
+  ligacao: { rotulo: 'Ligação', dica: 'Conversa por voz e tela', cor: 'bg-chart-4' },
 }
+
+/** Origem que o front ainda não conhece mostra o nome cru, sem quebrar. */
+const origemDe = (o: string) => ORIGEM[o as OrigemGasto] ?? { rotulo: o, dica: o, cor: 'bg-muted-foreground' }
 
 const pct = (parte: number, todo: number) =>
   `${(todo > 0 ? (parte / todo) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} %`
@@ -93,7 +97,7 @@ function Detalhe({ custo: c }: { custo: Custo }) {
           {c.por_origem.map((o) => (
             <div
               key={o.origem}
-              className={ORIGEM[o.origem].cor}
+              className={origemDe(o.origem).cor}
               style={{ width: `${Math.max((o.custo_micro_usd / c.total_micro_usd) * 100, 1)}%` }}
             />
           ))}
@@ -101,9 +105,9 @@ function Detalhe({ custo: c }: { custo: Custo }) {
         <ul className="space-y-1.5">
           {c.por_origem.map((o) => (
             <li key={o.origem} className="flex items-center gap-2 text-sm">
-              <span className={cn('size-2.5 shrink-0 rounded-sm', ORIGEM[o.origem].cor)} aria-hidden />
-              <span className="min-w-0 flex-1 truncate" title={ORIGEM[o.origem].dica}>
-                {ORIGEM[o.origem].rotulo}
+              <span className={cn('size-2.5 shrink-0 rounded-sm', origemDe(o.origem).cor)} aria-hidden />
+              <span className="min-w-0 flex-1 truncate" title={origemDe(o.origem).dica}>
+                {origemDe(o.origem).rotulo}
                 <span className="ml-1.5 text-xs text-muted-foreground">{o.chamadas}×</span>
               </span>
               <span className="text-xs text-muted-foreground tabular-nums">{pct(o.custo_micro_usd, c.total_micro_usd)}</span>
