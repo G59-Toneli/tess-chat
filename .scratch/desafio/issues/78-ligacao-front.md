@@ -1,7 +1,7 @@
 # 78 — Painel de Ligação no front: microfone, alto-falante, tela
 
 **Type:** task (web/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 75
 **Refs:** ADR 0026, 0028. `docs/PROTOCOLO-LIGACAO.md` (contrato, obrigatório). `docs/UI-GUIA.md` (obrigatório). Pode correr em paralelo com o 76: o contrato é o protocolo.
 

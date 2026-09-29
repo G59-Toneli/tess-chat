@@ -1,0 +1,58 @@
+{"t": 1.223, "session_resumption_update": {"new_handle": "3a17bfcf-d1f4-4172-b3cb-191583911c37", "resumable": true}}
+{"t": 2.396, "voice_activity": {"voice_activity_type": "ACTIVITY_START", "audio_offset": "0.240s"}}
+{"t": 12.919}
+{"t": 12.969}
+{"t": 12.969}
+{"t": 12.969}
+{"t": 12.969}
+{"t": 12.969}
+{"t": 12.969}
+{"t": 12.969}
+{"t": 12.969, "server_content": {"input_transcription": {"text": "Leia para mim o número do pedido e o valor total que aparecem na tela."}}}
+{"t": 12.97, "voice_activity": {"voice_activity_type": "ACTIVITY_END", "audio_offset": "7.400s"}}
+{"t": 12.97, "server_content": {}}
+{"t": 12.97, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<2 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}, "output_transcription": {"text": "O número do "}}}
+{"t": 13.064, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<13920 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.094, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.123, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<7680 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.196, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<17280 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}, "output_transcription": {"text": "pedido é 4827-B"}}}
+{"t": 13.278, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.33, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.33}
+{"t": 13.351, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<23040 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}, "output_transcription": {"text": " e o valor"}}}
+{"t": 13.352}
+{"t": 13.39, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.39}
+{"t": 13.391, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<9600 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.41}
+{"t": 13.432, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<26880 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}, "output_transcription": {"text": " total é"}}}
+{"t": 13.432}
+{"t": 13.453, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.454}
+{"t": 13.471, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.472}
+{"t": 13.49, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<17280 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}, "output_transcription": {"text": " R$ 1.350,90."}}}
+{"t": 13.555}
+{"t": 13.57, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<21120 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.64}
+{"t": 13.65, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.725}
+{"t": 13.736, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<19200 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.811}
+{"t": 13.822, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<17280 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 13.898}
+{"t": 13.909, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<19200 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 14.01}
+{"t": 14.021, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<19200 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 14.078}
+{"t": 14.087, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 14.163}
+{"t": 14.173, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<17280 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 14.239}
+{"t": 14.249, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<17280 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 14.324}
+{"t": 14.332, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<15360 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 14.409}
+{"t": 14.418, "server_content": {"model_turn": {"parts": [{"inline_data": {"data": "<17280 bytes>", "mime_type": "audio/pcm;rate=24000"}}], "role": "model"}}}
+{"t": 14.439, "server_content": {"generation_complete": true}}
+{"t": 21.295, "server_content": {"turn_complete": true}, "usage_metadata": {"prompt_token_count": 1116, "response_token_count": 215, "thoughts_token_count": 84, "total_token_count": 1331, "prompt_tokens_details": [{"modality": "TEXT", "token_count": 464}, {"modality": "AUDIO", "token_count": 330}, {"modality": "IMAGE", "token_count": 264}], "response_tokens_details": [{"modality": "AUDIO", "token_count": 215}]}}

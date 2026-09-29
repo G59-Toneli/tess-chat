@@ -1,7 +1,7 @@
 # 76 — Ligação no backend: ticket, proxy WebSocket, crédito, auditoria
 
 **Type:** task (api/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 75
 **Refs:** ADR 0026, 0027, 0023 (vaga de turno), 0004/0019 (reserva e acerto), 0007 (auditoria). `docs/PROTOCOLO-LIGACAO.md` (contrato, obrigatório). `spike/live/RESULTADO.md` (nomes reais do SDK, obrigatório).
 
