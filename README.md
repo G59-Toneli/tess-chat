@@ -99,6 +99,17 @@ Abra `http://localhost:8000` e clique em "conta demo". Credencial: `demo@toneli.
 
 **Dockerfile da raiz.** Ele gera a imagem de produção: build do front e API na mesma imagem. Dentro do container, `127.0.0.1:5433` não é o Postgres do host. Para rodar a imagem local, ajuste o host do `DATABASE_URL`. O compose de produção é `deploy/docker-compose.yml`. O CI (`.github/workflows/deploy.yml`) roda os testes e o build em push e PR, e faz o deploy por ssh em push na `main`. Runbook em [`docs/INFRA.md`](docs/INFRA.md).
 
+## Ligação (voz + tela)
+
+Botão de telefone na Conversa. O usuário fala com o agente, compartilha uma aba ou janela, e o agente responde em voz sobre o que vê. Modelo `gemini-3.8-live`, voz Kore.
+
+- **Caminho:** o browser pede um Ticket de uso único (`POST /api/voz/ticket`) e abre `wss://.../api/voz/ws?ticket=`. O FastAPI é proxy: fala WebSocket com o browser e com o Gemini Live. Áudio sobe em PCM16 16 kHz e desce em PCM16 24 kHz. A tela sobe como Frame JPEG, 1 por segundo.
+- **Por que proxy:** o servidor vê o uso real de cada turno. Cap e auditoria não dependem do browser ([ADR 0026](docs/adr/0026-ligacao-por-gemini-live-com-proxy-websocket.md)).
+- **Crédito:** no início confere que 9 min de Ligação (US$ 0,345 a preço de tabela) cabem no Cap. No fim grava uma linha no Ledger com o uso real somado, a preço de tabela mesmo na chave free ([ADR 0027](docs/adr/0027-credito-da-ligacao.md)).
+- **Auditoria e histórico:** `voice_call_started`, `voice_call_ended`, `screen_share_started` e `screen_share_stopped` em `/auditoria`. As falas voltam à Conversa como Mensagens marcadas "por voz".
+- **Limites:** 9 min, sem session resumption, sem tools, um processo. Latência medida do fim da fala ao 1º áudio: 0,5 a 0,6 s com servidor local, 1,9 s em produção (rede residencial → VPS; causa não isolada, INFERIDO). O free tier do Gemini usa voz e tela para treino.
+- **Onde ler mais:** [`docs/PROTOCOLO-LIGACAO.md`](docs/PROTOCOLO-LIGACAO.md) (contrato), [`docs/ESTUDO-VOZ.md`](docs/ESTUDO-VOZ.md) (mecanismo, `arquivo:linha`), [`docs/ROTEIRO-VIDEOS.md`](docs/ROTEIRO-VIDEOS.md), [ADR 0028](docs/adr/0028-captura-de-tela-1-fps.md) (tela).
+
 ## Decisões
 
 Cada linha resume um ADR. O porquê completo e as opções descartadas estão no arquivo. Todos são de 2026-09-23.

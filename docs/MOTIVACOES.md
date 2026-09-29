@@ -173,3 +173,23 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 | **Pergunta gravada no início** | Ao voltar para a tela, a pergunta aparece na hora, e o `/stream` retoma a resposta. Custo: turno que falha deixa a pergunta sem resposta. | idem |
 | **Parar pelo `CancellationToken`, não por `Task.cancel()`** | O token vira `RunCancelled`, e o `on_cancel` grava o parcial e cobra, pelo mesmo caminho do `ComTeto`. `Task.cancel()` vira `CancelledError` e perde o parcial. | idem |
 | **Replay desde o chunk 0 no `/stream`** | O `useChat` com `resume: true` monta a resposta do zero. Sem o `start`, ele não tem o message id. | `REVISAR(human)` em `TurnoAtivo.ler` |
+
+## 8. Ligação: voz e tela (tickets 75 a 82)
+
+| Decisão | Por quê | Fonte |
+|---|---|---|
+| **Proxy WebSocket no FastAPI, não token efêmero no browser** | O servidor precisa ver o `usage_metadata` do Gemini. Com token efêmero, Cap e auditoria dependeriam do que o browser reporta. Preço: um salto a mais, dezenas de ms (INFERIDO). Caíram SSE, WebRTC e a cascata STT → LLM → TTS. | [ADR 0026](adr/0026-ligacao-por-gemini-live-com-proxy-websocket.md), `ESTUDO-VOZ.md` parada 6 |
+| **Ticket de uso único de 30 s, não JWT na URL** | O browser não manda header em WebSocket. A URL fica no log do nginx, e o JWT vale 24 h. O `pop` vem antes da checagem de validade. | ADR 0026, `voz.py` `_consumir` (`REVISAR(human)`) |
+| **A Ligação ocupa a vaga de turno da Conversa** | Reusa o registro do turno em background: texto durante a Ligação dá 409, sem lock novo. | ADR 0026, [ADR 0023](adr/0023-turno-em-background.md) |
+| **Relay de duas tasks e fim único no `finally`** | Cada sentido fala quando quer. Um caminho de fim só evita esquecer acerto ou vaga e deixar 409 eterno. | `voz.py` `_relay`, `_encerrar` (`REVISAR(human)`) |
+| **Reserva de 9 min antes de abrir; acerto pelo uso real somado no fim; preço de tabela na chave free** | Cap só dispara se o custo não for zero. A reserva é US$ 0,345 (o spike mediu o Frame em 264 tokens, e o ADR contava mais barato). Divergência com o ADR em `LACUNAS.md`. | [ADR 0027](adr/0027-credito-da-ligacao.md), `DECISOES-AUTONOMAS.md` (76), `credito.py` `caber` |
+| **Pensamento cobrado como saída de texto** | O `thoughts_token_count` fica fora do total e o ADR 0027 não tinha linha de preço. **INFERIDO.** O modelo base também pensa, não só o `-extended-thinking`. | `spike/live/RESULTADO.md`, migração 0024 |
+| **Frame a 1 fps, JPEG 0,7, lado maior 1280** | A API aceita 1 imagem por segundo; o caso de uso é texto que muda pouco. 264 tokens a 1280 e a 768: a resolução não muda o custo. | [ADR 0028](adr/0028-captura-de-tela-1-fps.md), spike 75 |
+| **Adendo de voz diz primeiro que a tela chega** | A frase "sem tela, diga que não vê nada", solta, fez o modelo negar a tela que tinha. Causa não isolada (INFERIDO). | `voz.py` `ADENDO_VOZ`, `DECISOES-AUTONOMAS.md` (75) |
+| **Sem Jev e sem tools** | O Jev força a tool no passo 1 de um turno de requisição e resposta. A voz é fluxo contínuo. | ADR 0026 item 6 |
+| **Histórico em texto na instrução; falas voltam como um par por troca com `data-ligacao`** | Compactação e corte contam turnos por Mensagem. Sem migração; o modelo de texto ignora `data-*`. | `DECISOES-AUTONOMAS.md` (77), `voz.py` `_trocas` (`REVISAR(human)`) |
+| **Origem `ligacao` derivada da linha do Ledger** | Sem coluna nova nem migração. Custo: trocar o modelo Live na config reclassifica Ligações antigas como Compactação. | `DECISOES-AUTONOMAS.md` (82), `credito.py` `_origem` |
+| **AudioWorklet e PCM16 no microfone; fila de `AudioBufferSourceNode` na saída** | O Live pede PCM cru; o `MediaRecorder` entrega Opus. A fila agendada evita picote, e esvaziá-la é o barge-in. | `ESTUDO-VOZ.md` paradas 2, 13 e 14 |
+| **nginx: location própria para o WebSocket** | `Upgrade` e `Connection` são hop-by-hop. Mudar o `Connection ""` global afetaria o SSE. | `deploy/nginx-tess-chat.conf`, `INFRA.md` |
+| **Smoke de produção com WAV e canvas** | Com dispositivo falso, o `getDisplayMedia` do Brave entrega um padrão verde. Canvas mantém trilha, 1 fps, JPEG e WebSocket reais. | `DECISOES-AUTONOMAS.md` (80) |
+| **Limites assumidos: 9 min, sem session resumption, um processo** | Cada um custa código acima do ganho na demo (YAGNI). Restart derruba a Ligação. | ADR 0026 (Consequências), `ESTUDO-VOZ.md` parada 23 |

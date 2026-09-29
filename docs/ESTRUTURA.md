@@ -48,6 +48,9 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── WORKFLOW.md           regras do trabalho autônomo com agentes
 │   ├── AGENT-PROMPT.md       prompt-padrão que todo agente executor segue
 │   ├── ENTREVISTA.md         guia de entrevista: perguntas prováveis por ADR e pelo workflow (ticket 19)
+│   ├── PROTOCOLO-LIGACAO.md  contrato browser ⇄ servidor da Ligação: ticket, WebSocket, mensagens, close codes (tickets 75 a 82)
+│   ├── ESTUDO-VOZ.md         estudo da Ligação do clique ao Ledger, com `arquivo:linha` e pergunta de entrevista (ticket 81)
+│   ├── ROTEIRO-VIDEOS.md     roteiro do vídeo de demo e do vídeo de arquitetura da Ligação (ticket 81)
 │   ├── DECISOES-AUTONOMAS.md decisões que agentes tomaram sem ADR: ticket, decisão, alternativa, porquê
 │   ├── LACUNAS.md            onde o código diverge do ADR ou ficou aresta
 │   ├── UI-GUIA.md            regras de tela e verificação visual por screenshot
@@ -74,6 +77,7 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── RESULTADO.md          9 hipóteses, veredito e custo de cada
 │   ├── py/                   scripts h2..h7 (stream, usage, cache, MCP)
 │   ├── web/                  AI Elements em Vite
+│   ├── live/                 ticket 75: spike do Gemini Live; RESULTADO.md tem os nomes reais do SDK e as medidas
 │   └── docker-compose.yml    Postgres do spike
 │
 ├── deploy/                  produção (ADR 0014): `docker-compose.yml` (app, migrate, postgres), `deploy.sh`, `backup.sh`, `cron-tess-chat`, `nginx-tess-chat.conf`; `mcp-demo/` é o servidor MCP de demo (ticket 17)
@@ -98,6 +102,7 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | `chat.py` | o turno: histórico do banco, Compactação, reserva, Roteador, Tools, stream, persistência. Rotas `/stream` (retomada) e `/parar` (ticket 55) |
 | `turnos.py` | turno em background: registro por Conversa (409), buffer SSE com replay e tail, `CancellationToken` do Parar. ADR 0023 |
 | `credito.py` | Tabela de Preço, Ledger, Cap, reserva e acerto, painéis de Crédito |
+| `voz.py` | a Ligação: Ticket de Ligação, WebSocket `/api/voz/ws`, relay com o Gemini Live, reserva e acerto de crédito por modalidade, falas viram Mensagens. ADR 0026 a 0028 |
 | `tools.py` | registro de Tools, toggle por Conversa, `web_search` e `web_fetch`, wrapper de auditoria. Monta o toolset do turno com as Tools do Google (só com Conector) e as MCP do dono |
 | `mcp.py` | Servidor MCP por Usuário: tabela `mcp_servers`, cadastro que conecta antes de gravar, barreira de SSRF, sonda antes do turno. Tickets 17 e 23 |
 | `conectores.py` | Conector Google: tabela `connectors`, OAuth com `state` JWT e PKCE, tokens cifrados, refresh, Tools `gmail_search`, `gmail_read`, `gmail_send` (Rascunho, ADR 0013), `drive_search_read`. Ticket 18 |
@@ -120,11 +125,12 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | Pasta | Papel |
 |---|---|
 | `pages/` | uma tela por rota: Chat, Login, Configuração (`/config`), Tools, MCP (`/mcp`), Conectores (`/conectores`), Créditos, Auditoria, Admin, Compartilhados, Compartilhamento (link público), Placeholder (Perfil e 404) |
-| `components/` | componentes nossos: `BlocoTool`, `SeletorTools`, `SeletorModelo`, `Anexos`, `MarcadorCompactacao`, `IndicadorContexto` (rosca até a Compactação), `Trabalhando` (indicador do turno), `RascunhoEmail`, `ItemCompartilhar`, `ModalLink`, `Logo`, `estados` (vazio, carregando, erro) |
+| `components/` | componentes nossos: `BlocoTool`, `SeletorTools`, `SeletorModelo`, `Anexos`, `MarcadorCompactacao`, `IndicadorContexto` (rosca até a Compactação), `Trabalhando` (indicador do turno), `LigacaoPainel` (Ligação: botão, painel, transcrição), `RascunhoEmail`, `ItemCompartilhar`, `ModalLink`, `Logo`, `estados` (vazio, carregando, erro) |
 | `components/ui/` | código do registry shadcn, copiado e não escrito à mão |
 | `components/ai-elements/` | código do registry AI Elements, copiado. Ajuste nosso: `message.tsx` usa o `ModalLink` na confirmação de link externo |
 | `layout/` | `AppLayout`: barra lateral e casca das telas logadas |
 | `lib/` | cliente da API (`api.ts`, token Bearer) e helpers por tela (`mcp.ts`, `conectores.ts`, `tools.ts`...) |
+| `lib/ligacao/` | a Ligação no browser: `useLigacao.ts` (estado e WebSocket), `captura.ts` e `captura.worklet.js` (microfone → PCM16), `reproducao.ts` (fila de áudio e barge-in), `tela.ts` (Frames), `protocolo.ts`, `config.ts` |
 | `hooks/` | `use-mobile.ts`, do registry shadcn |
 | `tema.ts` | tema dark padrão com toggle |
 
@@ -170,6 +176,7 @@ Tickets 25 a 54: uma linha por execução em `.scratch/desafio/LEDGER.md`.
 | 0019 | 42 | descrição de `drive_search_read` com PDF e recentes volta ao banco |
 | 0020 | 52 | credencial OAuth cifrada e estado da conexão em `mcp_servers` (ADR 0022) |
 | 0021 | revisão | `configuracao_global`: linha única com `cadastro_aberto` |
+| 0024 | 76 | `price_table` ganha as colunas de áudio in, imagem in e áudio out; preço do `gemini-3.8-live` (ADR 0027) |
 
 ## Onde mora cada conceito do `CONTEXT.md`
 
@@ -192,6 +199,9 @@ Tickets 25 a 54: uma linha por execução em `.scratch/desafio/LEDGER.md`.
 | Compartilhamento | `shares.py` | `shares` | `pages/Compartilhamento.tsx`, `pages/Compartilhados.tsx` | 0008 |
 | Evento de auditoria | `audit.py` (escrita), `auditoria.py` (leitura) | `audit_events` (somente-inserção) | `pages/Auditoria.tsx` | 0007, 0012 |
 | Configuração | `configuracao.py` | `settings` (migração 0011) | `pages/Configuracao.tsx` | 0006 |
+| Ligação | `voz.py` (rota `/api/voz/ws`, `_relay`, `_encerrar`) | falas em `messages` (parte `data-ligacao`); custo em `credit_ledger` (origem `ligacao`, derivada); eventos `voice_call_*` e `screen_share_*` em `audit_events` | `components/LigacaoPainel.tsx`, `lib/ligacao/` | 0026 |
+| Ticket de Ligação | `voz.py` (`criar_ticket`, `_consumir`) | nenhuma: dicionário em memória, 30 s | `lib/ligacao/protocolo.ts` (`pedirTicket`) | 0026 |
+| Frame | `voz.py` (`_frame`) | nenhuma | `lib/ligacao/tela.ts` | 0028 |
 
 Nomes de tabela conferidos no `__tablename__` de cada módulo.
 
@@ -219,6 +229,8 @@ Funções que o agente implementou no lugar do Toneli. São as que mais caem em 
 | `conectores.py` | 9 | validade do token pela lib, retry só em GET, primeiro arquivo legível do Drive, Tool só cria Rascunho, `state` do OAuth em JWT, perfil do Gmail, cookie do PKCE, mapa de erro do Gmail, envio com trava de linha |
 | `limpeza_anexos.py` | 1 | varredura diária em vez de hook na exclusão |
 | `rede.py` | 1 | todo IP resolvido precisa ser público |
+| `voz.py` | 6 | validação do Ticket, relay de duas tasks, acerto de crédito da Ligação, fim único, histórico que a Ligação leva, um par por troca. Marcas ainda no código |
+| `web/src/lib/ligacao/` | 3 | worklet do microfone, fila de reprodução com barge-in, laço de Frames. Marcas ainda no código |
 
 ## Sugestões
 

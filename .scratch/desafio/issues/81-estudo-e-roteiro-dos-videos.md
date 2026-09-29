@@ -1,7 +1,7 @@
 # 81 — ESTUDO-VOZ consolidado e roteiro dos dois vídeos
 
 **Type:** docs
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 80 (pode começar depois do 76 e 78 e fechar depois do 80)
 **Refs:** "Paradas de estudo" dos tickets 75 a 80. ADR 0026 a 0028. `docs/ENTREVISTA.md`, `docs/ESTRUTURA.md`, `docs/MOTIVACOES.md`.
 
@@ -23,3 +23,7 @@
 ## Aceite
 - Todo `arquivo:linha` do ESTUDO confere com o código.
 - Chamadas reais: 0.
+
+## Answer
+`docs/ESTUDO-VOZ.md` com 23 paradas do clique ao Ledger, diagrama de sequência em texto, tabela de números com ambiente e todo `arquivo:linha` conferido no código de 29/09. `docs/ROTEIRO-VIDEOS.md` com o vídeo 1 (demo, 3 a 4 min) e o vídeo 2 (arquitetura, 8 a 10 min, com 3 perguntas difíceis e resposta curta). `ESTRUTURA`, `MOTIVACOES` (seção 8) e `README` (seção Ligação) atualizados.
+`LACUNAS.md` ganhou 3 divergências que viraram fato: a reserva do ADR 0027 não segura saldo e vale US$ 0,345; o modelo base também pensa; o Frame custa 264 tokens sem depender da resolução. Duas afirmações ficaram INFERIDO: o motivo da segunda checagem do Cap (parada 5) e a causa da latência de 1,9 s em produção. Chamadas reais: 0. Nada `REVISAR(human)` novo.
