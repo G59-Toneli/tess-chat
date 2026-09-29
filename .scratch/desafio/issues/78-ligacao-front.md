@@ -64,5 +64,5 @@ Componentes novos `web/src/components/Ligacao*.tsx` e `web/src/lib/ligacao/*`. E
 ## Answer
 Painel de Ligação no topo da Conversa (`LigacaoPainel.tsx`) com `lib/ligacao/*`: microfone por AudioWorklet (PCM16 16 kHz, 32 ms), fila de reprodução 24 kHz com barge-in, Frames 1 fps JPEG 0,7 lado 1280 com prévia, mudo, contador com limite, transcrição ao vivo, input travado durante a Ligação, erros 402/404/409/429 e 4401/4402/4409/4429/4500 em pt-BR. Botão "Ligar" numa linha nova no topo da coluna do chat (o header é do `AppLayout`, fora do escopo).
 Teste: `web/scripts/testar-ligacao.mjs` (servidor falso na 8078, vite preview na 4188, Brave headless), 31 checagens passando. `npm run build` limpo; `checar-responsivo` sem violação em `/c/:id` e `/`.
-Ressalvas: `transcricao.texto` tratado como acumulado, como o `voz.py` do 76 manda (o protocolo não diz; vale uma linha lá); o histórico não recarrega ao fim da Ligação (ticket 77); aba escondida por mais de 5 min pode espaçar o laço de Frames.
+Ressalvas: `transcricao.texto` tratado como acumulado, como o protocolo (`03c78e6`) e o `voz.py` do 76; o histórico não recarrega ao fim da Ligação (ticket 77); aba escondida por mais de 5 min pode espaçar o laço de Frames.
 REVISAR(human): `captura.worklet.js` (worklet), `reproducao.ts` (fila), `tela.ts` (laço de Frames).

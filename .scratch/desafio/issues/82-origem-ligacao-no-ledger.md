@@ -1,7 +1,7 @@
 # 82 — Origem `ligacao` no Ledger e no custo da Conversa
 
 **Type:** task (api/ + web/)
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 78
 **Refs:** ADR 0027. Ressalva 2 do ticket 76.
 
