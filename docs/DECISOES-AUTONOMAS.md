@@ -276,3 +276,9 @@ Decisões fora dos ADRs, tomadas pelo agente executor. Formato: ticket, decisão
 - Decisão: derivar a origem no `GET /api/credits/conversas/{cid}` (`credito._origem`): sem `message_id` e modelo == `settings.gemini_live_modelo` vira `ligacao`.
 - Descartado: coluna `origem` no `credit_ledger` (migração 0025).
 - Por quê: ADR de origem já é derivada da linha, sem coluna nova; o modelo Live é único da Ligação. Custo: trocar o modelo Live na config reclassifica Ligações antigas como Compactação.
+
+## Ticket 80: tela do smoke real é canvas, não captura de aba
+- Decisão: no smoke em produção a tela vem de um `canvas.captureStream()` que substitui o `getDisplayMedia`; a fala vem do WAV via `--use-file-for-fake-audio-capture`.
+- Descartado: `--auto-select-tab-capture-source-by-title` com uma aba de texto.
+- Por quê: o WAV como microfone exige `--use-fake-device-for-media-stream`, e com essa flag o `getDisplayMedia` do Brave entrega um padrão verde falso (1º smoke: o modelo disse que não via nada; gastou uma sessão Live). Trilha, 1 fps e JPEG 1280 seguem reais; só a origem dos pixels é falsa.
+- Sem defeito de produto achado. Sessão que desliga antes do `turn_complete` cai no custo estimado (comportamento já previsto no ticket 76).

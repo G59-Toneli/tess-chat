@@ -1,7 +1,7 @@
 # 81 — ESTUDO-VOZ consolidado e roteiro dos dois vídeos
 
 **Type:** docs
-**Status:** blocked
+**Status:** ready-for-agent
 **Blocked by:** 80 (pode começar depois do 76 e 78 e fechar depois do 80)
 **Refs:** "Paradas de estudo" dos tickets 75 a 80. ADR 0026 a 0028. `docs/ENTREVISTA.md`, `docs/ESTRUTURA.md`, `docs/MOTIVACOES.md`.
 
