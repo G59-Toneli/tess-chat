@@ -4,7 +4,7 @@ Data da pesquisa: 2026-09-22. Host: Windows 11, Git Bash + PowerShell. Alvo de d
 Regra do documento: cada afirmação tem URL ou caminho de arquivo. O que não foi verificado está marcado **INFERIDO**.
 
 Abreviações de caminho usadas abaixo:
-- `CACHE` = `C:\Users\Admin\.claude\plugins\cache\claude-plugins-official`
+- `CACHE` = `~/.claude\plugins\cache\claude-plugins-official`
 - `MPS` = `CACHE\mattpocock-skills\1.2.3`
 - `RALPH` = `CACHE\ralph-loop\1.0.0`
 - `SP` = `CACHE\superpowers\6.3.0` (existe também 6.4.1 no cache; o PATH aponta para 6.3.0)

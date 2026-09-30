@@ -28,7 +28,7 @@ Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta.
 - Front não sinaliza retry: acontece antes do stream abrir.
 
 ## Deploy (ADR 0014)
-- **Teste de reboot do VPS adiado** pelo Toneli em 23/09. O VPS é produção do trabalho. Testado só `down` + `up` sem `-v` (ticket 16).
+- **Teste de reboot do VPS adiado** pelo Toneli em 23/09. O VPS é produção de outro projeto. Testado só `down` + `up` sem `-v` (ticket 16).
 
 ## Auth e demo
 - ~~`JWT_SECRET` com default de dev~~. **Resolvido:** em produção está definido, com 64 caracteres, e não é o default (verificado em 2026-09-23). Com `ENV=prod`, o boot recusa segredo default ou curto. `DEMO_PASSWORD` trocado por valor aleatório em produção em 2026-09-23.

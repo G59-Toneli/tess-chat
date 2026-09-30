@@ -145,7 +145,7 @@ Estado em 2026-09-23. Fonte: [`docs/LACUNAS.md`](docs/LACUNAS.md) e as ressalvas
 
 **Pendentes com ticket**
 
-- **Deploy (ticket 16, feito; ADR 0014).** No ar em https://chat.toneli.dev.br. Teste de reboot do VPS adiado: o VPS é produção do trabalho. Testado só `down` + `up`.
+- **Deploy (ticket 16, feito; ADR 0014).** No ar em https://chat.toneli.dev.br. Teste de reboot do VPS adiado: o VPS é produção de outro projeto. Testado só `down` + `up`.
 - **Servidor MCP caído** (ticket 23, feito): antes de cada turno o app testa cada servidor por 3 s; o que não responde sai do turno com evento `mcp_server_unreachable` e aviso no chat. Ainda existe uma janela curta entre o teste e o turno.
 - **SSRF em URL de Servidor MCP** (ticket 23, feito): cadastro só aceita `https://` e rejeita host que resolve para IP privado. DNS rebinding depois do cadastro não está coberto.
 - **Conector Google validado só com Google mockado.** A validação com conta real depende do login do dono do projeto.

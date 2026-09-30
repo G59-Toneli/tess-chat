@@ -3,10 +3,10 @@
 ADR 0014. URL: https://chat.toneli.dev.br
 
 ## Inventário do VPS (23/09/2026)
-- Oracle, São Paulo. `aarch64`, Ubuntu 24.04, 4 OCPU, 24 GB. Disco `/` de 96 GB.
-- Acesso: `ssh -i <chave> <usuario>@<ip-do-vps>`. Sudo sem senha. Regras em `<arquivo-de-acesso>`.
-- É o VPS compartilhado. Outros projetos: outro projeto-hub (outro projeto, 127.0.0.1:3100), outro projeto-orchestrator (127.0.0.1:8000), cdt-erpnext (127.0.0.1:8081), cloudflared (127.0.0.1:20241).
-- Nginx no host em 80/443 com certbot. `outro projeto-hub` é `default_server` em 80 e 443.
+- VPS compartilhado. `aarch64`, Ubuntu 24.04, 4 OCPU, 24 GB. Disco `/` de 96 GB.
+- Acesso: `ssh -i <chave> <usuario>@<ip-do-vps>`. Sudo sem senha.
+- Outros projetos em produção rodam no mesmo servidor, todos em 127.0.0.1.
+- Nginx no host em 80/443 com certbot. O site de outro projeto é `default_server` em 80 e 443.
 - Portas em uso antes do deploy: 22 53 80 111 443 3100 8000 8081 20241.
 
 ## O que é nosso
@@ -21,7 +21,7 @@ ADR 0014. URL: https://chat.toneli.dev.br
 | Zonas de rate limit | `/etc/nginx/conf.d/tess-chat-zones.conf` (cópia de `deploy/nginx-tess-chat-zones.conf`) |
 | Backup | `/etc/cron.d/tess-chat`, dumps em `/opt/tess-chat/backups` (7 dias) |
 | Limpeza de anexos | mesmo cron às 03:45: `python -m app.limpeza_anexos` no container `app`, log em `/opt/tess-chat/backups/limpeza.log` (ticket 50) |
-| Deploy key | `~/.ssh/tess-deploy`, alias ssh `github-tess` em `~/.ssh/config` |
+| Deploy key | `~/.ssh/<chave-deploy>`, alias ssh `<alias-ssh>` em `~/.ssh/config` |
 | Commit no ar | `/opt/tess-chat/DEPLOYED_COMMIT` enquanto não há `.git`; depois `git rev-parse HEAD` |
 
 ## Regras
@@ -53,7 +53,7 @@ Grave o hash em `DEPLOYED_COMMIT`.
 ```
 cd /opt/tess-chat
 git init -b main
-git remote add origin git@github-tess:G59-Toneli/tess-chat.git
+git remote add origin git@<alias-ssh>:G59-Toneli/tess-chat.git
 git fetch origin main
 git reset --hard origin/main
 rm -f DEPLOYED_COMMIT

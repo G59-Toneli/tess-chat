@@ -2,7 +2,7 @@
 
 Ticket 83, 29/09/2026. Latência = do último chunk de microfone com sinal (pico > 500) até o primeiro chunk de áudio do agente chegando no browser. É a régua do smoke do 80 (`web/scripts/smoke-ligacao-prod.mjs`).
 
-**Ambiente de todos os números:** cliente = Windows do Toneli, Brave, rede residencial, microfone falso tocando `spike/live/pergunta.wav` (SAPI pt-BR, 7,3 s) e tela falsa em canvas a 1 fps. Produção = `https://chat.toneli.dev.br`, VPS Oracle São Paulo `<ip-do-vps>`, app na 8010 atrás do nginx do host. Local = API do repo na porta 8083, Postgres 5433, mesma máquina do browser. Modelo `gemini-3.8-live`, chave free. Todo número abaixo é uma amostra pequena (n indicado), não uma média.
+**Ambiente de todos os números:** cliente = Windows do Toneli, Brave, rede residencial, microfone falso tocando `spike/live/pergunta.wav` (SAPI pt-BR, 7,3 s) e tela falsa em canvas a 1 fps. Produção = `https://chat.toneli.dev.br`, VPS `<ip-do-vps>`, app na 8010 atrás do nginx do host. Local = API do repo na porta 8083, Postgres 5433, mesma máquina do browser. Modelo `gemini-3.8-live`, chave free. Todo número abaixo é uma amostra pequena (n indicado), não uma média.
 
 ## Resposta curta
 - **A rede não é a causa.** Cliente → VPS: 12 ms (TCP connect). VPS → Google: 2 ms (TCP), 56 ms (TLS). Ida e volta pelo proxy, browser ⇄ servidor: 40 a 50 ms. Reprodução: o chunk toca no mesmo instante em que chega (0 ms). O nginx não foi tocado.
@@ -112,6 +112,6 @@ O padrão desta tarde ficou entre 1,4 e 2,9 s, mais rápido que os 2,3 a 3,9 s d
 cd web
 SMOKE_EMAIL=lat85-prod@example.com SMOKE_SENHA=<senha da conta> node scripts/smoke-ligacao-prod.mjs \
   --wav ../.scratch/desafio/lat83/pergunta-x3.wav --trace --fixo 62 --v m31   # sem --v = padrão
-ssh -i <chave da VM> ubuntu@<ip-do-vps> "sudo docker logs --since 3h tess-chat-app-1 2>&1 | grep trilha" > trilha.log
+ssh -i <chave> <usuario>@<ip-do-vps> "sudo docker logs --since 3h tess-chat-app-1 2>&1 | grep trilha" > trilha.log
 python ../.scratch/desafio/lat85/tabela.py trilha.log
 ```
