@@ -81,3 +81,11 @@ Varredura de 29-30/09 (commits c416078, 4815b37, 608c6b8): arquivos atuais sem s
 3. **Trocar o `GITHUB_PAT`** marcado como vazado (ticket 16). O valor não está no repo.
 4. **Redação neutra:** trechos sensíveis reescritos antes de abrir o repo (commit `docs: redação neutra antes de abrir o repo`).
 5. Conta demo com senha padrão `demo12345` documentada no README e no `.env.example`: só vale em dev. Produção usa senha própria (conferido: login com a padrão dá 400).
+
+## Histórico reescrito em 30/09 (madrugada), autorizado pelo Toneli
+- `git filter-repo --replace-text --prune-empty never` em todo o histórico: IP do VPS, nomes e caminhos de chave SSH, pasta de acesso local, e-mails pessoais, nomes de outros produtos do servidor. Nenhum commit perdido (mesma contagem); só os hashes mudaram. O autor dos commits continua o mesmo.
+- Backup completo de antes, só nesta máquina: `C:\Projects\desafio-backup-antes-da-reescrita.bundle`.
+- **PC do trabalho:** clone de novo (`git clone`), ou num clone antigo `git fetch origin && git reset --hard origin/main`. Não use `git pull` num clone antigo: ele tentaria juntar os dois históricos.
+- VPS realinhado à mão (`git fetch` + `reset --hard origin/main`); o `.env` de lá não é rastreado e ficou intacto.
+- O GitHub ainda pode servir commits antigos por hash direto por um tempo. Nada de segredo real estava neles (senha de produção nunca foi commitada; a do histórico é a padrão de dev).
+- Pendente: trocar o `GITHUB_PAT` marcado como vazado (ticket 16; valor nunca esteve no repo).
