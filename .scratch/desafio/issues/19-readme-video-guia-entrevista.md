@@ -1,4 +1,4 @@
-# 19 — README, vídeo e guia de entrevista
+# 19 — README, vídeo e perguntas e respostas sobre as decisões
 
 **Type:** task (HITL + AFK)
 **Status:** resolved (parte AFK; vídeo no MANHA)
@@ -6,7 +6,7 @@
 
 **AFK:** ler `docs/LACUNAS.md` e listar as lacunas no README como "limites conhecidos" e no guia como perguntas prováveis. README com arquitetura (diagrama), como rodar, decisões (links pros ADRs), limites conhecidos. `docs/ENTREVISTA.md`: para cada ADR, 3 perguntas prováveis e resposta curta. Roteiro do vídeo em ordem: login → conversa → imagem → PDF → tool web → compactação com limiar baixo → cap estourando → auditoria → share → MCP → Google.
 
-**HITL:** Toneli grava o vídeo (≤ 5 min) e confirma recebimento/entrega ao CPO.
+**HITL:** Toneli grava o vídeo (≤ 5 min) e confirma recebimento/entrega à empresa.
 
 **Aceite:**
 - [x] Alguém sem contexto sobe o projeto local seguindo o README. (conferido: comandos e variáveis; não executado do zero)

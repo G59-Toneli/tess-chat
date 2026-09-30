@@ -1,6 +1,6 @@
 # Estrutura do repo
 
-Mapa do repo para quem chega agora: avaliador ou o próprio Toneli antes da entrevista. Os porquês ficam em `docs/MOTIVACOES.md`. Os termos seguem o `CONTEXT.md`.
+Mapa do repo para quem chega agora: leitor novo ou quem vai revisar. Os porquês ficam em `docs/MOTIVACOES.md`. Os termos seguem o `CONTEXT.md`.
 
 Retrato de 2026-09-23, depois do ticket 54 (commit `b255961`). Revisado na revisão final.
 
@@ -13,13 +13,13 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 ├── README.md                 porta de entrada: o que é, arquitetura, como rodar, decisões, limites (ticket 19)
 ├── CLAUDE.md                 instruções fixas para qualquer sessão do Claude Code neste repo
 ├── CONTEXT.md                glossário do domínio: um significado por termo
-├── DESAFIO.md                enunciado original do desafio (e-mail do CPO)
+├── DESAFIO.md                enunciado original do desafio
 ├── Dockerfile                multi-stage: build do front (Node) e imagem da API (Python) servindo web/dist
 ├── docker-compose.yml        dev local: Postgres 17 na porta 5433 e servidor MCP de demo (`mcp-demo`) na 8765
 ├── .dockerignore             tira spike/, research/, .scratch/ e segredos da imagem
 ├── .gitignore                ignora .env, data/, .venv, node_modules, dist, .playwright-mcp
 ├── .gitattributes            fim de linha LF
-├── .env                      chaves e URLs de banco. Fora do git; o avaliador não vê
+├── .env                      chaves e URLs de banco. Fora do git
 ├── .env.example              modelo versionado do .env, uma linha por campo de `Settings` (ticket 19)
 │
 ├── api/                      backend: FastAPI + Pydantic AI + SQLAlchemy async
@@ -47,9 +47,9 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── ESTRUTURA.md          este arquivo
 │   ├── WORKFLOW.md           regras do trabalho autônomo com agentes
 │   ├── AGENT-PROMPT.md       prompt-padrão que todo agente executor segue
-│   ├── ENTREVISTA.md         guia de entrevista: perguntas prováveis por ADR e pelo workflow (ticket 19)
+│   ├── ENTREVISTA.md         perguntas e respostas sobre as decisões: perguntas prováveis por ADR e pelo workflow (ticket 19)
 │   ├── PROTOCOLO-LIGACAO.md  contrato browser ⇄ servidor da Ligação: ticket, WebSocket, mensagens, close codes (tickets 75 a 82)
-│   ├── ESTUDO-VOZ.md         estudo da Ligação do clique ao Ledger, com `arquivo:linha` e pergunta de entrevista (ticket 81)
+│   ├── ESTUDO-VOZ.md         estudo da Ligação do clique ao Ledger, com `arquivo:linha` e pergunta de revisão (ticket 81)
 │   ├── ROTEIRO-VIDEOS.md     roteiro do vídeo de demo e do vídeo de arquitetura da Ligação (ticket 81)
 │   ├── DECISOES-AUTONOMAS.md decisões que agentes tomaram sem ADR: ticket, decisão, alternativa, porquê
 │   ├── LACUNAS.md            onde o código diverge do ADR ou ficou aresta
@@ -207,7 +207,7 @@ Nomes de tabela conferidos no `__tablename__` de cada módulo.
 
 ## Mapa de `REVISAR(human)`
 
-Funções que o agente implementou no lugar do Toneli. São as que mais caem em entrevista. Revisadas com o Toneli em 24/09: a marca saiu do código, o comentário ficou.
+Funções que o agente implementou e que foram marcadas para revisão humana. Revisadas em 24/09: a marca saiu do código, o comentário ficou.
 
 | Módulo | Marcas | O que decidem |
 |---|---|---|
@@ -243,4 +243,4 @@ Achados da revisão da estrutura (ticket 20). Nada foi movido: todo item quebrar
 5. **`LEDGER.md` não tem a coluna de turnos** que o `WORKFLOW.md` pede.
 6. **Pares de nome parecidos:** `audit.py` (escrita) e `auditoria.py` (leitura); `config.py` (`.env`) e `configuracao.py` (Configuração do domínio, tabela `settings`). A classe `Settings` de `config.py` e a tabela `settings` do ticket 14 são coisas diferentes com o mesmo nome. Não renomear agora (imports); explicar no README.
 7. **Nome do ADR 0011 cita DuckDNS**, mas a decisão final é o domínio próprio. O texto do ADR já explica; renomear o arquivo quebra o link no `map.md`.
-8. **Sem README na raiz.** O avaliador cai direto na lista de arquivos. É o ticket 19. **Resolvido no ticket 19.**
+8. **Sem README na raiz.** Quem chega cai direto na lista de arquivos. É o ticket 19. **Resolvido no ticket 19.**

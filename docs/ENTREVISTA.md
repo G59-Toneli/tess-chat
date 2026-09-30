@@ -1,10 +1,10 @@
-# Guia de entrevista
+# Perguntas e respostas sobre as decisões
 
-Para o Toneli se preparar. Para cada ADR: 3 perguntas prováveis e uma resposta curta. Cada resposta aponta a fonte; não decore o texto, entenda a fonte.
+FAQ técnico. Para cada ADR: 3 perguntas prováveis e uma resposta curta. Cada resposta aponta a fonte; não decore o texto, entenda a fonte.
 
 As perguntas mais duras vêm das divergências entre ADR e código. Elas estão marcadas **Lacuna**. Resposta honesta para lacuna: diga o que o código faz, por que ficou assim, e como corrige.
 
-Antes da entrevista, releia as funções do mapa de `REVISAR(human)` (revisadas em 24/09; a marca saiu do código). O mapa por módulo está em `docs/ESTRUTURA.md`.
+Antes de revisar, releia as funções do mapa de `REVISAR(human)` (funções marcadas para revisão humana) (revisadas em 24/09; a marca saiu do código). O mapa por módulo está em `docs/ESTRUTURA.md`.
 
 ## ADR 0001 — FastAPI + Pydantic AI
 
@@ -34,7 +34,7 @@ Catch-all na última linha de `main.py` (`app/estaticos.py`). `/api/*` sem rota 
 Custa cerca de 3x e não mostra ganho visível numa demo. O Flash tem 1M de contexto, PDF e imagem nativos, tool calling paralelo e thinking configurável.
 
 **Por que pagar se existe free tier?**
-O free tier usa o conteúdo para treino e não publica limites. Avaliador sobe PDF; não posso mandar isso para treino.
+O free tier usa o conteúdo para treino e não publica limites. Usuário sobe PDF; não posso mandar isso para treino.
 
 **E se o preço mudar?**
 A Tabela de Preço tem data de vigência e é somente-inserção. Preço novo é linha nova. O Ledger guarda o preço aplicado em cada chamada, então o histórico não muda. Fonte: ADR 0003, migração 0005.
@@ -80,7 +80,7 @@ O front busca o ponto de corte uma vez por Conversa, e as Mensagens do stream ne
 Pelo banco, não pelo código. A app conecta como `tess_app`, que tem `REVOKE UPDATE, DELETE` em `audit_events`, `credit_ledger` e `price_table`. O Alembic roda como `tess_owner`. Fonte: `docker/postgres-init/01-roles.sql`, migrações 0001 e 0005.
 
 **Por que não Langfuse ou Logfire?**
-O avaliador avalia o app, não um painel de terceiro. Langfuse self-hosted pede 16 GB. A tela `/auditoria` é o painel de observabilidade.
+O que se avalia é o app, não um painel de terceiro. Langfuse self-hosted pede 16 GB. A tela `/auditoria` é o painel de observabilidade.
 
 **Por que Ledger e auditoria em tabelas separadas?**
 Uma é dinheiro, a outra é história. O saldo é a soma do Ledger; misturar com eventos de login deixaria a soma frágil. Usuário comum vê só os próprios eventos; admin vê todos. Fonte: `auditoria.py`.

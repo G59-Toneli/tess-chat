@@ -2,10 +2,10 @@
 
 ## Destination
 
-App de chat deployado em link público, com os 10 requisitos obrigatórios funcionando e auditáveis, mais MCP e conector Google. Toneli sabe defender cada decisão na entrevista. Vídeo curto gravado.
+App de chat deployado em link público, com os 10 requisitos obrigatórios funcionando e auditáveis, mais MCP e conector Google. Cada decisão tem o porquê registrado. Vídeo curto gravado.
 
 **Marco:** Camada 1 (obrigatórios) deployada e compartilhável até **sexta 26/09**. Camadas 2 e 3 depois.
-**Prazo:** terça 29/09, 12h. Confirmado com o CPO.
+**Prazo:** terça 29/09, 12h. Confirmado com a empresa.
 
 ## Notes
 

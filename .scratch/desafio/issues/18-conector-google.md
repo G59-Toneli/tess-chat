@@ -5,7 +5,7 @@
 **Blocked by:** nenhum (era 16; liberado em 23/09 para rodar em localhost, deploy só troca a URL)
 **Refs:** ADR 0010. Camada 3.
 
-**HITL (wizard):** projeto GCP, habilitar Drive e Gmail API, consent screen em Testing, client OAuth web com redirect `https://chat.toneli.dev.br/api/connectors/google/callback`, adicionar e-mail do Toneli e do CPO como test users.
+**HITL (wizard):** projeto GCP, habilitar Drive e Gmail API, consent screen em Testing, client OAuth web com redirect `https://chat.toneli.dev.br/api/connectors/google/callback`, adicionar e-mail do Toneli e dos testadores como test users.
 
 **AFK:** tabela `connectors` (usuário, provedor, tokens criptografados, escopos, expira_em). Fluxo OAuth. Três tools nativas: `gmail_search`, `gmail_read`, `drive_search_read`, registradas só para quem tem conector ativo. Refresh de token. Eventos `connector_linked`, `connector_revoked`. Front: tela "Conectores" com botão conectar Google.
 

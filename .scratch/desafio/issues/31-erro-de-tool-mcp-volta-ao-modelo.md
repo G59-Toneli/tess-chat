@@ -3,7 +3,7 @@
 **Type:** task (AFK)
 **Status:** resolved
 **Blocked by:** 30
-**Refs:** `api/app/chat.py` (`ERROS_PROVEDOR`, `_erro`, 502), `api/app/resiliencia.py`, `api/app/mcp.py`, `api/app/tools.py` (teto de texto por chamada, evento `tool_call`), ADR 0012, ADR 0009. Caso real do Toneli em 23/09 15:14 UTC, usuário demo, conversa "pagamento para o Gustavo" (tools `stripe_cf8f_*`).
+**Refs:** `api/app/chat.py` (`ERROS_PROVEDOR`, `_erro`, 502), `api/app/resiliencia.py`, `api/app/mcp.py`, `api/app/tools.py` (teto de texto por chamada, evento `tool_call`), ADR 0012, ADR 0009. Caso real do Toneli em 23/09 15:14 UTC, usuário demo, conversa "pagamento para o Fulano" (tools `stripe_cf8f_*`).
 
 **O que aconteceu (auditoria):** planner → account_info → api_search → api_details (result 36.267 chars) → api_write `PostPaymentLinks` com `line_items[0]` cheio de chaves inventadas (`price_data_raw`, `price_dataAuto`, `price_data_unit`...). O Stripe respondeu "Tool execution was interrupted by an error". O app devolveu ao usuário "O provedor do modelo falhou. Tente de novo." (502) e não gravou `tool_call` da escrita.
 

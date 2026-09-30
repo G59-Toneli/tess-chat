@@ -78,7 +78,7 @@ Pesquisa feita em 2026-09-22. Fonte primária por afirmação. Tudo que não foi
 
 ### Armadilhas
 
-- **Avaliador não conecta o próprio Gmail/Drive** se o e-mail dele não estiver na lista de test users. Isso quebra o bônus como fluxo self-service.
+- **Usuário externo não conecta o próprio Gmail/Drive** se o e-mail não estiver na lista de test users. Isso quebra o bônus como fluxo self-service.
 - Token morre em 7 dias. Se a avaliação acontecer depois disso, a conexão da demo precisa de novo consentimento.
 - `1-2-3-4.sslip.io` como redirect URI: não é IP cru no formato, mas o Google pode rejeitar. **INFERIDO.** DuckDNS ou domínio próprio é mais seguro (ver ponto 4).
 - MCP oficial do Google depende de aprovação num programa. Não cabe em 2 dias.
@@ -88,7 +88,7 @@ Pesquisa feita em 2026-09-22. Fonte primária por afirmação. Tudo que não foi
 1. Faz o conector direto com `google-api-python-client` e OAuth2 web flow. São 2–3 tools (buscar e-mails, ler e-mail, listar/ler arquivo do Drive). O token fica no Postgres, por usuário.
 2. Escopos mínimos: `drive.file` com Google Picker se der tempo; senão `drive.readonly`. Para Gmail, `gmail.readonly`. Em Testing, restrito não exige verificação.
 3. Trade-off da alternativa: rodar `google_workspace_mcp` como sidecar e registrar como servidor MCP entrega MCP e conector juntos. Custo: OAuth multiusuário passando pelo MCP, mais um container, 120+ tools poluindo o prompt (dá pra limitar com `--tool-tier core`). Recomendo o caminho direto; é menos peça móvel.
-4. Para a avaliação: grava vídeo/prints com sua conta **e** pede os e-mails dos avaliadores para cadastrar como test users. Escreve isso no README.
+4. Para teste externo: grava vídeo/prints com sua conta **e** pede os e-mails dos testadores para cadastrar como test users. Escreve isso no README.
 
 ---
 
@@ -118,7 +118,7 @@ Pesquisa feita em 2026-09-22. Fonte primária por afirmação. Tudo que não foi
 1. Front Next.js: **Better Auth** com e-mail+senha e Google login opcional, no mesmo Postgres. Backend Python valida JWT pelo JWKS.
 2. Backend Python puro sem Next.js: **FastAPI-Users** ainda resolve em 2 dias. Manutenção significa estável, não quebrado. Alternativa: sessão/JWT manual com hash argon2. É pouco código, mas é código seu de segurança.
 3. Supabase self-hosted: não. Consome 4 GB só para ter auth.
-4. Clerk: só se o tempo apertar muito. O avaliador pode ler como "terceirizou o requisito".
+4. Clerk: só se o tempo apertar muito. Pode parecer que o requisito foi terceirizado; a solução precisa mostrar o que foi implementado.
 
 ---
 
@@ -165,8 +165,8 @@ Pesquisa feita em 2026-09-22. Fonte primária por afirmação. Tudo que não foi
 ### Recomendação
 
 1. O requisito obrigatório é o **log de auditoria no app**. Faz uma tabela append-only `audit_events` no Postgres: `id`, `ts`, `user_id`, `conversation_id`, `event_type` (login, message_sent, llm_call, tool_call, share_created, share_revoked, connector_linked…), `payload jsonb`, `input_tokens`, `output_tokens`, `cost`, `latency_ms`, `model`.
-2. Mostra essa tabela numa tela do app com filtro por usuário/conversa. O avaliador avalia o app, não o painel de um terceiro.
-3. Append-only de verdade: o usuário do banco da aplicação sem `UPDATE`/`DELETE` nessa tabela. Custa um `REVOKE`. **INFERIDO** que o avaliador valoriza, mas é barato.
+2. Mostra essa tabela numa tela do app com filtro por usuário/conversa. A solução precisa mostrar a observabilidade no próprio app, não no painel de um terceiro.
+3. Append-only de verdade: o usuário do banco da aplicação sem `UPDATE`/`DELETE` nessa tabela. Custa um `REVOKE`. **INFERIDO** que agrega garantia de integridade; é barato.
 4. Tokens vêm do `usage` da resposta do provider. Não recalcula com tokenizer.
 5. Tracing é bônus. Se o stack for Pydantic AI, Logfire free é uma linha e mostra tool calls. Aviso: os dados saem do VPS. Langfuse self-hosted no VPS: não, pede 16 GB.
 

@@ -12,7 +12,7 @@
    - **Conceito:** o que é, em 2 ou 3 frases simples.
    - **Por quê:** a escolha e a alternativa que caiu.
    - **Onde:** `arquivo:linha`.
-   - **Pergunta de entrevista** + resposta curta que o Toneli consegue falar.
+   - **Pergunta de revisão** + resposta curta que o Toneli consegue falar.
    Juntar as paradas dos tickets 75 a 80. Conferir cada `arquivo:linha` no código atual. Incluir um diagrama de sequência em texto (browser, backend, Gemini).
 2. **`docs/ROTEIRO-VIDEOS.md`:**
    - **Vídeo 1, demo (3 a 4 min):** compartilhar a aba de um PR do tess-chat e perguntar "o que esse diff faz?"; trocar para uma aba com gráfico ou dashboard e perguntar sobre ele; desligar e mostrar as falas no histórico e a Ligação em `/auditoria` e `/creditos`.

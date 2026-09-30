@@ -8,7 +8,7 @@
 - Teto de gasto da etapa: R$ 30. Teto de chamadas reais: 10 sessões de até 2 min. Chave `GEMINI_LIVE_API_KEY` = free (`GEMINI_API_KEY`); se a free não servir no Live, usar a paga sem perguntar.
 - Corte de escopo: qua 30/09 18h é código congelado. Primeiro a cair: 77.
 - Autorizado: o agente do 79 aplica o nginx no VPS (backup, `nginx -t`, reload, só o site `tess-chat`).
-- Pendente com o Toneli: sessão guiada sobre Jev e MCP (perguntas de entrevista sobre esses temas).
+- Pendente com o Toneli: sessão guiada sobre Jev e MCP (perguntas de revisão sobre esses temas).
 - **29/09 ~10:20:** 75 a 82 resolvidos e em produção. Estudo em `docs/ESTUDO-VOZ.md` (23 paradas), roteiro em `docs/ROTEIRO-VIDEOS.md`. Chamadas reais: 7 de 10, R$ 0. Subagentes agora em Sonnet 5.5 (pedido do Toneli, 29/09).
 - Em aberto: latência 1,9 s em produção vs 0,5 s local (causa não isolada); reserva de crédito só compara, não segura saldo (`LACUNAS.md`); barra `chart-4` da Ligação quase invisível no dark; conta demo não entra em produção.
 
@@ -79,5 +79,5 @@ Varredura de 29-30/09 (commits c416078, 4815b37, 608c6b8): arquivos atuais sem s
 1. **Trocar a senha da conta demo de produção** (`DEMO_PASSWORD` no `.env` do VPS). A senha atual aparece em texto no histórico do git (ticket 16, versões antigas). Trocar é mais simples e seguro do que só reescrever o histórico.
 2. **Histórico do git:** o IP do VPS, o usuário SSH e caminhos locais continuam nos commits antigos. Para sumir de vez: `git filter-repo` + force push na `main`, antes de tornar público. Irreversível; só com ordem explícita.
 3. **Trocar o `GITHUB_PAT`** marcado como vazado (ticket 16). O valor não está no repo.
-4. **Trechos para decidir se ficam públicos:** `DESAFIO.md:1-6` (nome real, Tess, CPO); `docs/ENTREVISTA.md` (arquivo inteiro); rótulos "Pergunta de entrevista" em `docs/ESTUDO-VOZ.md`, `docs/ESTUDO-JEV-MCP.md` e tickets; `docs/ESTUDO-JEV-MCP.md:3` e seção 6 (resultado do questionário); `docs/ROTEIRO-VIDEOS.md:53,111`; `CLAUDE.md:15` e `docs/ESTRUTURA.md:210` ("Toneli precisa defender", `REVISAR(human)`); `docs/MOTIVACOES.md:103`; `docs/WIZARD-GOOGLE.md:18,88`; `research/01:65`, `research/03:81-169`; `issues/20:8`, `issues/22:8`, `map.md:5`.
+4. **Redação neutra:** trechos sensíveis reescritos antes de abrir o repo (commit `docs: redação neutra antes de abrir o repo`).
 5. Conta demo com senha padrão `demo12345` documentada no README e no `.env.example`: só vale em dev. Produção usa senha própria (conferido: login com a padrão dá 400).

@@ -8,7 +8,7 @@ Vale para todo ticket que toca `web/`. Meta do Toneli: tela bonita, clara e vis�
 - Inspiração de acabamento: https://www.beautifului.dev/ (loadings, animação de "digitando", estados vazios, transições). Reaproveitar padrões, não copiar código sem licença clara.
 
 ## Regras
-- **Dark mode padrão.** Tema via `next-themes` ou equivalente, toggle no menu do usuário. Light funciona, mas dark é o que o Toneli e o avaliador vão ver.
+- **Dark mode padrão.** Tema via `next-themes` ou equivalente, toggle no menu do usuário. Light funciona, mas dark é o que vai aparecer nos screenshots.
 - Densidade média. Tipografia do shadcn. Sem gradiente chamativo, sem cor fora dos tokens do tema.
 - Todo estado tem tela: vazio ("nenhuma conversa ainda", com ação), carregando (skeleton ou loader do AI Elements), erro (mensagem em pt-BR, ação de tentar de novo).
 - Streaming: texto aparece token a token; indicador de "pensando" enquanto não chega o primeiro token; tool call aparece como bloco recolhível com nome, args e duração.

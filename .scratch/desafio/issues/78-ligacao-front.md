@@ -30,35 +30,35 @@ Componentes novos `web/src/components/Ligacao*.tsx` e `web/src/lib/ligacao/*`. E
 - **Conceito:** AudioWorklet é um pedaço de JS que roda na thread de áudio do browser e recebe as amostras cruas, 128 por vez. O nosso converte float para PCM16 e junta 512 amostras (32 ms a 16 kHz) num chunk.
 - **Por quê:** o Gemini Live quer PCM16 cru a 16 kHz. O MediaRecorder só entrega áudio comprimido (Opus em WebM), em pedaços do tamanho que ele escolhe; o servidor teria que decodificar. O ScriptProcessorNode faria o mesmo que o worklet, mas é obsoleto e roda na thread principal, que trava quando o React renderiza.
 - **Onde:** `web/src/lib/ligacao/captura.worklet.js:9`, `web/src/lib/ligacao/captura.ts:12`.
-- **Pergunta de entrevista:** "Por que você não usou o MediaRecorder para mandar o áudio?"
+- **Pergunta de revisão:** "Por que você não usou o MediaRecorder para mandar o áudio?"
   **Resposta:** Porque ele entrega Opus comprimido e o Gemini Live pede PCM cru. O AudioWorklet me dá as amostras cruas em tempo real, fora da thread do React. O AudioContext roda a 16 kHz, então o browser reamostra e o worklet só converte para int16 e junta em chunks de 32 ms.
 
 ### 2. Barge-in no browser
 - **Conceito:** barge-in é o usuário falar por cima do agente e o agente parar. Quem detecta a fala é o VAD do Gemini. Ele manda `interrupted`, o servidor repassa `interrompido`, e o browser para o áudio que já está na fila.
 - **Por quê:** o Gemini manda o áudio em rajada, mais rápido que o tempo real. Quando o usuário interrompe, o browser já tem segundos de fala agendados. Sem esvaziar a fila, o agente seguiria falando por cima. Cada chunk é um `AudioBufferSourceNode` agendado; esvaziar é chamar `stop()` em todos e zerar o próximo início.
 - **Onde:** `web/src/lib/ligacao/reproducao.ts:43`, `web/src/lib/ligacao/useLigacao.ts:123`.
-- **Pergunta de entrevista:** "Como o agente para de falar quando o usuário interrompe?"
+- **Pergunta de revisão:** "Como o agente para de falar quando o usuário interrompe?"
   **Resposta:** O Gemini detecta a voz e manda `interrupted`; o backend repassa como `interrompido`. No browser, a fila de reprodução guarda cada chunk agendado e para todos na hora. O `echoCancellation` do microfone evita que a voz do próprio agente dispare o barge-in.
 
 ### 3. Por que 1 fps de tela basta
 - **Conceito:** a tela vai como Frames JPEG, um por segundo, lado maior 1280, qualidade 0,7. O modelo não assiste vídeo: cada Frame vira uma imagem que ele lê.
 - **Por quê:** o caso de uso é documento, código, slide e página, que mudam pouco por segundo. A Live API não aceita mais que 1 fps. O spike mediu 264 tokens por Frame a 1280 e a 768, então 1280 não custa mais. Movimento rápido (vídeo, jogo) fica fora, como diz o ADR 0028.
 - **Onde:** `web/src/lib/ligacao/tela.ts:18`, `web/src/lib/ligacao/config.ts`.
-- **Pergunta de entrevista:** "Por que não mandar a tela como vídeo?"
+- **Pergunta de revisão:** "Por que não mandar a tela como vídeo?"
   **Resposta:** Porque o modelo lê imagens, não assiste vídeo, e a API aceita no máximo 1 imagem por segundo. Para documento e código, um quadro por segundo pega o que muda. O pior caso é o agente ver a tela de até 1 s atrás.
 
 ### 4. Microfone antes do ticket
 - **Conceito:** ao clicar em ligar, o browser pede o microfone primeiro. Só depois pede o Ticket de Ligação e abre o WebSocket.
 - **Por quê:** o Ticket vale 30 s e uma vez só. O pedido de permissão do microfone pode levar mais que isso. Na ordem inversa, o ticket morreria na tela de permissão, e a recusa do microfone gastaria um ticket à toa.
 - **Onde:** `web/src/lib/ligacao/useLigacao.ts:84`.
-- **Pergunta de entrevista:** "O que acontece se o usuário demora para liberar o microfone?"
+- **Pergunta de revisão:** "O que acontece se o usuário demora para liberar o microfone?"
   **Resposta:** Nada quebra, porque o ticket só é pedido depois da permissão. Se ele nega, a tela mostra o erro e nenhum ticket foi gasto.
 
 ### 5. Testar áudio e tela sem microfone de verdade
 - **Conceito:** o teste roda o front real no Brave, com o microfone falso do browser (`--use-fake-device-for-media-stream`) e um canvas no lugar da tela. Um servidor falso fala o protocolo e grava o que chega.
 - **Por quê:** o que importa é o que o servidor vê e o que o usuário vê: chunks binários de 1024 bytes, Frames a cada ~1000 ms com 1280x720, `tela` `false` quando a trilha acaba, fila vazia logo depois do `interrompido`. Chamar o Gemini de verdade custaria dinheiro e não seria repetível.
 - **Onde:** `web/scripts/testar-ligacao.mjs`.
-- **Pergunta de entrevista:** "Como você testou a Ligação sem gastar crédito?"
+- **Pergunta de revisão:** "Como você testou a Ligação sem gastar crédito?"
   **Resposta:** Com um servidor WebSocket falso que segue o protocolo e o Brave com mídia falsa. O teste afirma o que sai do browser (formato do áudio, ritmo dos Frames) e o que o usuário vê (fila esvazia, painel fecha, erro legível).
 
 ## Answer

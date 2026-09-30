@@ -50,7 +50,7 @@ Objetivo: mostrar que o agente ouve, vê a tela e que tudo fica auditado e cobra
 
 ## Vídeo 2: arquitetura (8 a 10 min)
 
-Objetivo: o avaliador sai sabendo o que trafega em cada ponto e por que cada escolha foi feita. Tela: o diagrama de sequência de `docs/ESTUDO-VOZ.md`, o `voz.py` aberto, e o painel de auditoria quando citar evento.
+Objetivo: quem assiste sai sabendo o que trafega em cada ponto e por que cada escolha foi feita. Tela: o diagrama de sequência de `docs/ESTUDO-VOZ.md`, o `voz.py` aberto, e o painel de auditoria quando citar evento.
 
 ### 0:00 a 0:40. O que é
 - "A Ligação é uma conversa por voz em tempo real dentro de uma Conversa, com a tela como contexto."
@@ -108,7 +108,7 @@ Objetivo: o avaliador sai sabendo o que trafega em cada ponto e por que cada esc
 
 ---
 
-## Três perguntas difíceis do avaliador (vídeo 2, depois do fecho)
+## Três perguntas difíceis de quem assiste (vídeo 2, depois do fecho)
 
 ### 1. "Você pôs um proxy no meio. Isso não soma latência e um ponto de falha?"
 **Resposta curta:** "Soma um salto, dezenas de ms contra centenas do modelo. Não medi o salto sozinho, é INFERIDO. Aceitei porque no proxy eu vejo o uso real do Gemini, e o Cap e a auditoria são obrigatórios. O ponto de falha extra é o servidor, e todo fim, inclusive queda, passa por um caminho só que acerta o crédito e libera a vaga."

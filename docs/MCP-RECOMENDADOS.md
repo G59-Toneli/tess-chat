@@ -23,7 +23,7 @@ Pesquisa de 2026-09-23. Fonte: doc oficial de cada fornecedor. O que não está 
 
 - **Stripe** é o melhor efeito de demo. Uma frase vira um link de pagamento real. Mostra também o risco: a tool escreve em sistema de terceiro. Usar só a chave de sandbox. A partir de 2026-10-31 a Stripe só aceita Agent Key ou OAuth. Criar a chave já como Agent Key.
 - **Linear** mostra o mesmo padrão "cria algo e devolve link" com setup de dois minutos. Bom plano B do Stripe.
-- **Hugging Face** mostra saída não textual. Só vale se o chat renderizar imagem vinda de tool MCP. Conferir antes da entrevista.
+- **Hugging Face** mostra saída não textual. Só vale se o chat renderizar imagem vinda de tool MCP. Conferir antes de apresentar.
 - **Zapier** mostra efeito fora da tela (e-mail chega). Custa tasks do plano. Configurar a ação antes, porque o servidor começa vazio sem apps conectados.
 - **DeepWiki** não pede conta nem chave. Funciona sempre. É a rede de segurança se todo o resto falhar ao vivo.
 
@@ -52,7 +52,7 @@ Pesquisa de 2026-09-23. Fonte: doc oficial de cada fornecedor. O que não está 
 | Pipedream | Exige access token de OAuth client-credentials, que expira (**INFERIDO**: validade não conferida), mais cinco headers `x-pd-*` por usuário. Não é header fixo. |
 | Composio | Auth por header `x-api-key`, não `Authorization`. Só entra se o cliente aceitar header arbitrário. |
 
-## Para a entrevista
+## Respostas prontas
 
 1. "O cliente só fala Streamable HTTP porque stdio num app multiusuário é executar processo arbitrário no nosso servidor, e SSE legado foi deprecado pela própria spec e pelos fornecedores (DeepWiki, Linear e Zapier já marcam ou recusam SSE)."
 2. "Auth é header fixo ou OAuth com DCR. No OAuth o app descobre o authorization server pela spec MCP, registra um cliente público, abre o consentimento com PKCE e guarda o token por usuário. Antes do turno ele renova o token; se não conseguir, o servidor sai do turno até o usuário reconectar (ADR 0022)."

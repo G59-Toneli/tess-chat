@@ -1,6 +1,6 @@
 # Estudo: Jev, MCP e tool calling
 
-Sessão guiada de 29/09/2026. Perguntas que ficaram sem resposta na entrevista anterior: como o Jev força a tool e como o conector MCP funciona. Todo `arquivo:linha` foi conferido no código de 29/09. Caminhos `pydantic_ai/...` ficam em `api/.venv/Lib/site-packages/`.
+Revisão de Jev, MCP e tool calling (29/09/2026): como o Jev força a tool e como o conector MCP funciona. Todo `arquivo:linha` foi conferido no código de 29/09. Caminhos `pydantic_ai/...` ficam em `api/.venv/Lib/site-packages/`.
 
 ## 1. Tool calling: o loop do agente
 
@@ -131,22 +131,19 @@ sem Mcp-Session-Id ← {"error":{"code":-32600,"message":"Missing session ID"}} 
 | Ganho do Jev não medido | `jev_golden.json` | golden set com e sem o Jev |
 | Cap não checado entre passos; a reserva não segura saldo | ADR 0023, `docs/LACUNAS.md` | reserva gravada no Ledger |
 | Turno com MCP abre duas conexões por servidor (sonda e sessão) | `app/tools.py:343`, `app/mcp.py:99` | reaproveitar a sessão da sonda |
-| Nenhuma métrica de qualidade das respostas | — | Jev como avaliador em segundo plano, validado contra um golden set rotulado à mão |
+| Nenhuma métrica de qualidade das respostas | — | Jev como juiz em segundo plano, validado contra um golden set rotulado à mão |
 
-## 5. Vocabulário que o entrevistador escuta
+## 5. Vocabulário técnico
 - `isError` é do protocolo MCP; `ModelRetry` é do Pydantic AI.
 - Teto de chamadas (`tool_limit_reached`) ≠ falha seguida (`tool_falhou`).
 - SSRF (*Server-Side Request Forgery*); DNS rebinding.
 - Notificação JSON-RPC: mensagem sem `id`.
 - `AUTO`, `ANY`, `NONE`, `VALIDATED`: modos de `function_calling_config` do Gemini.
 
-## 6. Questionário de 29/09: resultado e lições
+## 6. Boas práticas ao responder sobre o sistema
 
-Placar: 4 certas, 8 parciais, 3 erradas ou "não sei".
+1. Confirmar no código antes de afirmar (revalidação de DNS, "o Gemini respondeu de memória", "não corta o turno"). Na dúvida: "acho que X, preciso confirmar".
+2. Número só vale com o ambiente declarado. Não usar um número de um contexto em outro (ex.: os ~50 ms do relay da voz não valem para o MCP).
+3. Usar cada conceito no lugar certo: `isError` é do MCP, não de tool nativa; teto de chamadas é diferente de falha seguida.
 
-Padrões que derrubam:
-1. Supor o que o código faz em vez de saber (revalidação de DNS, "vimos o Gemini responder de memória", "não corta o turno"). Na dúvida: "acho que X, teria que confirmar".
-2. Número de um contexto usado em outro (os ~50 ms do relay da voz citados no MCP). Número sem ambiente não vale.
-3. Conceito trocado (`isError` numa tool nativa; "teto" no lugar de falha seguida).
-
-Perguntas para refazer: as camadas do `tools/call`; os três jeitos de o turno ser cortado; "como você sabe que o Jev ajuda?".
+Perguntas para refazer: as camadas do `tools/call`; os três jeitos de o turno ser cortado; "como saber que o Jev ajuda?".

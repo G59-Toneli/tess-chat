@@ -62,7 +62,7 @@ Legenda: ✅ nativo e documentado · 🟡 parcial ou com ressalva · ❌ não te
 
 Leitura cética:
 - LibreChat cobre mais itens do checklist sem código. Falta auditoria completa de eventos.
-- Risco de avaliação: entregar LibreChat quase sem mudança pode ser lido como "não construiu". **INFERIDO**, depende do avaliador.
+- Risco: entregar LibreChat quase sem mudança deixa pouco a mostrar como construído. **INFERIDO**: a solução precisa mostrar o que foi implementado.
 - Open WebUI tem compactação e auditoria em arquivo. Falta teto de crédito. A cláusula de marca é irrelevante para ≤50 usuários.
 
 ---

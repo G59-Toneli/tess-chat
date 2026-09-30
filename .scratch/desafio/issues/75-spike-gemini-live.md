@@ -22,34 +22,34 @@ Script `spike/live/spike_live.py` (~40 a 80 linhas, `google-genai` que já está
 - Chamadas reais: teto 3 sessões (contam no teto de 10 da etapa). Registrar no LEDGER.
 
 ## Paradas de estudo
-Ao terminar, adicione aqui 2 a 4 entradas no formato do `docs/ESTUDO-VOZ.md` (conceito, porquê, alternativa que caiu, `arquivo:linha`, pergunta de entrevista + resposta). Ex.: o que é PCM 16 kHz e por que 16 na entrada e 24 na saída.
+Ao terminar, adicione aqui 2 a 4 entradas no formato do `docs/ESTUDO-VOZ.md` (conceito, porquê, alternativa que caiu, `arquivo:linha`, pergunta de revisão + resposta). Ex.: o que é PCM 16 kHz e por que 16 na entrada e 24 na saída.
 
 ### 1. PCM 16 kHz na entrada, 24 kHz na saída
 - **Conceito:** PCM é áudio cru: uma amostra de 16 bits por instante, sem compressão. 16 kHz são 16 mil amostras por segundo, 32 KB/s em mono. A frequência de amostragem limita o agudo que o áudio carrega (metade dela).
 - **Por quê:** voz humana inteligível cabe em 8 kHz de banda; 16 kHz de amostragem basta para o reconhecimento e é o que o Live exige na entrada. Na saída o Gemini gera 24 kHz para a voz soar natural. Opus ou MP3 cairiam: o Live não aceita, e codificar no browser soma latência.
 - **Onde:** `spike/live/spike_live.py:33` (envio com `audio/pcm;rate=16000`); `spike/live/RESULTADO.md`, tabela de mensagens (`audio/pcm;rate=24000` confirmado).
-- **Pergunta de entrevista:** "Por que o microfone manda 16 kHz e o alto-falante toca 24 kHz?"
+- **Pergunta de revisão:** "Por que o microfone manda 16 kHz e o alto-falante toca 24 kHz?"
   **Resposta:** Entrada é para a máquina entender; 16 kHz cobre a banda da fala e é o formato que o Live pede. Saída é para gente ouvir; 24 kHz soa mais natural. Mandar cru evita codec e latência de compressão.
 
 ### 2. Frame custa tokens fixos, não por pixel
 - **Conceito:** cada imagem que entra no Gemini vira tokens. No Live, com `media_resolution` padrão, o Frame virou 264 tokens a 1280 e a 768.
 - **Por quê:** o ADR 0028 previa baixar para 768 se o Frame passasse de ~1000 tokens. Medido: 264 nas duas. Fica 1280 porque a regra não disparou. Diferença de legibilidade entre as duas: INFERIDO, não testada (o texto de 16 pt leu nas duas). Se 264 é um bloco fixo, o servidor reduz a imagem para o mesmo tamanho interno; aí 768 lê igual com 40% dos bytes (15 KB contra 37 KB por Frame) e é a candidata se a banda pesar.
 - **Onde:** `spike/live/spike_live.py:38` (1 fps); `spike/live/RESULTADO.md`, seção Tokens por Frame.
-- **Pergunta de entrevista:** "Como você escolheu a resolução da captura de tela?"
+- **Pergunta de revisão:** "Como você escolheu a resolução da captura de tela?"
   **Resposta:** Medi antes de decidir. Mandei o mesmo documento a 1280 e a 768 e li o `usageMetadata`: 264 tokens nas duas, e o modelo leu o texto nas duas. Custo igual, então fiquei com o que o ADR já dizia. Se a banda do WebSocket pesar, 768 é a troca barata, e é config.
 
 ### 3. `usage_metadata` por turno, e o pensamento fora do total
 - **Conceito:** o Live manda o consumo junto do `turn_complete`, um por turno. O `prompt_token_count` é o contexto inteiro daquele turno, separado por modalidade (TEXT, AUDIO, IMAGE).
 - **Por quê:** o acerto de crédito (ADR 0027) soma os turnos. Pegar só o último cobraria menos. `thoughts_token_count` não entra no `total_token_count`; o acerto precisa somar à parte.
 - **Onde:** `spike/live/spike_live.py:64` (`anotar` loga cada mensagem); `spike/live/out/sessao3_1280.jsonl` (dois turnos).
-- **Pergunta de entrevista:** "Como o servidor sabe quanto a Ligação custou?"
+- **Pergunta de revisão:** "Como o servidor sabe quanto a Ligação custou?"
   **Resposta:** O Gemini reporta o uso por turno, por modalidade. O servidor soma e multiplica pelo preço de cada modalidade da Tabela de Preço. Sem o reporte (queda), estima por duração: ~25 tokens por segundo de áudio.
 
 ### 4. Barge-in: o sinal `interrupted`
 - **Conceito:** o VAD do Gemini detecta que o usuário começou a falar enquanto o modelo responde. Ele manda `voice_activity` `ACTIVITY_START`, depois `server_content.interrupted = true` e um `turn_complete` do turno cortado.
 - **Por quê:** o áudio já enviado ao browser continua na fila. Sem esvaziar a fila no `interrupted`, o agente segue falando por cima do usuário. VAD no cliente caiu: seria mais código e duas fontes de verdade.
 - **Onde:** `spike/live/spike_live.py:46` (`microfone` repete a fala por cima com `--interromper`); `spike/live/out/sessao3_1280.jsonl`.
-- **Pergunta de entrevista:** "O que acontece quando o usuário interrompe o agente?"
+- **Pergunta de revisão:** "O que acontece quando o usuário interrompe o agente?"
   **Resposta:** O Gemini percebe a voz nova e manda `interrupted`. O servidor repassa `{"tipo":"interrompido"}` e o browser joga fora o áudio que ainda não tocou. O modelo responde a fala nova no turno seguinte.
 
 ## Answer

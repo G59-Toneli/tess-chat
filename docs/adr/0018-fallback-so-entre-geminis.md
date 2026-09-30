@@ -13,7 +13,7 @@ Toneli, 23/09: sem fallback OpenAI.
 
 ### Alternativas descartadas
 - **OpenAI no fim da cadeia.** Sem chave, é código morto. Ativar pede chave paga, linha na Tabela de Preço e teste do stream de outro provedor. Custo real para um cenário que a demo não exercita.
-- **Deixar o ADR 0012 prometendo OpenAI.** Documento que diverge do código vira pergunta sem resposta na entrevista.
+- **Deixar o ADR 0012 prometendo OpenAI.** Documento que diverge do código vira pergunta sem resposta.
 
 ## Consequências
 - Queda do Google inteiro derruba o chat. Os dois modelos dependem do mesmo provedor e da mesma chave.

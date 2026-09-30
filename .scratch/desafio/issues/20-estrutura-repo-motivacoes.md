@@ -5,13 +5,13 @@
 **Blocked by:** nenhum
 **Refs:** todos os `docs/adr/`, `CONTEXT.md`, `docs/WORKFLOW.md`, `docs/AGENT-PROMPT.md`, `docs/DECISOES-AUTONOMAS.md`, `docs/LACUNAS.md`.
 
-**Contexto:** os avaliadores vão ler a estrutura do repo para entender o fluxo de trabalho com IA que o Toneli usou. Toneli vai se contextualizar depois fazendo perguntas ao Claude Code sobre o repo. Ele precisa defender cada decisão em entrevista. Pedido dele em 23/09 de madrugada.
+**Contexto:** a estrutura do repo precisa deixar claro o fluxo de trabalho com IA. O Toneli vai se contextualizar depois fazendo perguntas ao Claude Code sobre o repo. Cada decisão precisa ter o porquê registrado. Pedido de 23/09 de madrugada.
 
 **What to build:**
 1. `docs/MOTIVACOES.md`: para cada escolha, o porquê e a alternativa descartada. Cobrir: stack (Python 3.14 + uv, FastAPI, Pydantic AI, Postgres, Alembic, React + Vite + shadcn, Gemini, Tavily, Jina/trafilatura, Jev), estilo arquitetural (nomear com precisão: monólito modular, camadas, o que é e o que não é; onde fica a fronteira entre API, domínio e infra), padrões (registro de tools, ledger de crédito, Roteador, compactação, auditoria por evento), infraestrutura (VPS + Docker Compose + Caddy/HTTPS, por que não serverless/k8s), fluxo de trabalho com IA (tickets em `.scratch/desafio/issues`, orquestrador + agentes executores, ADRs, `REVISAR(human)`, `DECISOES-AUTONOMAS`, LEDGER, golden set). Só afirme o que está no código ou nos ADRs; o que for inferido, marque `INFERIDO`. Onde um ADR já explica, linke e resuma em 2 linhas, não duplique.
 2. `docs/ESTRUTURA.md`: árvore comentada do repo (1 linha por pasta/arquivo relevante) e o mapa "onde mora cada conceito do CONTEXT.md".
-3. Revisar a estrutura em si: apontar (não mover) o que está fora de lugar ou faltando para um avaliador entender o fluxo de IA. Só mover/renomear se for trivial e não quebrar import nem referência em doc; qualquer outra sugestão vai numa seção "Sugestões" no final de `ESTRUTURA.md` para o ticket 19 decidir.
-4. Adicionar em `CLAUDE.md` da raiz uma linha apontando para os dois docs. O ticket 19 (README, guia de entrevista) lê ambos.
+3. Revisar a estrutura em si: apontar (não mover) o que está fora de lugar ou faltando para o fluxo de IA ficar claro. Só mover/renomear se for trivial e não quebrar import nem referência em doc; qualquer outra sugestão vai numa seção "Sugestões" no final de `ESTRUTURA.md` para o ticket 19 decidir.
+4. Adicionar em `CLAUDE.md` da raiz uma linha apontando para os dois docs. O ticket 19 (README, perguntas e respostas sobre as decisões) lê ambos.
 
 **Aceite:**
 - [ ] `docs/MOTIVACOES.md` responde "por que X e não Y" para stack, arquitetura, infra e workflow, sem contradizer nenhum ADR.

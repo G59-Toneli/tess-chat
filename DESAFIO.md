@@ -1,11 +1,9 @@
-### TESTE TÉCNICO - VAGA NA EMPRESA TESS AI
+### DESAFIO TÉCNICO - TESS AI
 
 # CONTEXTO
-- Essa mensagem foi enviada a mim, no meu email, pelo CPO da Tess AI, qual fez entrevistas comigo, temos uma semana para entregar, porem, o quanto antes melhor...
+- Enunciado do desafio técnico proposto pela empresa. Prazo de uma semana; quanto antes, melhor.
 
-Olá, Gustavo,
-
-Como falamos, segue o desafio, o prazo limite é quarta-feira, dia 29/09, 12h00m.
+Segue o desafio. O prazo limite é quarta-feira, dia 29/09, 12h00m.
 Objetivo
 Construir e disponibilizar uma aplicação de chat, com foco em integração com ferramentas externas, persistência e rastreabilidade.
 

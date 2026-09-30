@@ -10,7 +10,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 | Escolha | Por quê | Alternativa descartada | Fonte |
 |---|---|---|---|
-| **Python** | Toneli defende Python na entrevista. A lógica avaliada está no backend. | TypeScript com o template Vercel Chatbot. | [ADR 0001](adr/0001-backend-python-pydantic-ai.md), `research/01` §3 |
+| **Python** | Python é a escolha defendida. A lógica avaliada está no backend. | TypeScript com o template Vercel Chatbot. | [ADR 0001](adr/0001-backend-python-pydantic-ai.md), `research/01` §3 |
 | **Python 3.14** | Versão mais nova estável no momento. | 3.12 ou 3.13. | **INFERIDO**. Nenhum doc registra o motivo. |
 | **uv** | Um lock (`uv.lock`), `uv sync --frozen` no Dockerfile, instala rápido. | pip + requirements, Poetry. | **INFERIDO**. Nenhum doc registra o motivo; o uso está no `Dockerfile` e no `AGENT-PROMPT.md`. |
 | **FastAPI** | Async, casa com o streaming e com o FastAPI-Users para auth. Dependências (`Depends`) servem de ponto de troca nos testes. | — | [ADR 0001](adr/0001-backend-python-pydantic-ai.md), [ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md) |
@@ -75,7 +75,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 - Os Anexos ficam no disco do servidor, com metadados no Postgres (`map.md`, grilling 23/09). Serverless não tem disco persistente.
 - Um container já serve front e API ([ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md)). Separar em funções volta a dobrar a superfície a defender.
 
-**Por que não Kubernetes:** **INFERIDO**. Um app, um banco, um avaliador, uma semana no ar. Compose descreve os três serviços num arquivo. K8s traz control plane, ingress e manifests sem nenhum requisito que peça escala ou alta disponibilidade.
+**Por que não Kubernetes:** **INFERIDO**. Um app, um banco, um público pequeno, uma semana no ar. Compose descreve os três serviços num arquivo. K8s traz control plane, ingress e manifests sem nenhum requisito que peça escala ou alta disponibilidade.
 
 **Estado:** no ar em https://chat.toneli.dev.br (ticket 16). `deploy/` tem o compose de produção, `deploy.sh`, backup diário por cron e o site nginx. O CI (`.github/workflows/deploy.yml`) roda testes e build em push e PR e faz o deploy por ssh em push na `main`. Runbook em [`INFRA.md`](INFRA.md).
 
@@ -100,7 +100,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 | **`REVISAR(human)`** | Comentário acima de cada função que o Toneli ia escrever. O agente implementa; ele estuda depois. | `grep -rn "REVISAR(human)" api/` |
 | **LACUNAS** | Onde o código diverge do ADR ou ficou aresta. Vira "limites conhecidos" no README. | `docs/LACUNAS.md` |
 | **Golden set** | Casos com resposta conhecida, gravados uma vez e reusados sem custo: 10 frases do Roteador, 9 certas, a 10ª ambígua cai abaixo do limiar. | `api/tests/fixtures/jev_golden.json`, ticket 11 |
-| **Verificação visual** | Ticket de front fecha com screenshot no Brave, dark, 1440x900. O orquestrador olha a tela; o Toneli não revisa tela. | `docs/UI-GUIA.md`, `.scratch/desafio/screens/` |
+| **Verificação visual** | Ticket de front fecha com screenshot no Brave, dark, 1440x900. A revisão visual é por screenshot. | `docs/UI-GUIA.md`, `.scratch/desafio/screens/` |
 
 ### Por que assim
 

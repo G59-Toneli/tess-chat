@@ -15,7 +15,7 @@ Os rótulos abaixo estão em inglês. Com o console em português, procura o ró
 ## Antes de começar
 
 - Faz login no navegador com a conta Google do Toneli. Essa conta vira dona do projeto.
-- Tem em mãos o e-mail Google do CPO. Sem esse e-mail na lista de test users, o CPO não consegue autorizar.
+- Tem em mãos os e-mails dos testadores. Sem o e-mail na lista de test users, a pessoa não consegue autorizar.
 
 ## Valores gerados
 
@@ -85,7 +85,7 @@ URL: https://console.cloud.google.com/auth/audience
 
 1. Na seção **Test users**, clica **Add users**.
 2. Digita o e-mail do Toneli.
-3. Digita o e-mail do CPO.
+3. Adiciona os e-mails dos testadores.
 4. Clica **Save**.
 
 **Confirma:** a lista **Test users** mostra os dois e-mails. Só e-mail dessa lista consegue autorizar o app.

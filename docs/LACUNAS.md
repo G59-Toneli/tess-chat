@@ -1,6 +1,6 @@
 # Lacunas conhecidas
 
-Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta. Ticket 19 lê isto para o README e o guia de entrevista. Cada item diz se já tem ticket.
+Onde o código diverge do que os ADRs prometem, ou onde um agente deixou aresta. Ticket 19 lê isto para o README e o guia de perguntas e respostas. Cada item diz se já tem ticket.
 
 ## Crédito (ADR 0004)
 - ~~Reserva estimada localmente em vez de `count_tokens`~~. **Decidido pelo Toneli em 23/09 ([ADR 0019](adr/0019-reserva-por-estimativa-local.md)):** fica a estimativa local, ~3 caracteres por token (INFERIDO). A reserva só segura crédito; o acerto usa o uso real.

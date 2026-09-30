@@ -28,12 +28,12 @@ Location `/api/voz/ws` em `deploy/nginx-tess-chat.conf` e no site `tess-chat` do
 - **Conceito:** WebSocket começa como um GET HTTP com `Upgrade: websocket` e `Connection: Upgrade`. O servidor responde `101 Switching Protocols` e a mesma conexão TCP vira um canal aberto nos dois sentidos.
 - **Por quê:** `Upgrade` e `Connection` são headers hop-by-hop: o nginx não repassa. Ele ainda fala HTTP/1.0 com o backend por padrão e zera `Connection` com o nosso `proxy_set_header Connection ""`. O backend nunca via o upgrade e respondia 400 ou 502. A location dedicada põe `proxy_http_version 1.1`, `Upgrade $http_upgrade` e `Connection "upgrade"`. Repetimos os outros `proxy_set_header` nela, porque declarar um só na location descarta os herdados do server. Alternativa que caiu: mudar o `Connection ""` global, que afetaria SSE e o resto do site.
 - **Onde:** `deploy/nginx-tess-chat.conf`, `location /api/voz/ws`.
-- **Pergunta de entrevista:** "Por que o WebSocket não passava pelo nginx?"
+- **Pergunta de revisão:** "Por que o WebSocket não passava pelo nginx?"
   **Resposta:** O upgrade é um handshake HTTP com headers hop-by-hop, e o nginx não os repassa sozinho. Eu declarei `Upgrade` e `Connection "upgrade"` numa location só da Ligação, com HTTP 1.1 e timeout de leitura de 600 s. O resto do site ficou como estava.
 
 ### 2. Provar o upgrade sem gastar Gemini
 - **Conceito:** um ticket inválido faz o app aceitar o WebSocket e fechar com código 4401.
 - **Por quê:** close 4401 vindo do app prova que o handshake atravessou o nginx. Se o nginx barrasse, viria 400 ou 502. Alternativa que caiu: abrir uma Ligação real, que gasta cota Gemini.
 - **Onde:** `api/app/voz.py`, rota `/api/voz/ws`.
-- **Pergunta de entrevista:** "Como você testou a infra sem custo?"
+- **Pergunta de revisão:** "Como você testou a infra sem custo?"
   **Resposta:** Mandei um ticket inválido. O app fecha com 4401 antes de falar com o Gemini. Ver o 4401 prova que o upgrade passou.

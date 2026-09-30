@@ -7,7 +7,7 @@ Pesquisa feita em 2026-09-22 contra fontes primárias. Cada afirmação tem URL.
 1. **O Google agora recomenda a Interactions API para projeto novo.** A Interactions API está GA desde junho de 2026 e a doc diz que ela substitui o `generateContent` legado em projetos novos. Fonte: https://ai.google.dev/gemini-api/docs/interactions-overview
 2. **O Gemini não tem compactação nativa de histórico para chat comum.** A compactação automática (~135k tokens) existe só no agente Antigravity. No chat, a compactação é código nosso. Fonte: https://ai.google.dev/gemini-api/docs/antigravity-agent
 3. **O Jev é só texto, tem limite de 32k no state e é treinado principalmente em inglês.** Nosso app é em português. Precisa de smoke test antes de usar. Fonte: https://docs.typesafe.ai/models.md
-4. **O free tier do Gemini usa o conteúdo para melhorar produtos.** Os PDFs dos avaliadores iriam para esse uso. O paid tier não usa. Fonte: https://ai.google.dev/gemini-api/docs/pricing
+4. **O free tier do Gemini usa o conteúdo para melhorar produtos.** Os PDFs dos usuários iriam para esse uso. O paid tier não usa. Fonte: https://ai.google.dev/gemini-api/docs/pricing
 
 ---
 
@@ -296,7 +296,7 @@ O dinheiro não é o gargalo. O gargalo é o RPD do free tier e o fato de o Pro 
 
 ## Recomendação
 
-- **Chat principal: `gemini-3.8-flash` no paid tier.** É stable, tem 1M de contexto, faz tool calling paralelo, PDF, imagem e thinking. O paid tier custa pouco e tira os PDFs dos avaliadores do uso para treino. O Pro não compensa o custo ~3x numa demo.
+- **Chat principal: `gemini-3.8-flash` no paid tier.** É stable, tem 1M de contexto, faz tool calling paralelo, PDF, imagem e thinking. O paid tier custa pouco e tira os PDFs dos usuários do uso para treino. O Pro não compensa o custo ~3x numa demo.
 - **Visão e PDF: o mesmo `gemini-3.8-flash`.** Usar `media_resolution` `medium` para PDF. PDF até 50 MB vai inline. PDF reutilizado vai pela Files API e expira em 48 h.
 - **API: decidir entre `generateContent` e Interactions no dia 1.** A Interactions é a recomendada. A `generateContent` tem mais exemplo pronto e deixa o histórico no nosso banco, o que a compactação própria exige de qualquer jeito. Recomendo `generateContent` pela previsibilidade em 2 dias. **INFERIDO:** a `generateContent` continua suportada no curto prazo.
 - **Classificação e roteamento barato: Jev, com condição.** Antes de ligar, rodar ~10 requests com trechos reais em português (Noul + Choice). Se errar, cair para `gemini-3.1-flash-lite` com structured output. Usar `confidence` como gate: abaixo do limiar, vai para o modelo principal.

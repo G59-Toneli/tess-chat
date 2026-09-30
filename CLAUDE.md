@@ -8,11 +8,11 @@ Chat com tools, vision, PDF, MCP, compactação, cap de crédito e auditoria. De
 - `docs/WORKFLOW.md` e `docs/AGENT-PROMPT.md`: como o trabalho é executado por agentes.
 - `docs/UI-GUIA.md`: obrigatório para qualquer mudança em `web/`.
 - `.scratch/desafio/map.md`: destino, decisões, névoa. `issues/`: tickets. `LEDGER.md`: histórico de execução. `HANDOFF.md`: estado do orquestrador.
-- `docs/DECISOES-AUTONOMAS.md`: decisões que agentes tomaram sozinhos. `REVISAR(human)` no código marca funções que o Toneli precisa estudar.
+- `docs/DECISOES-AUTONOMAS.md`: decisões que agentes tomaram sozinhos. `REVISAR(human)` no código marca funções para revisão humana.
 - `docs/ESTRUTURA.md`: árvore comentada e onde mora cada conceito. `docs/MOTIVACOES.md`: por que cada escolha e qual alternativa caiu.
 
 ## Regras fixas
-- Toneli precisa defender cada decisão em entrevista. Explique o porquê, não só o quê.
+- Cada decisão precisa ter o porquê registrado. Explique o porquê, não só o quê.
 - Subagentes sempre em Opus 5.5 (`model: "opus"`). Encerrar agente assim que reporta.
 - Testes completos e golden sets rodam em lote no fim de um bloco, não a cada ticket.
 - Chamadas reais a Gemini, Tavily e Jev são contadas e limitadas por ticket.
