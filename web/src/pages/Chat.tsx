@@ -56,6 +56,9 @@ const SUGESTOES = [
 // Texto e anexos enviados em "/" antes de a Conversa existir. O chat da nova rota consome uma vez.
 const pendentes = new Map<string, { texto: string; arquivos: FileUIPart[] }>()
 
+// Conversas criadas pelo botão de Ligação em "/": o chat de /c/:id abre já com o painel no ar.
+const ligarAoAbrir = new Set<string>()
+
 /** Sobe os anexos e devolve as partes que vão na Mensagem, com a URL da API. Falha: toast e lança. */
 async function subirAnexos(arquivos: FileUIPart[]): Promise<FileUIPart[]> {
   try {
@@ -119,8 +122,33 @@ function ChatNovo() {
     }
   }
 
+  // Ligação em Conversa zerada: a Ligação precisa de um id, então crio a Conversa vazia e abro o painel na rota nova.
+  async function ligar() {
+    if (criando) return
+    setCriando(true)
+    try {
+      const conv = await criarConversa('Ligação')
+      if (Object.keys(escolha).length > 0) {
+        await salvarConfig(conv.id, escolha).catch(() =>
+          toast.error('Não foi possível aplicar o modelo escolhido. A conversa usa o padrão da conta.'),
+        )
+      }
+      ligarAoAbrir.add(conv.id)
+      void recarregarConversas()
+      navigate(`/c/${conv.id}`)
+    } catch {
+      toast.error('Não foi possível criar a conversa. Tente de novo.')
+      setCriando(false)
+    }
+  }
+
   return (
     <LayoutChat
+      topo={
+        <div className="flex justify-end pt-2">
+          <BotaoLigacao onClick={ligar} disabled={criando} />
+        </div>
+      }
       entrada={
         <Entrada
           status={criando ? 'submitted' : 'ready'}
@@ -219,7 +247,10 @@ function ChatConversa({
   const [usos, setUsos] = useState(usosIniciais)
   // Id (no useChat) da pergunta do turno que compactou: o separador vai antes dela.
   const [corte, setCorte] = useState<string | null>(null)
-  const [emLigacao, setEmLigacao] = useState(false)
+  const [emLigacao, setEmLigacao] = useState(() => ligarAoAbrir.has(id))
+  useEffect(() => {
+    ligarAoAbrir.delete(id)
+  }, [id])
   // Painel aberto com a Ligação no ar: o input trava. No erro ou no fim, o painel fica e o input volta.
   const [ligacaoAtiva, setLigacaoAtiva] = useState(false)
   const fecharLigacao = useCallback(() => {
