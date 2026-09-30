@@ -39,8 +39,7 @@ log = logging.getLogger(__name__)
 ADENDO_VOZ = (
     "Você é um assistente de voz. Responda em português brasileiro, curto e falado, sem markdown. "
     "Quando o usuário compartilha a tela, você recebe imagens dela e pode descrevê-las. "
-    "Se não chegou nenhuma imagem, diga que não vê nada. "
-    "Você pode pesquisar no Google: use a busca para confirmar fatos, notícias e o que aparece na tela."
+    "Se não chegou nenhuma imagem, diga que não vê nada."
 )
 AUDIO_IN = "audio/pcm;rate=16000"
 # Áudio de saída do Gemini: PCM16 24 kHz mono = 48000 bytes por segundo.
@@ -106,9 +105,6 @@ def _conectar(instrucao: str, variante: Variante = PADRAO) -> AbstractAsyncConte
         ),
         # Sem compressão, sessão com vídeo morre em 2 min (ADR 0026 item 5).
         context_window_compression=types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
-        # Busca do próprio Google (30/09): o relay não executa tool. O Live não devolve grounding_metadata,
-        # então a consulta feita não entra na auditoria; só o fato de a busca estar ligada.
-        tools=[types.Tool(google_search=types.GoogleSearch())],
         system_instruction=instrucao,
     )
     cliente = genai.Client(api_key=settings.gemini_live_api_key)
@@ -385,7 +381,7 @@ async def ligacao(
                     user_id=t.user_id,
                     conversation_id=t.cid,
                     model=settings.gemini_live_modelo,
-                    payload={"limite_s": settings.ligacao_limite_s, "voz": settings.gemini_live_voz, "busca_web": True},
+                    payload={"limite_s": settings.ligacao_limite_s, "voz": settings.gemini_live_voz},
                 )
                 await s.commit()
             await websocket.send_json({"tipo": "pronto", "limite_s": settings.ligacao_limite_s})
