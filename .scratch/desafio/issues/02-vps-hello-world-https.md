@@ -17,4 +17,4 @@
 
 ## Answer
 
-Fechado em 24/09 sem executar como escrito. A conta OCI falhou e o deploy foi para o VPS compartilhado, onde o nginx do host já ocupa 80/443 (ADR 0014). Produção no ar em https://chat.toneli.dev.br com HTTPS e CI desde 23/09 (ticket 16).
+Fechado em 24/09 sem executar como escrito. A conta OCI falhou e o deploy foi para um VPS compartilhado, onde o nginx do host já ocupa 80/443 (ADR 0014). Produção no ar em https://chat.toneli.dev.br com HTTPS e CI desde 23/09 (ticket 16).

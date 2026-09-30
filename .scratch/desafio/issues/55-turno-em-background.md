@@ -2,7 +2,7 @@
 
 **Type:** task (api/ + web/)
 **Status:** resolved
-**Refs:** pedido do Toneli em 23/09. Plano aprovado: `C:\Users\Admin\.claude\plans\cara-acabei-de-perceber-playful-quasar.md` (leia inteiro). Revisa `docs/DECISOES-AUTONOMAS.md:18` (ticket 06).
+**Refs:** pedido do Toneli em 23/09. Plano aprovado: o plano local do Claude Code (leia inteiro). Revisa `docs/DECISOES-AUTONOMAS.md:18` (ticket 06).
 
 **Problema:** o turno roda dentro da request HTTP (`api/app/chat.py:386-397`). Se o usuário troca de tela ou recarrega, o `useChat` chama `stop()` no unmount e o Starlette cancela o run no `http.disconnect`. `_persistir` só roda no fim com sucesso, então o turno some: nenhuma Mensagem, nenhum débito no Ledger, nenhum `llm_call`. As tools MCP já executaram.
 

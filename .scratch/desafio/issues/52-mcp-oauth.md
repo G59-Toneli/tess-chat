@@ -3,7 +3,7 @@
 **Type:** task (api/ e web/)
 **Status:** resolved
 **Blocked by:** nenhum
-**Refs:** ADR 0009, ADR 0017, ticket 17, ticket 23. Pedido do Toneli em 23/09. Plano: `C:\Users\Admin\.claude\plans\fala-cara-atualmente-reactive-curry.md`.
+**Refs:** ADR 0009, ADR 0017, ticket 17, ticket 23. Pedido do Toneli em 23/09. Plano: o plano local do Claude Code.
 
 **Problema:** hoje o cadastro de Servidor MCP pede URL e um header `Authorization` fixo (`api/app/mcp.py:120`). A Tess tem o "Custom MCP" (https://docs.tess.im/en/mcp-custom.md): o usuário cola só a URL, a Tess descobre o OAuth, abre o consentimento e guarda o token por usuário. Sem credencial válida o servidor some do turno (fail-closed). Queremos a mesma paridade.
 

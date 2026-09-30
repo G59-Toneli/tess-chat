@@ -9,7 +9,7 @@
 1. Sem fallback OpenAI: não há chave. Fica retry com backoff (tenacity, `api/app/resiliencia.py`) e a cadeia `gemini-3.8-flash` → `gemini-3.7-flash`.
 2. Reserva de crédito segue com estimativa local ~3 chars/token (`api/app/chat.py`, `_estimar_input`). Motivo: a reserva só segura crédito; a cobrança final usa o `usage` real (ADR 0004). `count_tokens` custaria uma ida de rede por turno antes do primeiro token e mais um ponto de falha, cujo fallback seria a própria estimativa.
 3. Turno cortado pelo teto de tool calls continua não cobrado.
-4. Teste de reboot do VPS adiado (produção do trabalho).
+4. Teste de reboot do VPS adiado (VPS compartilhado).
 
 **What to build:**
 - ADR 0018 revisando o 0012 (decisão 1). Status do 0012 aponta para o 0018.
