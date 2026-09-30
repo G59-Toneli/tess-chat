@@ -65,7 +65,9 @@ export async function pedirTicket(conversaId: string): Promise<string> {
 
 export function urlWs(ticket: string): string {
   const esquema = location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${esquema}://${location.host}/api/voz/ws?ticket=${encodeURIComponent(ticket)}`
+  // `?trace=1` na página liga a trilha de latência do servidor (docs/LATENCIA-LIGACAO.md) numa Ligação real.
+  const trace = new URLSearchParams(location.search).get('trace') === '1' ? '&trace=1' : ''
+  return `${esquema}://${location.host}/api/voz/ws?ticket=${encodeURIComponent(ticket)}${trace}`
 }
 
 export const textoFechamento = (codigo: number): string | undefined => POR_CLOSE_CODE[codigo]
