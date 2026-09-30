@@ -2,6 +2,8 @@
 
 **Status:** aceito, 2026-09-28. Estende o ADR 0001: a Ligação usa o SDK `google-genai` direto, porque o Pydantic AI não tem abstração para a Live API. O ADR 0018 continua valendo: só Gemini.
 
+**Premissa corrigida pelo ADR 0029 (30/09):** o `pydantic-ai-slim==2.47.0` já trazia `pydantic_ai.realtime`. A migração foi tentada e rejeitada: com Frame, o smoke real falhou 4 de 6 vezes sem causa achada. A decisão deste ADR continua.
+
 ## Contexto
 Nova etapa do desafio (prazo 30/09 23h59): conversa por voz com o agente e compartilhamento de tela durante a ligação. O agente vê a tela e responde sobre ela. Custo de API perto de zero. Pesquisa de 28/09: o `gemini-3.8-live` aceita áudio e imagem na mesma sessão, responde em áudio, transcreve as duas falas e tem free tier. Sem context window compression, uma sessão com vídeo morre em 2 min; a conexão cai em ~10 min. O Brave bloqueia o `SpeechRecognition` do browser.
 
