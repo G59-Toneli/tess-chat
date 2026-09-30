@@ -11,3 +11,5 @@ spike/node_modules/
 .playwright-mcp/
 !.env.example
 .scratch/desafio/screens/
+.scratch/desafio/lat83/
+.scratch/desafio/lat85/

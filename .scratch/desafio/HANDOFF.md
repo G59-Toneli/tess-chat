@@ -72,3 +72,4 @@ Golden set do Jev já gravado em `api/tests/fixtures/jev_golden.json` (10 casos,
 ## Memória do Claude (fora do repo)
 Regras do Toneli também estão em `C:\Users\Admin\.claude\projects\C--Projects-desafio\memory\`: Opus nos subagentes, defender decisões, modo autônomo e custo, preferências de UI, Brave, matar agentes idle.
 - **29/09 tarde:** 83 a 85 resolvidos e em produção (latência investigada; ficou o indicador "pensando" e `?v=m31` opt-in; ver `docs/LATENCIA-LIGACAO.md`). Toneli decidiu (Q35): VAD no cliente NÃO entra; vai no vídeo como próximo passo. Código da etapa congelado salvo defeito. Pendente: sessão Jev/MCP e gravação dos vídeos (qua 30/09 à noite).
+- **29/09 noite:** sessão guiada de Jev, MCP e tool calling feita; material em `docs/ESTUDO-JEV-MCP.md`. Ticket 86 (DNS rebinding no MCP) aberto, ready-for-agent, não disparado. Toneli vai abrir o repo publicamente: nada de segredo em arquivo rastreado (varredura de 29/09 limpa, histórico inclusive).
