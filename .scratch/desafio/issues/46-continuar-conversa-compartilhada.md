@@ -28,4 +28,4 @@
 Anexo vira `[anexo: nome]`; Rascunho leva o estado real e `copia: true` (card só leitura; envio pelo visitante já é 404). Tokens e modelo do dono não são copiados.
 Front: botão "Continuar esta conversa" no banner do link; deslogado vai a `/login?proximo=/s/<id>` e volta ao link (fork pede outro clique).
 Ressalva: `[anexo: nome]` sem o aviso do ADR 0016; o modelo pode descrever a imagem que não vê. A cópia não herda o Resumo da Compactação.
-REVISAR(human): `fork` em `shares.py`. Screenshots: `screens/46-link-continuar.png`, `screens/46-conversa-copiada.png`.
+Screenshots: `screens/46-link-continuar.png`, `screens/46-conversa-copiada.png`.

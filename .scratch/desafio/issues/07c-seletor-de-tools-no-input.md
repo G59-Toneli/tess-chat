@@ -16,4 +16,3 @@
 - `LayoutChat` perdeu a coluna `painel`; sem `aside` à direita. O contador conta só tools ligadas na conversa e ligadas no global.
 - Verificado no Brave: PUT 200, contador vai de 2 para 1 e volta, sem overflow horizontal. Screenshot `screens/07c-popover-tools.png`.
 - Ressalva: o `::after` do Switch (área de toque) estourava a lista rolável e cortava o texto; resolvido com `-mr-4 pr-4` na lista.
-- Nada `REVISAR(human)`.

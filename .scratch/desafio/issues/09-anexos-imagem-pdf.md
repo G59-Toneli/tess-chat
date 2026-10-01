@@ -16,4 +16,3 @@
 - `POST /api/attachments` (tipo pelos bytes mágicos, 415/413), `GET /api/attachments/{id}` só do dono; arquivo em `data/attachments/`, evento `attachment_uploaded`. Em `chat.py`, uma chamada a `montar_anexos` troca a referência por data URI; o adapter vira `BinaryContent`, PDF com `media_resolution` medium por parte (formato `{level}`, provado no body HTTP).
 - Front: botão de anexo, chips com remover, miniatura da imagem e chip de PDF na Mensagem. Manual no Brave com 2 chamadas Gemini: imagem descrita certo, PDF de 3 páginas resumido página a página.
 - Ressalvas: o base64 do anexo fica gravado em `messages.parts` (o `_persistir` salva o prompt como veio) e volta ao modelo e à estimativa de reserva nos turnos seguintes; `attachments.message_id` fica nulo. Nome do PDF some no histórico recarregado ("Documento").
-- `REVISAR(human)`: `tipo_real` e `montar_anexos` em `api/app/anexos.py`.

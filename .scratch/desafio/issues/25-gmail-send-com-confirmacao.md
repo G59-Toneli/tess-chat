@@ -25,5 +25,4 @@
 ## Answer
 AFK feito. Migração 0014 (`email_drafts` e `tools.padrao_ligada`), escopo `gmail.send`, Tool `gmail_send` que só cria Rascunho, `GET/enviar/descartar` em `/api/connectors/google/drafts/{id}` (só o dono, trava de linha contra clique duplo), `gmail_read` devolve `message_id` e `thread_id`. Front: cartão do Rascunho na mensagem com Enviar/Descartar e estado lido do servidor; `/conectores` avisa "Reconecte para enviar e-mails".
 Ressalvas: caminho `/api/connectors` em vez de `/api/conectores`; Rascunho liga-se ao `tool_call_id`, não à Mensagem (ver DECISOES-AUTONOMAS 25). Testado só com Gmail mockado; HITL do escopo no GCP no MANHA.
-REVISAR(human): `gmail_send` e `enviar_rascunho` em `conectores.py`, `estado_da_conversa` em `tools.py`.
 Screens: `25-rascunho-email.png`, `25-rascunho-descartado.png`, `25-conectores-reconectar.png`.

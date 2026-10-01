@@ -25,4 +25,3 @@
 - Toda linha de achado mostra `criado` e `modificado` em `dd/mm/aaaa hh:mm`, fuso America/Sao_Paulo (`_achado`, `_data`). Data ausente é omitida.
 - Descrição que o modelo vê vem de `conectores.DESCRICOES` e sobrepõe a do registro, sem migração. O Roteador (Jev) segue lendo a descrição do banco; ele só escolhe a tool, não o argumento, então `query` vazia não o afeta.
 - Testes de PDF do ticket 38 passam sem mudança. 0 chamadas a Gemini, Tavily e Jev.
-- REVISAR(human): comentário acima de `drive_search_read` ganhou a regra da query vazia.

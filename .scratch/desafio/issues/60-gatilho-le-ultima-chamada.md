@@ -18,7 +18,7 @@
    - Limiar configurável por Configuração continua valendo.
    - A rosca (`/api/conversations/{id}/contexto` ou equivalente) devolve o número da última chamada.
    - Ledger do turno multi-chamada continua com a soma.
-4. ADRs 0023 e 0024 estão em uso (0024 reservado pelo ticket 59); crie `docs/adr/0025-gatilho-le-ultima-chamada.md` referenciando o 0006. Atualiza `LACUNAS.md` (fecha o item), `DECISOES-AUTONOMAS.md`, `MOTIVACOES.md`. `REVISAR(human)` no ponto que escolhe a última chamada.
+4. ADRs 0023 e 0024 estão em uso (0024 reservado pelo ticket 59); crie `docs/adr/0025-gatilho-le-ultima-chamada.md` referenciando o 0006. Atualiza `LACUNAS.md` (fecha o item), `DECISOES-AUTONOMAS.md`, `MOTIVACOES.md`.
 5. Suíte em lote: compactação, chat, turnos, medição, crédito, auditoria, contexto, conversas. `tsc` limpo se tocar em web/.
 
 **Tetos:** geração real 0, Jev 0, Tavily 0. Validação real fica com o orquestrador.
@@ -27,4 +27,3 @@
 `_persistir` grava na Mensagem o uso do último `ModelResponse` do turno (input, output, thinking, cache). Ledger, `llm_call` e `llm_request` seguem com a soma e por chamada. Todos os caminhos (fim, corte, `turn_stopped`, retry) passam por `_persistir`. ADR 0025.
 Regressão: 21/21 de compactação/contexto/configuração verdes antes e depois, sem mudar asserção. 3 testes novos em `test_compactacao.py` (soma acima e última abaixo não compacta, com rosca e Ledger; última acima compacta; 1 chamada igual ao Ledger). Os 2 multi-chamada ficaram vermelhos antes da mudança.
 Ressalvas: mensagens antigas seguem com a soma (sem backfill); parado antes do 1º token fica com o `RunUsage`; `web/` sem mudança (rótulo diz "entrada", não custo).
-`REVISAR(human)`: bloco `janela = resposta.usage if resposta else uso` em `_persistir` (`api/app/chat.py`).

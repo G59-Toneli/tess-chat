@@ -62,7 +62,6 @@
 - `docs/adr/0022-mcp-oauth-dcr.md`.
 - Atualizar `docs/MCP-RECOMENDADOS.md:58`, que justifica só o header fixo.
 - Entrada em `CONTEXT.md` se nascer termo novo.
-- `REVISAR(human)` na descoberta, no DCR, na troca e no refresh.
 
 ## Aceite (testes com `httpx.MockTransport` como auth server + mcp-demo)
 - `iniciar` devolve uma URL de authorize com `code_challenge`, `code_challenge_method=S256`, `resource` e o `client_id` que o DCR devolveu.
@@ -84,4 +83,3 @@
 - `validar_url` roda em toda URL de metadata (recurso, auth server, registration, authorize, token), inclusive no refresh.
 - Front: atalhos Notion/Stripe, botão "Conectar por OAuth", badge aguardando/expirado e "Reconectar" no card, toast na volta. Screenshot: `.scratch/desafio/screens/52-mcp-oauth.png`.
 - Ressalvas: sonda é POST `initialize` (DECISOES-AUTONOMAS); cada iniciar faz um DCR novo; E2E real com Notion/Stripe é HITL no MANHA.md.
-- `REVISAR(human)`: `_descobrir`, `_registrar`, `_pedir_token`, `renovar`, `_concluir`.

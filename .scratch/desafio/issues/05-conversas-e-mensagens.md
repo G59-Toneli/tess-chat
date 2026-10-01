@@ -17,4 +17,3 @@
 - Conversa de outro Usuário responde 404, igual a inexistente. Mensagens ordenadas por `(created_at, id)`.
 - Apagar é remoção física com CASCADE. Eventos `conversation_created` e `conversation_deleted` com `conversation_id`.
 - Não há rota para criar Mensagem: o ticket 06 grava. Ele também estende `messages` com thinking/cache.
-- `REVISAR(human)`: `conversa_do_usuario` (404 em vez de 403) e `apagar` (remoção física).

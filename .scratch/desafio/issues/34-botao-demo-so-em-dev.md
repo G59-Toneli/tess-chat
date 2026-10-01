@@ -17,4 +17,3 @@
 - O Login lê o endpoint ao montar. O botão só aparece depois da resposta com `demo=true`. Erro na leitura esconde o botão.
 - 3 testes novos em `test_auth.py`: prod devolve false, dev devolve true, login demo segue aceito em prod.
 - Ressalva: produção só esconde o botão se o `.env` do VPS tiver `ENV=prod`. Não conferido daqui.
-- Sem REVISAR(human).

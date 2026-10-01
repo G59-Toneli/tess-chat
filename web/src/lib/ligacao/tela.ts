@@ -9,7 +9,7 @@ export type Tela = {
 /** Celular não tem getDisplayMedia: o botão de compartilhar some. */
 export const suportaTela = () => typeof navigator.mediaDevices?.getDisplayMedia === 'function'
 
-// REVISAR(human): laço de Frames. A cada 1/FPS s desenha o quadro atual do vídeo num canvas
+// laço de Frames. A cada 1/FPS s desenha o quadro atual do vídeo num canvas
 // reduzido (lado maior até 1280, sem ampliar) e codifica em JPEG 0,7. `ocupado` pula o tique se
 // o JPEG anterior ainda não saiu, para não empilhar Frames atrasados. 1 fps basta: o caso de
 // uso é documento, código e slide, que mudam pouco por segundo, e a Live API não aceita mais.

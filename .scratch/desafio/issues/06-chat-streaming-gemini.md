@@ -19,4 +19,3 @@
 - Usuário e assistente gravados juntos no fim do turno, em partes do AI SDK. Mensagem do assistente com input/output/thinking/cache do `RunUsage` (migração 0004). Eventos `message_sent` e `llm_call`.
 - Erro do provedor antes do primeiro evento: `llm_error` e 502 com `detail`. Erro no meio do stream: `llm_error` e chunk de erro no stream (o 200 já saiu).
 - Ressalva: a resposta gravada (`tests/fixtures/gemini_stream.sse`) veio sem thoughts, então o teste de tokens não exercita thinking > 0. Verificação manual (local, uvicorn 127.0.0.1:8765, Postgres 5433): primeiro token em 1,8 s e 0,9 s, segunda mensagem viu a primeira.
-- `REVISAR(human)`: `_persistir` (gravação conjunta no fim) e `chat` (502 só antes do primeiro evento).

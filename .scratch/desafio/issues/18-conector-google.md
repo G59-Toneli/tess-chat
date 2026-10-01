@@ -19,4 +19,3 @@
 ## Answer
 Tabela `connectors` (migração 0012) com tokens cifrados em Fernet, OAuth web flow em `/api/connectors/google/*` com `state` JWT assinado, e três Tools de origem `google` que só entram no registro da Conversa quando o dono tem Conector. Refresh 60 s antes de vencer; sem refresh válido, a tool devolve "expirou, reconecte em Conectores". Eventos `connector_linked`, `connector_revoked`, `connector_refreshed`, `connector_refresh_failed`. Tela `/conectores` com conectar, escopos, status do token e desconectar.
 Ressalvas: aceites 1 e 2 testados com Google mockado. A validação real depende do login do Toneli e está no MANHA.md. Aceite 3 provado com mock. Usa `httpx` no lugar de `google-api-python-client` (DECISOES-AUTONOMAS). PDF do Drive não é lido.
-`REVISAR(human)`: `_token` (refresh), `autorizar` (state), `drive_search_read` (qual arquivo ler) em `api/app/conectores.py`, e o filtro em `estado_da_conversa`.

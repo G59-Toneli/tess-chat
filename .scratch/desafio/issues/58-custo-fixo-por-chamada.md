@@ -17,7 +17,7 @@
 2. **Script `api/scripts/medir_prefixo.py`**: para um usuário, monta instructions + tool defs exatamente como o turno monta e chama `count_tokens` do Gemini (sem geração). Imprime tokens do system prompt, das tools por servidor MCP e total. Vai rodar em produção pelo orquestrador (`docker compose exec app`), então não pode depender de nada do dev.
 3. **Diagnóstico do cache zero entre turnos**, com evidência no código: a lista de tools muda entre turnos (roteador/Jev escolhendo categoria? servidor MCP fora?), a ordem de `list_tools` é determinística, há algo dinâmico antes das tools no prompt? Consultar a doc do cache implícito do Gemini (mínimo, TTL). Se a correção for estabilizar ordem/prefixo sem mudar o conjunto de tools, aplicar. Se exigir mudar o conjunto de tools ou o gatilho da Compactação, NÃO aplicar: descrever em `docs/LACUNAS.md` com opções.
 4. **Golden de regressão (modelo fake, CI):** replay do turno Notion usando um MCP fake com schemas de tamanho parecido. Afirma: as mesmas tools ficam disponíveis ao modelo, a ordem é estável entre dois turnos, o hash do prefixo é igual entre dois turnos seguidos com o mesmo conjunto. Não asserta contagem de tokens reais.
-5. Suíte do chat verde, `tsc` limpo se tocar em web/. `REVISAR(human)` no ponto que extrai o uso por chamada. Atualizar `DECISOES-AUTONOMAS.md`.
+5. Suíte do chat verde, `tsc` limpo se tocar em web/. Atualizar `DECISOES-AUTONOMAS.md`.
 
 **Tetos:** Gemini `count_tokens` até 5 chamadas; geração 0 (as medições reais ficam com o orquestrador, autorizadas pelo Toneli). Jev 0. Tavily 0.
 
@@ -25,4 +25,3 @@
 - Evento `llm_request` por ModelResponse (`api/app/medicao.py`, chamado no `_persistir`): input, cache_read, output, nº de tools e `prefix_hash`. Aditivo, sem custo, sem migração.
 - Causa do cache zero, com evidência no código: a ordem das tools não era determinística (`select(McpServer)` sem `ORDER BY` em `tools.py:324`; `UPDATE` do refresh OAuth em `mcp_oauth.renovar` pode mover a linha no heap, INFERIDO; `list_tools` sem ordem garantida). Corrigido: `Medidor.prepare_tools` ordena por nome. O conjunto de tools mudou entre os turnos (64 → 61), e isso sozinho já zera o cache; causa exata e opções em `docs/LACUNAS.md`, com o TTL não documentado e o gatilho da Compactação.
 - `api/scripts/medir_prefixo.py`: `--seco` sem chamada; sem ele, 3 + 1 countTokens por grupo. Local, com o MCP falso de 12 tools: 9.523 tokens de prefixo.
-- `REVISAR(human)`: `auditar_requests` (pareamento request ↔ ModelResponse por índice).

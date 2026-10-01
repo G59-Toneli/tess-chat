@@ -25,4 +25,3 @@
 - Aparece no início do turno (substitui o Pensando antigo) e no fim da última mensagem quando o fim é uma tool concluída: "Pensando…", "Analisando o resultado…" (1 tool), "Trabalhando…" (2+).
 - Some com texto no fim, tool rodando, corte do ticket 30 e stream fechado (`status !== 'streaming'`, por isso não aparece ao recarregar). Checado no Brave contra API mockada que segura o stream.
 - Ressalva: o tempo conta do zero a cada espera, não desde o início do turno.
-- `REVISAR(human)`: `textoTrabalhando` (quando aparece e com qual texto).

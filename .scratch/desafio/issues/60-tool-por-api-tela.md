@@ -34,4 +34,3 @@
 - Pill da conversa: tool `api_xxxx_<nome>` aparece com badge `api` (igual ao `mcp`), conferido no `/` e numa conversa criada por API.
 - E2E no Brave com a API na 8007: modelo ViaCEP testado (200), 404 com o HTML do ViaCEP, cadastro, pill. 4 chamadas ViaCEP, 0 Gemini. Screenshots `.scratch/desafio/screens/60-*.png`.
 - Ressalva: não há vitest no `web/`; `nomeSugerido` e `placeholders` só foram checados pelo E2E.
-- REVISAR(human): `Formulario` em `web/src/pages/ApiTools.tsx` (parâmetros derivados e invalidação do teste pelo JSON do body).

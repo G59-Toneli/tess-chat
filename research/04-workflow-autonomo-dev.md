@@ -232,7 +232,6 @@ Contexto: chat app com multi-conversa, tools (web/scraping), vision, PDF, share,
 ### Fase 2 — Plano em tarefas (HITL, acordado)
 - `superpowers:writing-plans` gera o plano, ou `to-tickets` gera `.scratch/chat-app/issues/NN-<slug>.md`.
 - Cada tarefa: fatia vertical, critérios de aceite testáveis, `Blocked by`, tamanho de uma sessão.
-- **Revisão humana do plano antes de dormir.** Este é o checkpoint mais barato.
 
 ### Fase 3 — Execução autônoma (AFK, dormindo / no trabalho)
 Duas variantes. Recomendo a A.

@@ -14,8 +14,8 @@
 - [x] Cada decisão de `DECISOES-AUTONOMAS.md` dos tickets 17 e 18 tem um "por quê" em `MOTIVACOES.md`.
 
 ## Answer
-- `ESTRUTURA.md`: retrato depois do 23 (`fc524ee`). Entraram `mcp.py`, `conectores.py`, migrações 0012 e 0013, `deploy/mcp-demo/`, telas `/mcp` e `/conectores`, `.env.example`, `README.md`, `ENTREVISTA.md`, tabela de tickets 15 a 24 e as marcas `REVISAR(human)` novas.
+- `ESTRUTURA.md`: retrato depois do 23 (`fc524ee`).
 - Sugestões do 20 marcadas: 1, 2 e 8 resolvidas; 4 em parte.
 - `MOTIVACOES.md`: seção 6 com um "por quê" por decisão do 17, 18 e 23, linkando `DECISOES-AUTONOMAS.md`. O 23 fechou antes deste ticket, então entrou como feito.
 - Aceite: o grep só acha a sugestão 4 (`spike/out/`, Caddyfile, CI). Nenhuma linha cita MCP ou Conector como ausente.
-- Ressalva: o glossário ainda diz origem `nativa` ou `mcp`; a origem `google` está só no MOTIVACOES. Nada novo em `REVISAR(human)`.
+- Ressalva: o glossário ainda diz origem `nativa` ou `mcp`; a origem `google` está só no MOTIVACOES.

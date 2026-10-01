@@ -16,4 +16,3 @@
 - Conta demo vira `is_superuser` no startup. Comum vê só o próprio; admin vê tudo, o global e `/admin`.
 - Front: `/auditoria` (filtros na URL, paginação, drawer do payload), `/creditos` (saldo, barra do Cap, 2 gráficos recharts, Ledger), `/admin`. 8/8 pytest; 12 screenshots `15-*.png` no Brave dark.
 - Ressalva: o aceite do fluxo cobre login → tool → share. A compactação (12) ainda não estava commitada; o 12 deve pôr o passo `compaction` em `test_fluxo_aparece_em_ordem`.
-- REVISAR(human): `_escopo` (quem vê o quê), `_painel` (dia no fuso), `garantir_conta_demo` (flag admin).

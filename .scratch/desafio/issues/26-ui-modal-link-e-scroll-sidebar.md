@@ -17,4 +17,4 @@
 ## Answer
 - Modal de link: `ModalLink.tsx` (Dialog shadcn, `sm:max-w-md`, URL truncada, Abrir/Cancelar) ligado via `linkSafety.renderModal` do Streamdown no `MessageResponse`. O modal padrão do Streamdown usa classes que o Tailwind não escaneia em node_modules, por isso ficava em largura total.
 - Layout: container `h-svh overflow-hidden` e `main` com `overflow-y-auto`. Só a área de conteúdo rola; sidebar fixa em todas as páginas internas (conferido em /creditos, /auditoria, /admin, /config, /tools, /mcp, /conectores e chat: documento sem overflow, sidebar no topo).
-- Ressalva: `onConfirm` do Streamdown não fecha o modal; o botão Abrir chama `onClose` depois. `tsc --noEmit -p tsconfig.app.json` limpo. Sem build (web/dist em uso na 8000). Nada de REVISAR(human).
+- Ressalva: `onConfirm` do Streamdown não fecha o modal; o botão Abrir chama `onClose` depois. `tsc --noEmit -p tsconfig.app.json` limpo. Sem build (web/dist em uso na 8000).

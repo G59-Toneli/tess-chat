@@ -24,4 +24,4 @@
 - Bloco de tool: tira o slug do servidor do nome quando o badge já mostra ("Stripe" + `api_search`, `api_details`, `api_write`) e quebra em até 2 linhas. Vale também no desktop (DECISOES-AUTONOMAS). `ai-elements/tool.tsx` não mudou: o header usado é o do `BlocoTool.tsx`.
 - Compartilhados: data numa linha própria, inteira em 390. Perfil com `p-4 md:p-8`.
 - `tsc -b` e `vite build` limpos. `checar-responsivo.mjs --abrir-sidebar` nas 14 rotas + `/c/2dc1e074…` (7 tools Stripe) x 390/768/1440: 0 violações (vite preview 4187 -> API 8014, código atual, Postgres 5433). Screenshots `.scratch/desafio/screens/67-*`, os 390 olhados: nada cortado nem sobreposto.
-- Gemini 0. Conta demo sem mudança. Sem REVISAR(human).
+- Gemini 0. Conta demo sem mudança.

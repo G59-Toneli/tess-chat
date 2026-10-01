@@ -17,4 +17,3 @@
 Tabela `settings` (migração 0011), uma linha por escopo; herança Conversa > Usuário > `.env`, campo a campo, resolvida por dependência do chat (`app/configuracao.py`). O chat lê modelo, nível de raciocínio, limiar de compactação e limiar do Roteador da Configuração do turno. `settings_changed` leva o diff. Cap por Usuário grava em `caps` via `PUT /api/admin/usuarios/{id}/cap` (só admin). Toggle global de Tool agora exige `current_superuser`.
 Tela `/config` com seletor de escopo (conta ou Conversa), herança visível e tema; cap editado em `/admin`. Aceites provados com FunctionModel em `tests/test_configuracao.py`; 2 chamadas reais ao flash-lite para validar o nível de raciocínio.
 Ressalva: `test_roteador::test_anexo_vai_no_state` já falhava antes (URL `data:` recusada desde o 09).
-REVISAR(human): `resolver` em `app/configuracao.py`.

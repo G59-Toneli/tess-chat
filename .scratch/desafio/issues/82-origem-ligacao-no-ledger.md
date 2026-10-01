@@ -20,4 +20,4 @@
 Nenhuma obrigatória.
 
 ## Answer
-Sem coluna nem migração: a origem já sai da linha do Ledger (`credito.py`). Linha sem `message_id` com o modelo Live vira `ligacao`; o resto segue como antes. Front: `ligacao` em `OrigemGasto`, rótulo "Ligação"; origem desconhecida mostra o nome cru (`origemDe`). Testes: `test_credito` e `test_voz` (fluxo real do desligar) afirmam `ligacao`. Migração 0025 não foi usada. Nenhum `REVISAR(human)` novo. Screenshot: `.scratch/desafio/screens/82-custo-ligacao-1440.png`.
+Sem coluna nem migração: a origem já sai da linha do Ledger (`credito.py`). Linha sem `message_id` com o modelo Live vira `ligacao`; o resto segue como antes. Front: `ligacao` em `OrigemGasto`, rótulo "Ligação"; origem desconhecida mostra o nome cru (`origemDe`). Testes: `test_credito` e `test_voz` (fluxo real do desligar) afirmam `ligacao`. Migração 0025 não foi usada. Screenshot: `.scratch/desafio/screens/82-custo-ligacao-1440.png`.

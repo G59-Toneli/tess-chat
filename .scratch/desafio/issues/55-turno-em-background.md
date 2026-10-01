@@ -17,7 +17,7 @@
 - `POST /api/chat/{cid}/parar`: cancela e grava o parcial + cobrança.
 - Front: `resume: true` no `useChat`; `onParar` chama `/parar` e depois `stop()`.
 - Testes de integração com modelo fake (sem Gemini real): desconexão no meio → `/messages` tem usuário + assistente e o Ledger tem o débito; `/stream` replay e 204; 409; `/parar` grava parcial.
-- ADR 0023 novo. Atualiza `DECISOES-AUTONOMAS.md:18`, `ESTRUTURA.md`, `MOTIVACOES.md`. `REVISAR(human)` em `rodar_turno` e no leitor do buffer.
+- ADR 0023 novo. Atualiza `DECISOES-AUTONOMAS.md:18`, `ESTRUTURA.md`, `MOTIVACOES.md`.
 - Validado no browser local (Brave): mandar mensagem, trocar para `/creditos`, voltar; repetir com F5. Screenshot em `screens/55-*.png`.
 
 ## Answer
@@ -25,4 +25,3 @@
 - A pergunta é gravada no início. `_persistir` grava só a resposta. O "Tentar de novo" reusa a pergunta sem resposta. `corte_atual` foi ajustado para a nova ordem.
 - Front: `resume: true`, `prepareReconnectToStreamRequest`, porque o padrão iria para `/api/chat/{id}/{id}/stream`. O Parar chama `/parar` e depois `stop()`. Validado no Brave: troca para `/creditos` e F5 no meio do turno, com 3 chamadas Gemini. Conversa nova de `/` não retoma (`resume` congelado): o 204 derrubaria o status do envio.
 - Ressalvas no ADR 0023: um restart perde o turno; um turno que falha deixa a pergunta sem resposta; existe uma janela curta entre `/messages` e `/stream`.
-- `REVISAR(human)` em `rodar_turno`, `TurnoAtivo.ler`, `_persistir` e `corte_atual`.

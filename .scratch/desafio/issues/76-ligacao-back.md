@@ -29,7 +29,6 @@ A transcrição no histórico e o histórico na Ligação são o ticket 77. Aqui
 - Áudio e frame do browser chegam ao Gemini falso; áudio e transcrição do falso chegam ao browser; `interrupted` vira `interrompido`.
 - Limite (com limite curto no teste) → `fim` `limite`, vaga liberada.
 - Desligar e queda do browser → Ledger com o acerto do uso falso, `voice_call_ended` com o motivo certo, vaga liberada.
-- `REVISAR(human)` em: o relay, a validação do ticket, o fim único, o acerto de crédito.
 - Chamadas reais: no máximo 2 sessões curtas para smoke local. LEDGER.
 
 ## Paradas de estudo
@@ -73,4 +72,3 @@ Adicione aqui 4 a 6 entradas no formato do `docs/ESTUDO-VOZ.md`. Obrigatórias: 
 ## Answer
 `api/app/voz.py`: `POST /api/voz/ticket` e `WS /api/voz/ws` conforme o protocolo, relay de duas tasks, vaga de turno, teto 3, limite de 540 s, reserva de 9 min e acerto por modalidade (migração 0024), 4 Eventos de auditoria, fim único no `finally`. 10 testes com Gemini falso em `tests/test_voz.py`. Smoke real: 2 sessões free (desligar e queda), leu a tela, latência 503 e 626 ms (host local), Ledger e `voice_call_ended` gravados.
 Ressalvas: o prompt é só o adendo de voz (o do chat só fala de tools); `pronto` segue o protocolo sem fps e resolução; a linha do Ledger da Ligação aparece como `compactacao` no custo da Conversa; `GET /api/chat/{cid}/stream` durante a Ligação fica aberto até o fim. Detalhes em DECISOES-AUTONOMAS.
-`REVISAR(human)`: `_consumir`, `_relay`, `_acertar`, `_encerrar`.

@@ -32,4 +32,4 @@
 - Cron às 03:45 em `deploy/cron-tess-chat` (`exec -T app`, WORKDIR `/app/api`), log em `backups/limpeza.log`; linha em `docs/INFRA.md`. Orquestrador instala no VPS.
 - 6 testes passam; o de symlink fica skip no Windows (sem permissão de criar link) e roda no Linux.
 - Limite conhecido: sem cota de disco por Usuário. Entre o cascade e a varredura o arquivo fica até 24 h no disco.
-- `REVISAR(human)`: `varrer` (por que varredura e não hook; ordem linha-antes-de-arquivo).
+ordem linha-antes-de-arquivo).

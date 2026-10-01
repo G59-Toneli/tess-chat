@@ -1,6 +1,6 @@
 // AudioWorklet do microfone. Roda na thread de áudio, fora do React. Carregado por captura.ts com `?url`.
 
-// REVISAR(human): converte o áudio do microfone em PCM16 e junta em chunks de tamanho fixo.
+// converte o áudio do microfone em PCM16 e junta em chunks de tamanho fixo.
 // O AudioContext já roda a 16 kHz (o browser reamostra), então aqui só há float → int16.
 // process() recebe 128 amostras por vez; 512 juntas = 32 ms, dentro dos 20 a 40 ms do protocolo.
 // Chunk menor gasta mais mensagens no WebSocket; maior atrasa o VAD do Gemini.

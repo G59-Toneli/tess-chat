@@ -16,4 +16,3 @@ FastAPI-Users 15.0.5 com tabela `users` (migração 0002, GRANT para tess_app), 
 Eventos `user_registered`, `login_ok` e `login_failed` (e-mail inexistente, senha errada, conta inativa); senha nunca vai ao payload.
 Conta demo `demo@toneli.dev.br` semeada no lifespan, idempotente. 8 testes em `tests/test_auth.py` verdes.
 Ressalva: `JWT_SECRET` e `DEMO_PASSWORD` têm default de dev; o deploy precisa definir no `.env`.
-REVISAR(human): override de `UserManager.authenticate` e `garantir_conta_demo` em `app/auth.py`.

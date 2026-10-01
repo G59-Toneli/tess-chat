@@ -7,7 +7,7 @@
 
 **What to build:** tabelas `price_table` (modelo, preço in/out/cache/thinking por 1M em micro-USD, vigente_desde), `credit_ledger` (append-only, uma linha por chamada), `caps` (global e por usuário, em micro-USD). Fluxo reserva → chamada → acerto. Recusa com 402 e evento `cap_reached` quando a reserva estoura. Endpoint `GET /api/credits/me` e `/api/credits/global`.
 
-**HITL:** a função `debit(usage, price) -> int` fica com `TODO(human)`. O agente escreve os testes dela primeiro e para.
+O agente escreve os testes dela primeiro e para.
 
 **Aceite:**
 - [x] Teste: soma do ledger de uma conversa = soma dos `usage_metadata` gravados × preço vigente.
@@ -19,4 +19,3 @@
 ## Answer
 Migração 0005 com `price_table` (seed Gemini 3.8 Flash, 3.1 Flash-Lite, Jev), `credit_ledger` somente-inserção e `caps`. `app/credito.py`: `debit`, reserva antes da chamada (402 + `cap_reached`), acerto no mesmo commit das Mensagens, `GET /api/credits/me` e `/global`. `llm_call` agora grava `cost_micro_usd`.
 Ressalvas: reserva estima o input localmente (~3 chars/token, INFERIDO), sem countTokens; duas chamadas simultâneas podem passar juntas do Cap; preço de 2027-01-01 não semeado.
-REVISAR(human): `debit` (cache fora do input, thinking fora do output, arredonda para cima), `reservar` e `_estimar_input`.

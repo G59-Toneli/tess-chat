@@ -29,4 +29,4 @@ Não toca `components/ui/*`, `index.css` nem `AppLayout.tsx`.
 - Admin: Usuários viram cards abaixo de `md` (linha tem ação: Editar Cap, Ver eventos); tabela só em `md+`. Créditos: Resumo em 1 coluna até `lg` (em 768 com sidebar os 3 números encostavam), cabeçalho quebra linha, Ledger esconde Raciocínio e Cache no mobile. Compartilhados já era lista; só padding e alvo de toque.
 - Todas as 4: padding `p-4 md:p-8`; botões de ação/paginação com 40 px no mobile (UI-GUIA).
 - `checar-responsivo.mjs` nas 4 rotas x 390/768/1440: 0 violações. Ressalva: já dava 0 antes (o `Table` do shadcn já rola em x); o defeito real era sobreposição do Resumo, que o script não mede. Conferido no olho por screenshot.
-- Demo local é superuser no Postgres 5433 (API da 8000 é antiga e não rebaixa), então /admin foi medido com dados. Screenshots `.scratch/desafio/screens/64-*` + `64-auditoria-390-drawer.png`. Gemini 0. Sem REVISAR(human).
+- Demo local é superuser no Postgres 5433 (API da 8000 é antiga e não rebaixa), então /admin foi medido com dados. Screenshots `.scratch/desafio/screens/64-*` + `64-auditoria-390-drawer.png`. Gemini 0.

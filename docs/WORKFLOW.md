@@ -7,7 +7,7 @@ Como um ticket vira commit neste repo. Fontes: `.scratch/desafio/HANDOFF.md`, `L
 ### Papéis
 - **Orquestrador:** uma sessão interativa do Claude Code (modelo Fable). Escolhe o ticket, dispara o agente, confere o commit, dá push, aprova screenshot. Não escreve código de ticket.
 - **Agente executor:** um subagente Opus 5.5 disparado pela tool `Agent` do Claude Code, nome `exec-NN`. Executa um ticket só, seguindo `docs/AGENT-PROMPT.md`.
-- **Toneli:** resolve o que só humano resolve (chaves, DNS, SSH), listado em `.scratch/desafio/MANHA.md`. Estuda depois as funções marcadas `REVISAR(human)`.
+- **Toneli:** resolve o que só humano resolve (chaves, DNS, SSH), listado em `.scratch/desafio/MANHA.md`.
 
 ### Ciclo de um ticket
 1. O orquestrador escolhe um ticket `ready-for-agent` com todos os `Blocked by` em `resolved`.
@@ -15,7 +15,6 @@ Como um ticket vira commit neste repo. Fontes: `.scratch/desafio/HANDOFF.md`, `L
 3. O agente lê `WORKFLOW.md`, `CONTEXT.md`, o ticket, os ADRs citados e só o código que o ticket toca. Ticket de front lê também `docs/UI-GUIA.md`.
 4. O agente faz TDD e roda só os testes do ticket, contra o Postgres do `docker-compose.yml` (porta 5433). A suíte completa não é dele.
 5. Decisão fora dos ADRs: o agente escolhe a opção mais simples que atende o aceite, registra em `docs/DECISOES-AUTONOMAS.md` e segue. Não para.
-6. Função que o ticket marca `TODO(human)`: o agente implementa e deixa `# REVISAR(human): <o que decide e por quê>` acima dela.
 7. Ticket de front: o agente tira screenshots no Brave (dark, 1440x900) e salva em `.scratch/desafio/screens/`.
 8. O agente fecha o ticket: `**Status:** resolved`, seção `## Answer`, libera os tickets dependentes, escreve uma linha no `LEDGER.md`.
 9. O agente commita `feat(NN): <slug>` com `git commit --only <seus arquivos>`. Não dá push.
@@ -32,7 +31,7 @@ Como um ticket vira commit neste repo. Fontes: `.scratch/desafio/HANDOFF.md`, `L
 - **Screenshot no Brave, nunca no Chrome.** O Playwright MCP abre o Chrome. Os agentes usam `playwright-core` apontando para o executável do Brave, numa porta própria (a 5173 pode estar ocupada).
 - **Rate limit do plano Max:** esperar e repetir. Não é falha do ticket.
 - **Testes em lote.** Suíte completa (`cd api && uv run pytest`; `cd web && npm run build`) e golden set rodam no fim de um bloco de tickets, com um agente para corrigir regressões. O golden set do Jev já está gravado e não é regravado.
-- **Nada bloqueia a noite.** Decisão nova vai para `DECISOES-AUTONOMAS.md`. Função humana vira `REVISAR(human)`. Regra desde 22/09 22:24 (`bd7ddf6`).
+- **Nada bloqueia a noite.** Decisão nova vai para `DECISOES-AUTONOMAS.md`. Regra desde 22/09 22:24 (`bd7ddf6`).
 
 ### Estado entre sessões
 - `.scratch/desafio/HANDOFF.md`: estado do orquestrador. Ciclo, regras aprendidas, tickets resolvidos, próximos na ordem, bloqueios. A sessão seguinte do orquestrador começa por ele.
@@ -42,8 +41,8 @@ Como um ticket vira commit neste repo. Fontes: `.scratch/desafio/HANDOFF.md`, `L
 
 ## Plano original e por que mudou
 
-- **Plano** (`research/04-workflow-autonomo-dev.md`): script em Git Bash iniciado pelo Toneli, chamando `claude -p --model opus` um ticket por invocação, com `--max-turns 80` e `--permission-mode auto`. A suíte de testes rodava fora do Claude como gate; só exit 0 fechava o ticket. Ticket que falhasse 2 vezes virava `blocked`. Decisão nova gravava `BLOCKED` no ledger e parava. Três funções (débito de crédito, gate do Roteador, gatilho de compactação) ficavam `TODO(human)` para o Toneli escrever.
+- **Plano** (`research/04-workflow-autonomo-dev.md`): script em Git Bash iniciado pelo Toneli, chamando `claude -p --model opus` um ticket por invocação, com `--max-turns 80` e `--permission-mode auto`. A suíte de testes rodava fora do Claude como gate; só exit 0 fechava o ticket. Ticket que falhasse 2 vezes virava `blocked`. Decisão nova gravava `BLOCKED` no ledger e parava.
 - **O que aconteceu:** o script de loop nunca foi commitado no repo. Os tickets do LEDGER rodaram pela sessão orquestradora com a tool `Agent`. Se a sonda (tickets 01 e 03) também rodou assim: **INFERIDO**, nenhum doc registra.
 - **Por que mudou:** **INFERIDO**. Nenhum doc registra o motivo. Hipóteses: a sessão orquestradora roda tickets independentes em paralelo, e corrige o rumo entre um ticket e outro (contexto no prompt, ticket de ajuste) sem reiniciar um script.
 - **O que se perdeu:** o gate externo. Hoje o agente roda os próprios testes e o orquestrador confia no relatório e no LEDGER. A compensação é a suíte completa em lote no fim do bloco.
-- **Por que `BLOCKED` e `TODO(human)` saíram:** "nada bloqueia a noite". A troca foi velocidade agora e estudo depois (`docs/MOTIVACOES.md`, seção workflow; commit `bd7ddf6`).
+- **Por que `BLOCKED` saiu:** "nada bloqueia a noite". A troca foi velocidade agora e estudo depois (`docs/MOTIVACOES.md`, seção workflow; commit `bd7ddf6`).

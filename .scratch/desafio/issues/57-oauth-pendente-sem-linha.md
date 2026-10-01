@@ -20,7 +20,6 @@
 **Docs:**
 - Atualize o ADR 0022 com uma nota "Atualizado no ticket 57": onde vive o estado pendente e por quê.
 - Adicione uma linha em `docs/LACUNAS.md` sobre o DCR a cada clique.
-- `REVISAR(human)` no cookie do pendente.
 
 ## Aceite
 - `iniciar` sem `sid` não cria linha: a contagem em `mcp_servers` fica igual e a lista `GET /api/mcp-servers` não muda.
@@ -37,4 +36,3 @@
 - O callback cria a linha (ou atualiza, com `sid`) só depois da troca do code. Reconectar abandonado deixa o servidor intacto. O badge "aguardando autorização" saiu do front.
 - A migração 0022 apaga pendentes sem tools. Ela já rodou no Postgres local (estava em 0020). O teste roda o `upgrade()` direto numa conexão.
 - Ressalva: o 409 de nome agora é um `select` no `iniciar`; corrida até o callback volta com `erro=nome_em_uso`. O screenshot usou `vite preview`, porque a API da 8000 roda código antigo (sem `estado`).
-- `REVISAR(human)`: o cookie do pendente em `iniciar` e a ordem das checagens em `_concluir` (`api/app/mcp_oauth.py`).

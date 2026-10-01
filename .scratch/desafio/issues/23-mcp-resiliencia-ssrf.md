@@ -17,4 +17,3 @@
 Sonda de 3 s por Servidor MCP ao montar o toolset do turno (`mcp.alcancavel`, em paralelo); caído sai do turno, grava `mcp_server_unreachable` e o stream ganha um aviso curto. Cadastro valida a URL (`mcp.validar_url`): só https, todo IP resolvido precisa ser público, 422 com texto; em `ENV=dev` o demo (`mcp-demo`, `127.0.0.1`) passa em http.
 Teste de queda usa o server.py do demo em subprocesso derrubado no meio (mesmo código do container), não `docker compose stop`.
 Ressalvas: produção precisa `ENV=prod` (default é `dev`); DNS rebinding não coberto (checagem só no cadastro); servidor que cai entre a sonda e o run ainda derruba o turno.
-REVISAR(human): `validar_url` em `api/app/mcp.py`.

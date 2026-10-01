@@ -22,4 +22,4 @@
 - Parte 2: `docs/UX-AUDITORIA.md` com 27 achados em todas as telas pedidas: 14 corrigidos (foco no input, 404, Perfil fora do menu, erro da sidebar, textos de Tools, Conectores e Roteador, filtros da Auditoria a 1280 px, MCP) e 13 propostas.
 - Propostas altas: navegação escondida no menu do avatar; botão demo que só preenche.
 - Ressalva: compactação não verificada visualmente (sem Resumo acessível no banco de dev). Estados de erro das páginas internas vieram dos tickets 13 a 17, não foram simulados aqui.
-- Nada em `api/`. Nenhum `REVISAR(human)` novo.
+- Nada em `api/`.

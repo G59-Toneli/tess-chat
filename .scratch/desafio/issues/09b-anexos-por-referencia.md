@@ -17,4 +17,3 @@
 ## Answer
 `messages.parts` guarda o `FileUIPart` do front com url `/api/attachments/{id}`; o data URI só existe na cópia que vai ao run. `_historico` troca todo arquivo de turno anterior por `[anexo: nome]`, inclusive na Compactação e em linhas antigas do 09. `_persistir` preenche `attachments.message_id` e põe `attachment_ids` no `message_sent`. Front sem mudança: o chip já lia `filename`.
 Ressalvas: sem contagem de páginas no texto; tipo `file` do AI SDK em vez de `attachment` (DECISOES-AUTONOMAS). O "prompt_tokens" do aceite é medido pelo corpo HTTP que sai para o Gemini (GoogleModel + MockTransport): o stream do FunctionModel fixa input em 50. A reserva é checada espiando o valor passado a `reservar`.
-REVISAR(human): `sem_bytes` em `app/anexos.py`.

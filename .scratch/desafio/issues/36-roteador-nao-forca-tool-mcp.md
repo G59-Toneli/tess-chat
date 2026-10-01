@@ -21,4 +21,3 @@
 `apply_gate` recebe a origem da Tool escolhida e devolve AUTO para `mcp`; o `router_decision` grava `forcada=false` e `sugerida=true` quando passou do limiar. A linha do chat mostra "Roteador sugeriu". Emenda 23/09 no ADR 0005 e linha no MOTIVACOES. 49/49 no pytest do aceite; tsc e build limpos.
 Turno real (sandbox, API nova 8006, Brave, 1 turno): Jev deu `stripe_implementation_planner` 0,78, agora sem forçar. O próprio Gemini (flash-lite, modelo configurado na conta demo) escolheu o planner em AUTO e só explicou o passo a passo. Nenhum `api_write` rodou, então não há args a registrar. Aceite do link NÃO cumprido. Screenshot `36-stripe-celular.png`.
 Ressalva: o problema saiu do Roteador e ficou no modelo. Não gastei o 2º turno para não passar do teto de Gemini.
-REVISAR(human): `apply_gate` (regra da origem `mcp`).

@@ -18,4 +18,3 @@
 Tabelas `tools` e `conversation_tools` (migração 0006), `app/tools.py` com `web_search` (Tavily), `web_fetch` (Jina + fallback trafilatura), toolset por Conversa com `tool_call` auditado e API `GET /api/tools`, `GET/PUT /api/conversations/{id}/tools` (`tool_toggled`). Front do painel não feito: fica para o 07/tela de tools.
 Testes: 9/9 em `test_tools.py` com HTTP gravado; `test_chat` e `test_credito` seguem verdes. Manual: com Gemini real, "notícias de hoje" gerou `tool_call` e resposta citando g1/CNN/R7; `web_fetch` real devolve texto sem HTML. Desligada verificada só no teste (modelo recebe zero tools).
 Ressalva: o Gemini fez 4 buscas num turno (5 requests). Sem teto de tool calls por turno, um turno pode gastar vários créditos Tavily. Créditos Tavily usados: 5.
-REVISAR(human): `web_fetch` (ordem Jina → trafilatura, corte) e `estado_da_conversa` (regra de herança do toggle).

@@ -23,4 +23,4 @@
 - "Entrar com conta demo" autentica e vai para `/` num clique.
 - Migração 0016: `tools.descricao_usuario NOT NULL`, texto pt-BR para as 6 nativas/google, MCP com a descrição do servidor cortada em 140. `/api/tools`, estado da conversa e `/api/mcp-servers` devolvem o campo; `/tools` e SeletorTools mostram. O modelo segue com `descricao`.
 - Ressalvas: "Perfil" segue fora do menu (placeholder). A API na 8000 roda código antigo: precisa reiniciar, senão cadastrar servidor MCP falha no `NOT NULL` e o front novo mostra descrição vazia.
-- Screenshots: `28-sidebar-nav.png`, `28-sidebar-nav-user.png`, `28-seletor-tools.png`, `28-menu-usuario.png`. Sem `REVISAR(human)` novo.
+- Screenshots: `28-sidebar-nav.png`, `28-sidebar-nav-user.png`, `28-seletor-tools.png`, `28-menu-usuario.png`.

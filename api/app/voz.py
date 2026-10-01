@@ -186,7 +186,7 @@ async def _reservar(session: AsyncSession, user_id: uuid.UUID, cid: uuid.UUID) -
     await caber(session, user_id, cid, settings.gemini_live_modelo, debit_ligacao(uso_maximo(), preco))
 
 
-# REVISAR(human): monta o histórico que a Ligação leva no início. Só texto das Mensagens de usuário e
+# monta o histórico que a Ligação leva no início. Só texto das Mensagens de usuário e
 # assistente: imagem, PDF e tool ficam fora, o Gemini Live recebe o contexto como texto na instrução.
 # O teto conta do fim para o começo, porque a conversa recente pesa mais que a antiga. Mensagem que
 # estoura o teto é cortada inteira, não pela metade: meia frase confunde mais do que ajuda.
@@ -329,7 +329,7 @@ async def criar_ticket(
     return TicketOut(ticket=codigo, expira_em=settings.ligacao_ticket_s)
 
 
-# REVISAR(human): valida o ticket da URL. `pop` antes de checar a validade: o código some no
+# valida o ticket da URL. `pop` antes de checar a validade: o código some no
 # primeiro uso, mesmo expirado, então não existe segunda tentativa com o mesmo código. Vale 30 s
 # porque só cobre o intervalo entre o POST e o upgrade do WebSocket. O JWT não vai na URL:
 # a URL fica no log do nginx, e o JWT vale 24 h; o ticket vazado no log já está gasto.
@@ -390,7 +390,7 @@ async def ligacao(
             await _encerrar(websocket, lig, motivo)
 
 
-# REVISAR(human): o relay. Duas tasks, uma por sentido, porque cada lado manda quando quer:
+# o relay. Duas tasks, uma por sentido, porque cada lado manda quando quer:
 # o microfone não espera a resposta, e o Gemini fala sem o browser pedir. `asyncio.wait` com
 # FIRST_COMPLETED acorda quando uma acaba; o timeout é o limite de 9 min. A outra é cancelada
 # na hora e esperada (`gather`), para nenhuma task ficar escrevendo num WebSocket morto.
@@ -518,7 +518,7 @@ def _traduzir(lig: Ligacao, m: types.LiveServerMessage) -> list[bytes | dict[str
     return saidas
 
 
-# REVISAR(human): acerto de crédito da Ligação. Soma o usage_metadata de todos os turnos: cada
+# acerto de crédito da Ligação. Soma o usage_metadata de todos os turnos: cada
 # turno cobra o contexto inteiro de novo (spike 75). Preço de tabela mesmo na chave free (ADR 0027):
 # o Cap mede "quanto custaria". Sem nenhum usage_metadata (a Ligação caiu antes do 1º turn_complete),
 # estima pela duração: 25 tokens/s de entrada o tempo todo, 25 tokens/s de saída no tempo de fala
@@ -551,7 +551,7 @@ async def _acertar(session: AsyncSession, lig: Ligacao, duracao_s: float) -> tup
     return uso, custo, estimado
 
 
-# REVISAR(human): grava as falas como Mensagens, um par usuário/assistente por troca. Uma troca é o que o
+# grava as falas como Mensagens, um par usuário/assistente por troca. Uma troca é o que o
 # usuário disse (falas seguidas se juntam) e a resposta que veio depois. Fala do agente ainda aberta
 # (desligou no meio) entra como veio. Texto vazio não vira Mensagem. Cada Mensagem leva a parte
 # `data-ligacao`, que o front lê para mostrar "por voz". Custo fica no Ledger da Ligação, não aqui.
@@ -594,7 +594,7 @@ async def gravar_falas(session: AsyncSession, lig: Ligacao) -> int:
     return len(mensagens)
 
 
-# REVISAR(human): fim único. Desligar, limite, queda do browser e queda do Gemini passam aqui,
+# fim único. Desligar, limite, queda do browser e queda do Gemini passam aqui,
 # chamado do `finally`. Ordem: acerto e voice_call_ended com commit, depois libera a vaga, depois
 # manda `fim`. Quem recebe o `fim` já pode mandar texto. `encerrada` segura a segunda chamada.
 # A vaga sai mesmo se o acerto falhar: sem isso, 409 eterno na Conversa.

@@ -19,4 +19,4 @@
 - `GET /api/conversations/{cid}/contexto` devolve `usado` (input_tokens da última resposta), `limite` (tabela `JANELAS_CONTEXTO` em `config.py`), `limiar_compactacao` e `modelo`, resolvidos pela Configuração. Janela confirmada na doc do Google: 1.048.576 tokens para 3.8-flash, 3.7-flash e 3.1-flash-lite (nada INFERIDO).
 - `IndicadorContexto` na barra do input: rosca de 20 px, cor por faixa (70 %/90 %), marca do limiar, tooltip com o texto do ticket, "Contexto vazio" em conversa nova. Atualiza quando o turno volta a `ready`/`error` e ao trocar de Conversa. Turno real: 300 para 5,1 mil tokens sem recarregar.
 - Ressalva: `input_tokens` é a soma dos requests do turno (RunUsage). Turno com N tool calls superestima o contexto real. É o mesmo número que o gatilho da Compactação lê, então a marca do limiar bate com o disparo.
-- 5 testes em `tests/test_contexto.py`, incluindo queda do `usado` depois da Compactação. `REVISAR(human)` no endpoint `contexto`. `npm run build` não rodado a pedido do orquestrador.
+- 5 testes em `tests/test_contexto.py`, incluindo queda do `usado` depois da Compactação. `npm run build` não rodado a pedido do orquestrador.

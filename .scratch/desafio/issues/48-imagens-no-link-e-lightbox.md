@@ -29,4 +29,3 @@
 - Fork copia cada anexo para um Attachment novo do visitante (arquivo novo em disco); o 1º turno na cópia recebe `BinaryContent` (teste com FunctionModel). Revogar corta o link e mantém a cópia. `share_forked` ganha `anexos_copiados`.
 - Front: `AnexoNaMensagem` ganhou lightbox (Radix Dialog: Esc, clique fora, botão, `motion-reduce`), usado no chat, na cópia e no link. ADR 0021; 0020 anotado.
 - Ressalvas: sem cota de disco por Usuário (cada fork duplica o arquivo); PDF no link aparece como chip, sem link de abrir, igual ao chat.
-- REVISAR(human): `anexo_publico` e o fork em `api/app/shares.py`.

@@ -21,4 +21,3 @@
 Callback chama `users/me/profile` do Gmail com o token recém-emitido: grava `connectors.conta_email` e `gmail_disponivel` (migração 0017). Sem escopo novo. Na conta sem Gmail (400 "Mail service not enabled") o e-mail vem de `drive/v3/about`, as tools do Gmail somem da Conversa e o Drive fica. O card mostra "Conectado como ...", o alerta sem Gmail, "Reconecte para ver a conta" nas conexões antigas e um botão Reconectar no rodapé.
 `traduzir_erro_gmail` é o único mapa de erro do Gmail. O 502 do envio devolve `{mensagem, reconectar}`, o Rascunho mostra o texto e "Ir para Conectores". O erro cru fica só em `email_send_failed`.
 Ressalva: as tools de leitura (`_chamar`) seguem com o texto antigo para o modelo; o mapa cobre o envio. A API na 8000 precisa reiniciar para ler as colunas novas.
-REVISAR(human): `_conta` e `traduzir_erro_gmail` em `api/app/conectores.py`.

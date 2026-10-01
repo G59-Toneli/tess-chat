@@ -16,7 +16,6 @@
 ## Aceite
 - pytest com Gemini falso: depois de desligar, `/messages` tem os pares com a marca; o Gemini falso recebeu o histórico em texto, dentro do teto; imagem do histórico não vai.
 - Front: `npm run build` limpo; screenshot no Brave (dark, 1440x900) de uma Conversa com Mensagens por voz em `.scratch/desafio/screens/77-*`.
-- `REVISAR(human)` na montagem do histórico e na gravação das falas.
 - Chamadas reais: 0.
 
 ## Paradas de estudo
@@ -44,4 +43,4 @@
 
 ## Answer
 Falas viram Mensagens no fim único (`_encerrar`, `gravar_falas`): um par usuário/assistente por troca, com a parte `data-ligacao`; vazio não entra; fala aberta do agente entra como veio; `voice_call_ended` ganhou `mensagens` no payload. A Ligação abre com o histórico em texto na instrução (teto `ligacao_historico_tokens`, 4000). Front: indicador "por voz" na Mensagem e a Conversa remonta com o histórico recarregado ao fechar o painel. Sem migração. `test_voz.py`: 15 passam (5 novos, incluindo um turno de texto depois da Ligação que vê as falas). `npm run build` limpo; `checar-responsivo` /c/:id sem violação; screenshots `77-conversa-por-voz-1440.png` e `-390.png`.
-Ressalvas: a recarga ao desligar não foi vista em E2E (sem Gemini real; o 80 cobre); o screenshot usa Mensagens semeadas no banco. `REVISAR(human)`: `historico_em_texto`, `_trocas` (junto de `gravar_falas`).
+Ressalvas: a recarga ao desligar não foi vista em E2E (sem Gemini real; o 80 cobre); o screenshot usa Mensagens semeadas no banco.

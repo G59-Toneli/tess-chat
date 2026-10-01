@@ -13,7 +13,6 @@ App de chat deployado em link público, com os 10 requisitos obrigatórios funci
 - Toneli precisa entender cada decisão. Decisão não coberta por ADR: o agente escolhe a opção mais simples que atende o aceite, registra em `docs/DECISOES-AUTONOMAS.md` e segue.
 - Subagentes sempre em Opus 5.5.
 - Skills por ticket: `mattpocock-skills:tdd` na implementação. `typesafe:typesafe-ai` no ticket 11. `mattpocock-skills:wizard` nas tarefas HITL de infra.
-- As três funções que seriam do Toneli (débito de crédito em 08, gate de confiança do Roteador em 11, gatilho de compactação em 12) foram implementadas pelo agente e marcadas `REVISAR(human)`. Toneli estuda depois.
 - Execução: sessão orquestradora do Claude Code dispara um agente executor por ticket (tool `Agent`), commit `feat(NN)` por ticket com `git commit --only`, orquestrador confere e dá push. Suíte completa em lote no fim do bloco. Ver `docs/WORKFLOW.md`.
 
 ## Estado dos tickets

@@ -15,7 +15,6 @@ Você executa UM ticket do projeto `C:\Projects\desafio` (repo git, branch `main
 - TDD: teste primeiro. Testes de integração batem no Postgres do `docker-compose.yml` da raiz (porta 5433). Se ele não estiver de pé: `docker compose up --wait`.
 - Durante o ticket rode só os testes do ticket (`uv run pytest tests/test_<x>.py`). A suíte completa roda em lote no fim do bloco, não é sua responsabilidade.
 - Não decida arquitetura fora dos ADRs. Se precisar decidir, escolha a opção mais simples que atende o aceite, e registre em `docs/DECISOES-AUTONOMAS.md` (crie se não existir): ticket, decisão, alternativa descartada, por quê. Não pare.
-- Funções marcadas `TODO(human)` no ticket: implemente você. Deixe comentário `# REVISAR(human): <o que a função decide e por quê>` acima dela. Toneli estuda depois.
 - Chaves em `C:\Projects\desafio\.env`. Gemini: use `GEMINI_PAID_API_KEY`. Poucas chamadas reais; nos testes prefira resposta gravada ou modelo de teste do Pydantic AI (`TestModel`/`FunctionModel`). Se uma chave faltar, use o fallback do ticket ou registre em DECISOES-AUTONOMAS.
 - Emita Evento de auditoria para toda ação relevante do ticket, via `app/audit.py`.
 - Código, docstring e comentário em pt-BR, curtos.
@@ -23,7 +22,6 @@ Você executa UM ticket do projeto `C:\Projects\desafio` (repo git, branch `main
 ## Ao terminar
 1. `git fetch && git status`. Se `origin/main` avançou: `git pull --rebase`.
 2. Vários agentes dividem o mesmo index. Antes de commitar: `git diff --cached --name-only` deve listar só os seus arquivos; se houver outros, `git restore --staged <arquivo>` neles (não descarte o conteúdo). Então `git add` dos seus e commit com `git commit --only <seus arquivos>`. Commit: `feat(NN): <slug>` com última linha `Co-Authored-By: Claude <modelo que executou> <noreply@anthropic.com>`, usando `-c user.email="<email-do-toneli>" -c user.name="Toneli"`. Não faça push.
-3. No ticket: `**Status:** resolved` e uma seção `## Answer` de 3 a 6 linhas: o que foi feito, ressalvas, o que ficou `REVISAR(human)`.
 4. Nos tickets que só dependiam deste: `**Status:** ready-for-agent`.
 5. Linha em `.scratch/desafio/LEDGER.md`: `| NN | início | fim | resultado | feat(NN) |`.
 6. Inclua ticket, LEDGER e DECISOES-AUTONOMAS no commit.

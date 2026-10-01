@@ -24,4 +24,4 @@
 - Migração 0019 grava em `tools` a `descricao` que estava em `conectores.DESCRICOES` e uma `descricao_usuario` nova com PDF e recentes; `downgrade` volta os textos da 0012 e da 0016.
 - `conectores.DESCRICOES` saiu; `toolset_da_conversa` usa `tool.descricao` para as Tools do Google, como as outras. Tela, Roteador e modelo leem a mesma fonte.
 - Não havia seed em código fora das migrações. `roteador.DESCRICOES` intocado.
-- Linha do ticket 39 em DECISOES-AUTONOMAS marcada como superada. Nada `REVISAR(human)`.
+- Linha do ticket 39 em DECISOES-AUTONOMAS marcada como superada.

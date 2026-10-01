@@ -18,4 +18,3 @@
 - `anexos.partes_do_historico` substitui `sem_bytes`. Anexo próprio (imagem e PDF) volta com bytes; outro arquivo vira `FORA_DO_CONTEXTO`.
 - Mensagens que vão para o Resumo não levam imagem.
 - `_estimar_input` soma `TOKENS_IMAGEM` = 1120 por imagem.
-- REVISAR(human): comentário acima de `partes_do_historico`.

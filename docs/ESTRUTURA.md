@@ -47,7 +47,6 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── ESTRUTURA.md          este arquivo
 │   ├── WORKFLOW.md           regras do trabalho autônomo com agentes
 │   ├── AGENT-PROMPT.md       prompt-padrão que todo agente executor segue
-│   ├── ENTREVISTA.md         perguntas e respostas sobre as decisões: perguntas prováveis por ADR e pelo workflow (ticket 19)
 │   ├── PROTOCOLO-LIGACAO.md  contrato browser ⇄ servidor da Ligação: ticket, WebSocket, mensagens, close codes (tickets 75 a 82)
 │   ├── ESTUDO-VOZ.md         estudo da Ligação do clique ao Ledger, com `arquivo:linha` e pergunta de revisão (ticket 81)
 │   ├── ROTEIRO-VIDEOS.md     roteiro do vídeo de demo e do vídeo de arquitetura da Ligação (ticket 81)
@@ -142,7 +141,6 @@ Cada módulo junta, no mesmo arquivo, o modelo SQLAlchemy, as regras e o `APIRou
 | 16 | deploy no VPS com CI, `deploy/`, `.github/workflows/deploy.yml` | resolvido: no ar em https://chat.toneli.dev.br |
 | 17 | `mcp.py`, migração 0013, `pages/Mcp.tsx`, `deploy/mcp-demo/` | resolvido |
 | 18 | `conectores.py`, migração 0012, `pages/Conectores.tsx` | resolvido |
-| 19 | `README.md`, `docs/ENTREVISTA.md`, `.env.example` | resolvido (vídeo pendente no `MANHA.md`) |
 | 20 | este arquivo e `MOTIVACOES.md` | resolvido |
 | 21 | suíte completa em lote: `test_roteador.py`, `pages/Tools.tsx` | resolvido |
 | 22 | `WORKFLOW.md` e `map.md` contam a prática | resolvido |
@@ -205,39 +203,12 @@ Tickets 25 a 54: uma linha por execução em `.scratch/desafio/LEDGER.md`.
 
 Nomes de tabela conferidos no `__tablename__` de cada módulo.
 
-## Mapa de `REVISAR(human)`
-
-Funções que o agente implementou e que foram marcadas para revisão humana. Revisadas em 24/09: a marca saiu do código, o comentário ficou.
-
-| Módulo | Marcas | O que decidem |
-|---|---|---|
-| `credito.py` | 3 | custo real em micro-USD, tamanho da reserva, dia do gasto no fuso do browser |
-| `compactacao.py` | 3 | gatilho pelo limiar, ponto de corte no início de turno, roda só no passo 1 |
-| `chat.py` | 7 | estimativa local do input, arquivo de tool fora do banco, gravar a resposta no fim (pergunta já gravada, ADR 0023), turno que compactou, 502 só antes do primeiro evento, stream aberto antes da Compactação, `rodar_turno` fora da request |
-| `turnos.py` | 1 | leitor do buffer: replay desde o chunk 0 e tail |
-| `roteador.py` | 1 | gate: força a Tool só com confiança acima do limiar |
-| `resiliencia.py` | 1 | o que é erro transitório |
-| `tools.py` | 6 | fallback Jina para trafilatura, Tool ativa = global E Conversa, schema aberto e modo VALIDATED do Gemini, falha do servidor MCP, teto de tool calls |
-| `shares.py` | 5 | 404 único, corte no maior id, anexo pelo link, fork, estado do Rascunho na cópia |
-| `conversas.py` | 3 | 404 para Conversa alheia, remoção física, contexto usado da rosca |
-| `anexos.py` | 3 | tipo pelos bytes, só anexo próprio vai ao modelo, anexo anterior volta com bytes |
-| `auth.py` | 2 | `login_failed` por override, seed da conta demo |
-| `auditoria.py` | 1 | quem vê o quê |
-| `configuracao.py` | 1 | herança campo a campo |
-| `mcp.py` | 3 | nome da Tool com o id do servidor, barreira de SSRF, conectar antes de gravar |
-| `mcp_oauth.py` | 5 | descoberta, só DCR, `resource` na troca e no refresh, refresh antes do turno, state JWT mais cookie do PKCE |
-| `conectores.py` | 9 | validade do token pela lib, retry só em GET, primeiro arquivo legível do Drive, Tool só cria Rascunho, `state` do OAuth em JWT, perfil do Gmail, cookie do PKCE, mapa de erro do Gmail, envio com trava de linha |
-| `limpeza_anexos.py` | 1 | varredura diária em vez de hook na exclusão |
-| `rede.py` | 1 | todo IP resolvido precisa ser público |
-| `voz.py` | 6 | validação do Ticket, relay de duas tasks, acerto de crédito da Ligação, fim único, histórico que a Ligação leva, um par por troca. Marcas ainda no código |
-| `web/src/lib/ligacao/` | 3 | worklet do microfone, fila de reprodução com barge-in, laço de Frames. Marcas ainda no código |
-
 ## Sugestões
 
 Achados da revisão da estrutura (ticket 20). Nada foi movido: todo item quebraria referência em doc ou import. Os itens 1, 2 e 8 foram resolvidos depois; o item 4 em parte.
 
 1. **`docs/WORKFLOW.md` descreve o plano, não o que rodou.** Ele fala de loop externo `claude -p` com teste como gate fora do Claude. O `HANDOFF.md` e o `LEDGER.md` mostram outra coisa: um orquestrador numa sessão do Claude Code disparando agentes em paralelo, e o próprio agente rodando os testes. Atualizar o WORKFLOW para contar a evolução. Detalhe em `MOTIVACOES.md`, seção Workflow. **Resolvido no ticket 22.**
-2. **`map.md` está defasado.** Ainda diz que o agente grava `BLOCKED` e para, e que três funções são HITL. Desde 23/09 o agente decide o simples, registra em `DECISOES-AUTONOMAS.md` e marca `REVISAR(human)`. A seção "Not yet specified" também já foi resolvida em parte. **Resolvido no ticket 22.**
+2. **`map.md` está defasado.** Ainda diz que o agente grava `BLOCKED` e para, e que três funções são HITL. A seção "Not yet specified" também já foi resolvida em parte. **Resolvido no ticket 22.**
 3. **`.scratch/` é o coração do fluxo de IA, mas o nome diz "descartável"** e a pasta começa com ponto (some em `ls` e em alguns navegadores de arquivo). Renomear quebra CLAUDE.md, WORKFLOW, AGENT-PROMPT, HANDOFF e tickets. Alternativa barata: o README do ticket 19 aponta para ela logo no topo.
 4. **Referências a coisas que não existem:** `spike/out/` (citado como evidência em `spike/RESULTADO.md`), `deploy/` e `docs/INFRA.md` (citados no `AGENT-PROMPT.md`), `.github/` e Caddyfile (ADR 0011). Os quatro últimos são do ticket 16. `spike/out/` precisa de correção no RESULTADO ou do commit da evidência. **Em parte:** `deploy/`, `docs/INFRA.md` e `.github/` existem desde o ticket 16. O Caddy saiu (ADR 0014). Falta `spike/out/`.
 5. **`LEDGER.md` não tem a coluna de turnos** que o `WORKFLOW.md` pede.

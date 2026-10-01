@@ -18,4 +18,3 @@
 ## Answer
 `app/resiliencia.py`: `ComRetry` (tenacity, 3 tentativas, backoff exponencial com jitter ou Retry-After) em volta de cada modelo, `FallbackModel` 3.8 → 3.7 com a mesma regra de transitório. `chat.py` grava `llm_retry`, `llm_fallback`, `tool_limit_reached` e `llm_call` com modelo pedido/respondido, TTFT, total, motivo de término e tentativas; Mensagem e Ledger levam o modelo que respondeu. `UsageLimits(tool_calls_limit=5)` via `settings`.
 Ressalvas: migração de dados `0010` com preço do 3.7 (INFERIDO = 3.8), sem OpenAI (sem chave). Front sem "tentando de novo": o retry acontece antes da resposta HTTP abrir. Turno cortado pelo teto não é cobrado. Detalhes em DECISOES-AUTONOMAS.
-REVISAR(human): `transitorio` em `app/resiliencia.py`.

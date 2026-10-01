@@ -17,5 +17,4 @@
 Chat: bloco recolhível por tool call (nome, args, duração, resultado resumido, fontes do `web_search`), "Buscando na web…" enquanto roda, badge de modelo e tokens, linha "roteado para X (conf.)" quando o Roteador forçou a Tool, 402 como aviso próprio com botão para `/creditos`. Painel lateral de tools por Conversa e tela `/tools` com toggle global e schema. API: `PUT /api/tools/{nome}` (evento `tool_toggled_global`, migração 0008) e `GET /api/conversations/{id}/roteador`.
 Verificado no Brave: turno real com 2 `web_search` e resposta citando a PEP 745; cap de 1 µUSD mostra o aviso sem toast; com `web_search` desligada o turno não chamou `web_search`.
 Ressalva: no turno com `web_search` desligada o Gemini chamou `web_fetch` numa URL do histórico, então aparece um bloco de `web_fetch`. O toggle global está liberado a qualquer Usuário.
-REVISAR(human): `usoPorMensagem` em `web/src/lib/tools.ts` e `alternar_global` em `api/app/tools.py`.
 Screenshots: `.scratch/desafio/screens/07b-*.png`.

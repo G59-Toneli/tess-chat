@@ -24,4 +24,3 @@
 - `tool_calls_limite` na Configuração (migração 0018, 1 a 50), default do `.env` 10. Campo em `/config`, seção Limiares.
 - Card da tool com header próprio: badge do servidor MCP, nome com `title` e reticências, latência e estado num grupo que não encolhe. "Interrompida" e aviso com link para Configuração, ao vivo e depois de recarregar.
 - Ressalvas: timeout MCP de 15 s sem teste (mesmo caminho do servidor caído). Screenshots com a API nova na 8001 e modelo/tools Stripe falsos que repetem a auditoria de 14:40, porque o `.env` atual não tem `CONNECTORS_KEY`.
-- REVISAR(human): `_falha_mcp` e `ComTeto.call_tool` (tools.py), `_persistir` (chat.py).

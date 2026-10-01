@@ -23,7 +23,6 @@ Escrever ADR 0017 revisando o 0010 com isso e os links: https://github.com/googl
 - `revoke` continua POST httpx manual (a lib não tem helper).
 - Não mexer: tools de Gmail/Drive, `gmail_send`, `enviar_rascunho`, `_mime`, `traduzir_erro_gmail`, `_conta`, `_cifrar`/`_decifrar` (`app/mcp.py` importa) e o formato do JSON cifrado (tokens antigos seguem válidos sem reconectar).
 - Se o front (`web/`) mostra os erros `?erro=`, verificar se `pkce_ausente` precisa de texto; se precisar, só a string, sem refatorar.
-- `REVISAR(human)` em `_token` e no par cookie/PKCE do callback.
 - Atualizar `docs/DECISOES-AUTONOMAS.md` (entrada do httpx: resolvida pelo ADR 0017) e `docs/MOTIVACOES.md`.
 
 **Aceite:**
@@ -39,4 +38,3 @@ Escrever ADR 0017 revisando o 0010 com isso e os links: https://github.com/googl
 Auth do Google agora usa `Flow` (google-auth-oauthlib) e `Credentials` (google-auth), com PKCE: `code_verifier` no cookie httpOnly `tess_google_pkce`, callback sem cookie volta `?erro=pkce_ausente` sem chamar o Google. Gmail, Drive e revoke seguem em httpx. `app/google_transporte.py` tem `RequestHttpx` e `AdaptadorRequests`: o mesmo `MockTransport` vê o `/token` do refresh e do callback. ADR 0017 escrito; 0010 aponta para ele.
 Ressalvas: `OAUTHLIB_RELAX_TOKEN_SCOPE=1` no processo (sem ele, escopo parcial ou extra quebra a troca; `test_email` com escopo só de leitura pegou isso). `creds.expired` renova 3m45s antes (era 60 s). Falha de rede no refresh também vira "expirou", como no 18. Payload de `connector_refresh_failed` troca `status` por `erro`.
 `test_mcp::test_erro_da_tool_mcp_volta_ao_modelo_que_tenta_de_novo` falhou 1 vez em 5 execuções, passou nas outras e no baseline: intermitente, sem relação com o Google.
-REVISAR(human): `_token`, `autorizar` (state + PKCE) e `_trocar` (par cookie/PKCE do callback).

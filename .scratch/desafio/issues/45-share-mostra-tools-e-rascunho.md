@@ -24,4 +24,3 @@
 - Estado real do Rascunho: `publico()` em `shares.py` troca só `output.estado` pelo valor de `email_drafts`, e só de Rascunho da mesma Conversa. Pendente no link aparece como "Pendente", não "Aguardando você".
 - Fora: marcador de compactação (endpoint autenticado), anexos e aviso de turno interrompido.
 - Verificação: Brave com API mockada, só `GET /api/s/{id}` sai da página pública, 0 botão Enviar/Descartar; Chat logado mantém Enviar/Descartar. Screens `45-share-rascunho.png` e `45-chat-rascunho-logado.png`.
-- REVISAR(human): `_com_estado_dos_rascunhos` em `api/app/shares.py`.

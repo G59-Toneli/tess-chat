@@ -48,7 +48,6 @@ Também existe `POST /api/api-tools/testar`, que executa e devolve `{status, cor
 **Docs:**
 - `docs/adr/0024-tool-por-api.md`, com os porquês: por que HTTP e não código do usuário; por que testar antes de salvar; por que sem edição.
 - Um termo novo em `CONTEXT.md`.
-- `REVISAR(human)` no montador do request e na validação.
 
 ## Aceite (testes com `httpx.MockTransport`, sem rede real)
 - Cadastro com exemplo 2xx grava a linha e a `Tool` com o schema certo: tipos, obrigatórios e descrições.
@@ -65,4 +64,3 @@ Também existe `POST /api/api-tools/testar`, que executa e devolve `{status, cor
 ## Answer
 `api/app/api_tools.py` (tabela `api_tools`, migração 0023, endpoints `GET/POST /api/api-tools`, `POST /testar`, `GET /modelos`, `DELETE /{id}`) e registro com origem `api` em `tools.py` (coluna `api_tool_id`, dono em `estado_da_conversa`, toolset via `Tool.from_schema`, filtro do catálogo). 20 testes em `test_api_tools.py` com MockTransport; test_tools/mcp/mcp_oauth/conectores seguem verdes.
 Ressalvas: exemplo fora de 2xx dá 502 (422 fica para regra e SSRF); placeholder no host é recusado; valores do formulário são coeridos pelo tipo. Decisões autônomas registradas no ADR 0024 (o DECISOES-AUTONOMAS estava em edição por outra sessão). DNS rebinding segue não coberto.
-REVISAR(human): `checar` (regras da definição), `montar` (encoding de URL e corpo tipado), `executar` (SSRF por salto) e `cadastrar` (testar antes de salvar).

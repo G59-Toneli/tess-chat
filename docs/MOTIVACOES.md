@@ -38,7 +38,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 **Onde fica a fronteira entre API, domínio e infra:**
 - **API (HTTP):** funções decoradas no `APIRouter` de cada módulo. Validam entrada, resolvem Usuário e sessão por `Depends`.
-- **Domínio:** funções puras, sem I/O, dentro do mesmo módulo. Exemplos: `debit()` (custo em micro-USD), `apply_gate()` (gate do Roteador), `should_compact()` e `ponto_de_corte()` (Compactação), `transitorio()` (retry). São as funções marcadas `REVISAR(human)` e as que os testes de mutação atacam.
+- **Domínio:** funções puras, sem I/O, dentro do mesmo módulo. Exemplos: `debit()` (custo em micro-USD), `apply_gate()` (gate do Roteador), `should_compact()` e `ponto_de_corte()` (Compactação), `transitorio()` (retry).
 - **Infra:** `db.py` (engine e sessão), `config.py` (`.env`), e os clientes externos injetados por `Depends`: `modelo()`, `modelo_reserva()`, `modelo_resumo()`, `transporte()` (HTTP das Tools), `cliente_jev()`. Os testes trocam essas dependências por `FunctionModel` ou `httpx.MockTransport` com resposta gravada.
 
 **Por que este estilo:** prazo de ~2 dias e um dev que precisa defender cada peça ([ADR 0001](adr/0001-backend-python-pydantic-ai.md)). Um arquivo por conceito deixa "onde mora X" com uma resposta só. Camadas triplicariam o número de arquivos sem segundo consumidor que justifique a abstração. **INFERIDO**: o raciocínio sobre camadas não está escrito em nenhum ADR; a estrutura é a observada no código.
@@ -97,7 +97,6 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 | **Orquestrador + executores** | Uma sessão do Claude Code escolhe o próximo ticket livre e dispara um agente Opus por ticket, às vezes em paralelo. Confere o commit, dá push, encerra o agente. | `.scratch/desafio/HANDOFF.md` |
 | **LEDGER** | Uma linha por execução: início, fim, resultado com contagem de testes e de chamadas reais, commit. | `.scratch/desafio/LEDGER.md` |
 | **DECISOES-AUTONOMAS** | Decisão fora de ADR: o agente escolhe a opção mais simples que atende o aceite e registra ticket, decisão, alternativa e porquê. Não para. | `docs/DECISOES-AUTONOMAS.md` |
-| **`REVISAR(human)`** | Comentário acima de cada função que o Toneli ia escrever. O agente implementa; ele estuda depois. | `grep -rn "REVISAR(human)" api/` |
 | **LACUNAS** | Onde o código diverge do ADR ou ficou aresta. Vira "limites conhecidos" no README. | `docs/LACUNAS.md` |
 | **Golden set** | Casos com resposta conhecida, gravados uma vez e reusados sem custo: 10 frases do Roteador, 9 certas, a 10ª ambígua cai abaixo do limiar. | `api/tests/fixtures/jev_golden.json`, ticket 11 |
 | **Verificação visual** | Ticket de front fecha com screenshot no Brave, dark, 1440x900. A revisão visual é por screenshot. | `docs/UI-GUIA.md`, `.scratch/desafio/screens/` |
@@ -105,7 +104,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 ### Por que assim
 
 - **Toneli precisa defender cada decisão** (`CLAUDE.md`). Por isso arquitetura só entra por ADR, e decisão de agente fica escrita com a alternativa descartada.
-- **Nada bloqueia a noite.** No plano original, três funções eram escritas pelo Toneli e o agente parava em `BLOCKED` diante de decisão nova (`map.md`). Desde 23/09 o agente implementa, marca `REVISAR(human)` e registra em `DECISOES-AUTONOMAS.md` (`WORKFLOW.md`, commit `bd7ddf6`). Troca: velocidade agora, estudo depois.
+- **Nada bloqueia a noite.** No plano original, três funções eram escritas pelo Toneli e o agente parava em `BLOCKED` diante de decisão nova (`map.md`). Troca: velocidade agora, estudo depois.
 - **Custo contado.** Chamadas reais a Gemini, Tavily e Jev têm teto por ticket e aparecem no LEDGER. Testes usam resposta gravada ou modelo de teste. Suíte completa e golden set rodam em lote no fim do bloco.
 - **Teste como prova.** TDD por ticket, testes de integração contra o Postgres real, e teste de mutação nas regras críticas (o LEDGER registra "mutação pega").
 
@@ -129,7 +128,7 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 | **Tokens cifrados com Fernet**, chave `CONNECTORS_KEY` no `.env` | Token do Google em claro no banco vaza com um dump. Fernet é padrão e a chave fica fora do banco. Custo: trocar a chave obriga o usuário a reconectar. | idem |
 | **Origem `google` no registro de Tools** | O filtro "só aparece com Conector" sai de uma coluna, sem lista de nomes no código. O glossário ainda diz só `nativa` ou `mcp`. | idem, migração 0012 |
 | **Filtro de Conector em `estado_da_conversa`** | Um ponto só cobre o toolset do turno, a lista de Tools da Conversa e as opções do Roteador. Zero edição em `chat.py`. | idem |
-| **`state` do OAuth é JWT assinado** (Usuário, 10 min) | O callback chega por GET do browser, sem o Bearer do front. O JWT identifica o dono e barra CSRF sem tabela de states. | idem, `REVISAR(human)` em `conectores.py` |
+| **`state` do OAuth é JWT assinado** (Usuário, 10 min) | O callback chega por GET do browser, sem o Bearer do front. O JWT identifica o dono e barra CSRF sem tabela de states. | `conectores.py` |
 | **Redirect final para `{PUBLIC_BASE_URL}/conectores`** | Em produção API e front têm a mesma origem ([ADR 0002](adr/0002-front-vite-servido-pelo-fastapi.md)). Uma variável basta. | idem |
 | **`drive_search_read` lê só o primeiro arquivo legível**; PDF do Drive fica fora | O aceite pede "resume o arquivo Y"; um Doc cobre a demo. PDF pediria extrator novo. | idem |
 | **Refresh 60 s antes de vencer**; falha vira texto para o modelo | O modelo repassa "reconecte em Conectores" e o turno não quebra. Refresh e falha geram Evento de auditoria. | idem |
@@ -141,7 +140,7 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 | **Nome da Tool MCP = `<slug>_<4 hex do id>_<tool>`**, com `tools.mcp_server_id` | `tools.nome` é PK global. Dois Usuários com o mesmo servidor colidiriam. O hex do id resolve sem mexer na PK nem em `chat.py`. | `DECISOES-AUTONOMAS.md` (17) |
 | **App grava em `tools` só com RLS `origem = 'mcp'`** | O cadastro precisa escrever no registro único (ADR 0009). A RLS deixa nativas e Google fora do alcance da app. | idem, migração 0013 |
 | **Header de auth colado inteiro, cifrado com o Fernet do 18** | GitHub e o demo só pedem Bearer. Reusa a cifra que já existe. A API nunca devolve o header, só `tem_auth`. | idem |
-| **Cadastro conecta e lista antes de gravar** | Erro legível no cadastro (502 com o motivo) em vez de servidor gravado e quebrado. | idem, `REVISAR(human)` em `mcp.py` |
+| **Cadastro conecta e lista antes de gravar** | Erro legível no cadastro (502 com o motivo) em vez de servidor gravado e quebrado. | `mcp.py` |
 | **Tools listadas só no cadastro**; no turno, o filtro deixa passar os nomes do registro | Toggle por Conversa precisa de linha no registro. Sincronizar a cada turno é YAGNI. Custo: Tool nova no servidor pede recadastro. | idem |
 | **Toggle `ativo` por servidor** | Desligar sem apagar. A coluna já estava no ticket. | idem |
 | **`GET /api/tools` esconde Tools MCP de outros Usuários** | O catálogo global vazaria nome e descrição de servidores alheios. | idem |
@@ -152,7 +151,7 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 
 | Decisão | Por quê | Fonte |
 |---|---|---|
-| **Só `https://`, e todo IP resolvido precisa ser `is_global`** | `is_global` cobre privado, loopback, link-local (metadata da nuvem), reservado e CGNAT de uma vez. Checar todos os IPs impede o host com um IP público e um interno. | `DECISOES-AUTONOMAS.md` (23), `REVISAR(human)` em `mcp.py` |
+| **Só `https://`, e todo IP resolvido precisa ser `is_global`** | `is_global` cobre privado, loopback, link-local (metadata da nuvem), reservado e CGNAT de uma vez. Checar todos os IPs impede o host com um IP público e um interno. | `DECISOES-AUTONOMAS.md` (23) |
 | **Config `ENV` com default `dev`**; em `dev`, `http://` para o demo passa | Segue o padrão do `config.py` e não quebra os testes do 17. Produção precisa de `ENV=prod`. | idem, `.env.example` |
 | **Sonda antes do turno** (conecta e lista, 3 s, em paralelo) | Servidor caído sai do turno com evento `mcp_server_unreachable`, em vez de derrubar a Conversa. Custo: um handshake a mais por servidor por turno. | idem |
 | **Aviso no stream como parte de texto `aviso-mcp`** | Determinístico, sem chamada ao Gemini e sem mudança em `web/`. | idem |
@@ -168,26 +167,26 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 
 | Decisão | Por quê | Fonte |
 |---|---|---|
-| **O turno roda numa `asyncio.Task` fora da request. A resposta HTTP só lê um buffer** | Trocar de tela ou dar F5 cancelava o run no `http.disconnect`. As tools MCP já tinham agido, e o turno sumia sem Mensagem e sem cobrança. | [ADR 0023](adr/0023-turno-em-background.md), `REVISAR(human)` em `rodar_turno` |
+| **O turno roda numa `asyncio.Task` fora da request. A resposta HTTP só lê um buffer** | Trocar de tela ou dar F5 cancelava o run no `http.disconnect`. As tools MCP já tinham agido, e o turno sumia sem Mensagem e sem cobrança. | [ADR 0023](adr/0023-turno-em-background.md) |
 | **Buffer em memória, sem Redis** | O deploy é um uvicorn só. Broker seria infra para um problema que ainda não existe. Com multi-worker, o buffer vai para Redis. | idem |
 | **Pergunta gravada no início** | Ao voltar para a tela, a pergunta aparece na hora, e o `/stream` retoma a resposta. Custo: turno que falha deixa a pergunta sem resposta. | idem |
 | **Parar pelo `CancellationToken`, não por `Task.cancel()`** | O token vira `RunCancelled`, e o `on_cancel` grava o parcial e cobra, pelo mesmo caminho do `ComTeto`. `Task.cancel()` vira `CancelledError` e perde o parcial. | idem |
-| **Replay desde o chunk 0 no `/stream`** | O `useChat` com `resume: true` monta a resposta do zero. Sem o `start`, ele não tem o message id. | `REVISAR(human)` em `TurnoAtivo.ler` |
+| **Replay desde o chunk 0 no `/stream`** | O `useChat` com `resume: true` monta a resposta do zero. Sem o `start`, ele não tem o message id. | `TurnoAtivo.ler` |
 
 ## 8. Ligação: voz e tela (tickets 75 a 82)
 
 | Decisão | Por quê | Fonte |
 |---|---|---|
 | **Proxy WebSocket no FastAPI, não token efêmero no browser** | O servidor precisa ver o `usage_metadata` do Gemini. Com token efêmero, Cap e auditoria dependeriam do que o browser reporta. Preço: um salto a mais, dezenas de ms (INFERIDO). Caíram SSE, WebRTC e a cascata STT → LLM → TTS. | [ADR 0026](adr/0026-ligacao-por-gemini-live-com-proxy-websocket.md), `ESTUDO-VOZ.md` parada 6 |
-| **Ticket de uso único de 30 s, não JWT na URL** | O browser não manda header em WebSocket. A URL fica no log do nginx, e o JWT vale 24 h. O `pop` vem antes da checagem de validade. | ADR 0026, `voz.py` `_consumir` (`REVISAR(human)`) |
+| **Ticket de uso único de 30 s, não JWT na URL** | O browser não manda header em WebSocket. A URL fica no log do nginx, e o JWT vale 24 h. O `pop` vem antes da checagem de validade. | ADR 0026, `voz.py` `_consumir` |
 | **A Ligação ocupa a vaga de turno da Conversa** | Reusa o registro do turno em background: texto durante a Ligação dá 409, sem lock novo. | ADR 0026, [ADR 0023](adr/0023-turno-em-background.md) |
-| **Relay de duas tasks e fim único no `finally`** | Cada sentido fala quando quer. Um caminho de fim só evita esquecer acerto ou vaga e deixar 409 eterno. | `voz.py` `_relay`, `_encerrar` (`REVISAR(human)`) |
+| **Relay de duas tasks e fim único no `finally`** | Cada sentido fala quando quer. Um caminho de fim só evita esquecer acerto ou vaga e deixar 409 eterno. | `voz.py` `_relay`, `_encerrar` |
 | **Reserva de 9 min antes de abrir; acerto pelo uso real somado no fim; preço de tabela na chave free** | Cap só dispara se o custo não for zero. A reserva é US$ 0,345 (o spike mediu o Frame em 264 tokens, e o ADR contava mais barato). Divergência com o ADR em `LACUNAS.md`. | [ADR 0027](adr/0027-credito-da-ligacao.md), `DECISOES-AUTONOMAS.md` (76), `credito.py` `caber` |
 | **Pensamento cobrado como saída de texto** | O `thoughts_token_count` fica fora do total e o ADR 0027 não tinha linha de preço. **INFERIDO.** O modelo base também pensa, não só o `-extended-thinking`. | `spike/live/RESULTADO.md`, migração 0024 |
 | **Frame a 1 fps, JPEG 0,7, lado maior 1280** | A API aceita 1 imagem por segundo; o caso de uso é texto que muda pouco. 264 tokens a 1280 e a 768: a resolução não muda o custo. | [ADR 0028](adr/0028-captura-de-tela-1-fps.md), spike 75 |
 | **Adendo de voz diz primeiro que a tela chega** | A frase "sem tela, diga que não vê nada", solta, fez o modelo negar a tela que tinha. Causa não isolada (INFERIDO). | `voz.py` `ADENDO_VOZ`, `DECISOES-AUTONOMAS.md` (75) |
 | **Sem Jev e sem tools** | O Jev força a tool no passo 1 de um turno de requisição e resposta. A voz é fluxo contínuo. | ADR 0026 item 6 |
-| **Histórico em texto na instrução; falas voltam como um par por troca com `data-ligacao`** | Compactação e corte contam turnos por Mensagem. Sem migração; o modelo de texto ignora `data-*`. | `DECISOES-AUTONOMAS.md` (77), `voz.py` `_trocas` (`REVISAR(human)`) |
+| **Histórico em texto na instrução; falas voltam como um par por troca com `data-ligacao`** | Compactação e corte contam turnos por Mensagem. Sem migração; o modelo de texto ignora `data-*`. | `DECISOES-AUTONOMAS.md` (77), `voz.py` `_trocas` |
 | **Origem `ligacao` derivada da linha do Ledger** | Sem coluna nova nem migração. Custo: trocar o modelo Live na config reclassifica Ligações antigas como Compactação. | `DECISOES-AUTONOMAS.md` (82), `credito.py` `_origem` |
 | **AudioWorklet e PCM16 no microfone; fila de `AudioBufferSourceNode` na saída** | O Live pede PCM cru; o `MediaRecorder` entrega Opus. A fila agendada evita picote, e esvaziá-la é o barge-in. | `ESTUDO-VOZ.md` paradas 2, 13 e 14 |
 | **nginx: location própria para o WebSocket** | `Upgrade` e `Connection` são hop-by-hop. Mudar o `Connection ""` global afetaria o SSE. | `deploy/nginx-tess-chat.conf`, `INFRA.md` |

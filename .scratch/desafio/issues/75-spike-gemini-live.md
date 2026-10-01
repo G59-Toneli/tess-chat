@@ -55,4 +55,4 @@ Ao terminar, adicione aqui 2 a 4 entradas no formato do `docs/ESTUDO-VOZ.md` (co
 ## Answer
 Spike feito em `spike/live/` com 3 sessões Live reais, todas na chave free. `gemini-3.8-live`, voz `Kore` (pt-BR sem `language_code`), saída `audio/pcm;rate=24000`, `interrupted` observado, `go_away` só no SDK. Frame custa 264 tokens a 1280 e a 768: resolução fica 1280. O modelo leu o texto nas duas.
 Ressalva: na sessão 1 o modelo negou ver a tela com a instrução "sem tela, diga que não vê nada"; a instrução nova (em `RESULTADO.md`) resolveu, causa não isolada. `usage_metadata` vem por turno e `thoughts_token_count` fica fora do total: o 76 soma e precisa de preço para pensamento.
-Divergências dos ADRs 0026 a 0028 em `spike/live/RESULTADO.md` e `docs/DECISOES-AUTONOMAS.md`. Nada ficou `REVISAR(human)`.
+Divergências dos ADRs 0026 a 0028 em `spike/live/RESULTADO.md` e `docs/DECISOES-AUTONOMAS.md`.

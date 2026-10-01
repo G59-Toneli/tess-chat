@@ -20,7 +20,7 @@ Este ticket PODE tocar `deploy/` e o VPS.
 - Chamadas reais: 0.
 
 ## Answer
-Location `/api/voz/ws` em `deploy/nginx-tess-chat.conf` e no site `tess-chat` do VPS (backup `/etc/nginx/sites-available/tess-chat.bak-20260929-095122`, `nginx -t` ok, reload ok). `GEMINI_LIVE_API_KEY` acrescentada ao `.env` de `/opt/tess-chat` com o valor de `GEMINI_API_KEY`; nenhuma outra linha mudou. O compose já repassa pelo `env_file`, sem edição. O app foi recriado pelo deploy do CI e o container tem a variável. Aceite: cliente WS em `wss://chat.toneli.dev.br/api/voz/ws?ticket=invalido` abriu e recebeu close 4401; curl com upgrade deu 101. Nada `REVISAR(human)`.
+Location `/api/voz/ws` em `deploy/nginx-tess-chat.conf` e no site `tess-chat` do VPS (backup `/etc/nginx/sites-available/tess-chat.bak-20260929-095122`, `nginx -t` ok, reload ok). `GEMINI_LIVE_API_KEY` acrescentada ao `.env` de `/opt/tess-chat` com o valor de `GEMINI_API_KEY`; nenhuma outra linha mudou. O compose já repassa pelo `env_file`, sem edição. O app foi recriado pelo deploy do CI e o container tem a variável. Aceite: cliente WS em `wss://chat.toneli.dev.br/api/voz/ws?ticket=invalido` abriu e recebeu close 4401; curl com upgrade deu 101.
 
 ## Paradas de estudo
 

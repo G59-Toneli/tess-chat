@@ -1,7 +1,7 @@
 // Alto-falante da Ligação: fila de chunks PCM16 24 kHz tocados em sequência.
 import { TAXA_SAIDA } from './config'
 
-// REVISAR(human): fila de reprodução. Cada chunk vira um AudioBufferSourceNode agendado para
+// fila de reprodução. Cada chunk vira um AudioBufferSourceNode agendado para
 // começar quando o anterior termina (`proximo`), então chunks que chegam em rajada tocam
 // colados, sem buraco nem sobreposição. `esvaziar` é o barge-in do lado do browser: no
 // `interrompido`, para todas as fontes agendadas na hora. Sem isso o agente seguiria falando
