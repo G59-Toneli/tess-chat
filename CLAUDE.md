@@ -7,7 +7,7 @@ Chat com tools, vision, PDF, MCP, compactação, cap de crédito e auditoria. De
 - `docs/adr/`: toda decisão de arquitetura. Não contrarie um ADR sem escrever outro.
 - `docs/WORKFLOW.md` e `docs/AGENT-PROMPT.md`: como o trabalho é executado por agentes.
 - `docs/UI-GUIA.md`: obrigatório para qualquer mudança em `web/`.
-- `.scratch/desafio/map.md`: destino, decisões, névoa. `issues/`: tickets. `LEDGER.md`: histórico de execução. `HANDOFF.md`: estado do orquestrador.
+- `.scratch/desafio/map.md`: destino, decisões, névoa. `issues/`: tickets. `LEDGER.md`: histórico de execução.
 - `docs/DECISOES-AUTONOMAS.md`: decisões que agentes tomaram sozinhos.
 - `docs/ESTRUTURA.md`: árvore comentada e onde mora cada conceito. `docs/MOTIVACOES.md`: por que cada escolha e qual alternativa caiu.
 

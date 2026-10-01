@@ -48,8 +48,6 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── WORKFLOW.md           regras do trabalho autônomo com agentes
 │   ├── AGENT-PROMPT.md       prompt-padrão que todo agente executor segue
 │   ├── PROTOCOLO-LIGACAO.md  contrato browser ⇄ servidor da Ligação: ticket, WebSocket, mensagens, close codes (tickets 75 a 82)
-│   ├── ESTUDO-VOZ.md         estudo da Ligação do clique ao Ledger, com `arquivo:linha` e pergunta de revisão (ticket 81)
-│   ├── ROTEIRO-VIDEOS.md     roteiro do vídeo de demo e do vídeo de arquitetura da Ligação (ticket 81)
 │   ├── DECISOES-AUTONOMAS.md decisões que agentes tomaram sem ADR: ticket, decisão, alternativa, porquê
 │   ├── LACUNAS.md            onde o código diverge do ADR ou ficou aresta
 │   ├── UI-GUIA.md            regras de tela e verificação visual por screenshot
@@ -62,7 +60,6 @@ Uma linha por pasta ou arquivo relevante. `node_modules`, `.venv`, `__pycache__`
 │   ├── map.md                destino, marco, decisões até agora, névoa, fora de escopo
 │   ├── issues/               tickets NN-slug.md: contexto, o que construir, aceite, Blocked by, Answer
 │   ├── LEDGER.md             uma linha por execução de ticket: início, fim, resultado, commit
-│   ├── HANDOFF.md            estado do orquestrador para a próxima sessão retomar
 │   ├── MANHA.md              pendências que só o Toneli resolve
 │   └── screens/              screenshots de verificação visual, prefixo = ticket
 │
@@ -207,9 +204,9 @@ Nomes de tabela conferidos no `__tablename__` de cada módulo.
 
 Achados da revisão da estrutura (ticket 20). Nada foi movido: todo item quebraria referência em doc ou import. Os itens 1, 2 e 8 foram resolvidos depois; o item 4 em parte.
 
-1. **`docs/WORKFLOW.md` descreve o plano, não o que rodou.** Ele fala de loop externo `claude -p` com teste como gate fora do Claude. O `HANDOFF.md` e o `LEDGER.md` mostram outra coisa: um orquestrador numa sessão do Claude Code disparando agentes em paralelo, e o próprio agente rodando os testes. Atualizar o WORKFLOW para contar a evolução. Detalhe em `MOTIVACOES.md`, seção Workflow. **Resolvido no ticket 22.**
+1. **`docs/WORKFLOW.md` descreve o plano, não o que rodou.** Ele fala de loop externo `claude -p` com teste como gate fora do Claude. O `LEDGER.md` mostra outra coisa: um orquestrador numa sessão do Claude Code disparando agentes em paralelo, e o próprio agente rodando os testes. Atualizar o WORKFLOW para contar a evolução. Detalhe em `MOTIVACOES.md`, seção Workflow. **Resolvido no ticket 22.**
 2. **`map.md` está defasado.** Ainda diz que o agente grava `BLOCKED` e para, e que três funções são HITL. A seção "Not yet specified" também já foi resolvida em parte. **Resolvido no ticket 22.**
-3. **`.scratch/` é o coração do fluxo de IA, mas o nome diz "descartável"** e a pasta começa com ponto (some em `ls` e em alguns navegadores de arquivo). Renomear quebra CLAUDE.md, WORKFLOW, AGENT-PROMPT, HANDOFF e tickets. Alternativa barata: o README do ticket 19 aponta para ela logo no topo.
+3. **`.scratch/` é o coração do fluxo de IA, mas o nome diz "descartável"** e a pasta começa com ponto (some em `ls` e em alguns navegadores de arquivo). Renomear quebra CLAUDE.md, WORKFLOW, AGENT-PROMPT e tickets. Alternativa barata: o README do ticket 19 aponta para ela logo no topo.
 4. **Referências a coisas que não existem:** `spike/out/` (citado como evidência em `spike/RESULTADO.md`), `deploy/` e `docs/INFRA.md` (citados no `AGENT-PROMPT.md`), `.github/` e Caddyfile (ADR 0011). Os quatro últimos são do ticket 16. `spike/out/` precisa de correção no RESULTADO ou do commit da evidência. **Em parte:** `deploy/`, `docs/INFRA.md` e `.github/` existem desde o ticket 16. O Caddy saiu (ADR 0014). Falta `spike/out/`.
 5. **`LEDGER.md` não tem a coluna de turnos** que o `WORKFLOW.md` pede.
 6. **Pares de nome parecidos:** `audit.py` (escrita) e `auditoria.py` (leitura); `config.py` (`.env`) e `configuracao.py` (Configuração do domínio, tabela `settings`). A classe `Settings` de `config.py` e a tabela `settings` do ticket 14 são coisas diferentes com o mesmo nome. Não renomear agora (imports); explicar no README.

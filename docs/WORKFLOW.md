@@ -1,6 +1,6 @@
 # Workflow de execução por agentes
 
-Como um ticket vira commit neste repo. Fontes: `.scratch/desafio/HANDOFF.md`, `LEDGER.md`, `docs/AGENT-PROMPT.md`, `docs/MOTIVACOES.md`.
+Como um ticket vira commit neste repo. Fontes: `LEDGER.md`, `docs/AGENT-PROMPT.md`, `docs/MOTIVACOES.md`.
 
 ## Como foi de fato (desde 22/09 à noite)
 
@@ -34,7 +34,6 @@ Como um ticket vira commit neste repo. Fontes: `.scratch/desafio/HANDOFF.md`, `L
 - **Nada bloqueia a noite.** Decisão nova vai para `DECISOES-AUTONOMAS.md`. Regra desde 22/09 22:24 (`bd7ddf6`).
 
 ### Estado entre sessões
-- `.scratch/desafio/HANDOFF.md`: estado do orquestrador. Ciclo, regras aprendidas, tickets resolvidos, próximos na ordem, bloqueios. A sessão seguinte do orquestrador começa por ele.
 - `.scratch/desafio/LEDGER.md`: uma linha por execução de ticket, com início, fim, resultado e commit.
 - `.scratch/desafio/MANHA.md`: o que precisa do Toneli.
 - `.scratch/desafio/map.md`: destino, decisões e estado dos tickets.

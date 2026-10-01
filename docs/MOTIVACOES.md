@@ -43,7 +43,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 **Por que este estilo:** prazo de ~2 dias e um dev que precisa defender cada peça ([ADR 0001](adr/0001-backend-python-pydantic-ai.md)). Um arquivo por conceito deixa "onde mora X" com uma resposta só. Camadas triplicariam o número de arquivos sem segundo consumidor que justifique a abstração. **INFERIDO**: o raciocínio sobre camadas não está escrito em nenhum ADR; a estrutura é a observada no código.
 
-**Custo conhecido:** `chat.py` concentra o fluxo. Dois agentes não podem editá-lo ao mesmo tempo (`HANDOFF.md`, "gargalo").
+**Custo conhecido:** `chat.py` concentra o fluxo. Dois agentes não podem editá-lo ao mesmo tempo.
 
 ## 3. Padrões
 
@@ -81,7 +81,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 
 ## 5. Fluxo de trabalho com IA
 
-**Resumo:** o Toneli decide (ADRs, glossário, tickets). Agentes executam um ticket cada. Toda decisão tomada sem ele fica registrada para ele estudar depois.
+**Resumo:** o Toneli decide (ADRs, glossário, tickets). Agentes executam um ticket cada. Toda decisão tomada sem ele fica registrada em `DECISOES-AUTONOMAS.md`.
 
 ### As peças
 
@@ -94,7 +94,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 | **Tickets** | Fatia vertical com contexto, o que construir, aceite testável e `Blocked by`. Fecham com `## Answer`. | `.scratch/desafio/issues/` |
 | **Mapa** | Destino, marco, decisões, o que ainda é névoa, fora de escopo. | `.scratch/desafio/map.md` |
 | **Prompt-padrão** | O mesmo roteiro para todo agente executor: o que ler, TDD, como commitar sem engolir arquivo alheio. | `docs/AGENT-PROMPT.md` |
-| **Orquestrador + executores** | Uma sessão do Claude Code escolhe o próximo ticket livre e dispara um agente Opus por ticket, às vezes em paralelo. Confere o commit, dá push, encerra o agente. | `.scratch/desafio/HANDOFF.md` |
+| **Orquestrador + executores** | Uma sessão do Claude Code escolhe o próximo ticket livre e dispara um agente Opus por ticket, às vezes em paralelo. Confere o commit, dá push, encerra o agente. | `.scratch/desafio/LEDGER.md` |
 | **LEDGER** | Uma linha por execução: início, fim, resultado com contagem de testes e de chamadas reais, commit. | `.scratch/desafio/LEDGER.md` |
 | **DECISOES-AUTONOMAS** | Decisão fora de ADR: o agente escolhe a opção mais simples que atende o aceite e registra ticket, decisão, alternativa e porquê. Não para. | `docs/DECISOES-AUTONOMAS.md` |
 | **LACUNAS** | Onde o código diverge do ADR ou ficou aresta. Vira "limites conhecidos" no README. | `docs/LACUNAS.md` |
@@ -111,7 +111,7 @@ Mapa de pastas e de conceitos: `docs/ESTRUTURA.md`.
 ### Plano versus prática
 
 - **Plano** (`research/04`, `WORKFLOW.md`): loop externo em script chamando `claude -p` um ticket por vez, com a suíte de testes como gate fora do Claude.
-- **Prática** (`HANDOFF.md`, `LEDGER.md`): uma sessão orquestradora do Claude Code disparando agentes executores em paralelo no mesmo working tree. O agente roda os testes do próprio ticket; o orquestrador confere e faz push.
+- **Prática** (`LEDGER.md`): uma sessão orquestradora do Claude Code disparando agentes executores em paralelo no mesmo working tree. O agente roda os testes do próprio ticket; o orquestrador confere e faz push.
 - **Por que mudou:** **INFERIDO**. Nenhum doc registra. Hipótese: paralelismo entre tickets independentes e o orquestrador conseguindo corrigir rumo entre tickets.
 - **Custo da prática:** stage compartilhado. Um commit engoliu arquivos de outro ticket (`2c738a6`). Regra nova: commit só com `git commit --only` dos próprios arquivos, e `chat.py` com um agente por vez.
 - `WORKFLOW.md` e `map.md` passaram a contar a prática no ticket 22.
@@ -177,7 +177,7 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 
 | Decisão | Por quê | Fonte |
 |---|---|---|
-| **Proxy WebSocket no FastAPI, não token efêmero no browser** | O servidor precisa ver o `usage_metadata` do Gemini. Com token efêmero, Cap e auditoria dependeriam do que o browser reporta. Preço: um salto a mais, dezenas de ms (INFERIDO). Caíram SSE, WebRTC e a cascata STT → LLM → TTS. | [ADR 0026](adr/0026-ligacao-por-gemini-live-com-proxy-websocket.md), `ESTUDO-VOZ.md` parada 6 |
+| **Proxy WebSocket no FastAPI, não token efêmero no browser** | O servidor precisa ver o `usage_metadata` do Gemini. Com token efêmero, Cap e auditoria dependeriam do que o browser reporta. Preço: um salto a mais, dezenas de ms (INFERIDO). Caíram SSE, WebRTC e a cascata STT → LLM → TTS. | [ADR 0026](adr/0026-ligacao-por-gemini-live-com-proxy-websocket.md) |
 | **Ticket de uso único de 30 s, não JWT na URL** | O browser não manda header em WebSocket. A URL fica no log do nginx, e o JWT vale 24 h. O `pop` vem antes da checagem de validade. | ADR 0026, `voz.py` `_consumir` |
 | **A Ligação ocupa a vaga de turno da Conversa** | Reusa o registro do turno em background: texto durante a Ligação dá 409, sem lock novo. | ADR 0026, [ADR 0023](adr/0023-turno-em-background.md) |
 | **Relay de duas tasks e fim único no `finally`** | Cada sentido fala quando quer. Um caminho de fim só evita esquecer acerto ou vaga e deixar 409 eterno. | `voz.py` `_relay`, `_encerrar` |
@@ -188,7 +188,7 @@ Decisões que os agentes tomaram sem ADR. Os ADRs [0009](adr/0009-registro-unico
 | **Sem Jev e sem tools** | O Jev força a tool no passo 1 de um turno de requisição e resposta. A voz é fluxo contínuo. | ADR 0026 item 6 |
 | **Histórico em texto na instrução; falas voltam como um par por troca com `data-ligacao`** | Compactação e corte contam turnos por Mensagem. Sem migração; o modelo de texto ignora `data-*`. | `DECISOES-AUTONOMAS.md` (77), `voz.py` `_trocas` |
 | **Origem `ligacao` derivada da linha do Ledger** | Sem coluna nova nem migração. Custo: trocar o modelo Live na config reclassifica Ligações antigas como Compactação. | `DECISOES-AUTONOMAS.md` (82), `credito.py` `_origem` |
-| **AudioWorklet e PCM16 no microfone; fila de `AudioBufferSourceNode` na saída** | O Live pede PCM cru; o `MediaRecorder` entrega Opus. A fila agendada evita picote, e esvaziá-la é o barge-in. | `ESTUDO-VOZ.md` paradas 2, 13 e 14 |
+| **AudioWorklet e PCM16 no microfone; fila de `AudioBufferSourceNode` na saída** | O Live pede PCM cru; o `MediaRecorder` entrega Opus. A fila agendada evita picote, e esvaziá-la é o barge-in. | ADR 0026 |
 | **nginx: location própria para o WebSocket** | `Upgrade` e `Connection` são hop-by-hop. Mudar o `Connection ""` global afetaria o SSE. | `deploy/nginx-tess-chat.conf`, `INFRA.md` |
 | **Smoke de produção com WAV e canvas** | Com dispositivo falso, o `getDisplayMedia` do Brave entrega um padrão verde. Canvas mantém trilha, 1 fps, JPEG e WebSocket reais. | `DECISOES-AUTONOMAS.md` (80) |
-| **Limites assumidos: 9 min, sem session resumption, um processo** | Cada um custa código acima do ganho na demo (YAGNI). Restart derruba a Ligação. | ADR 0026 (Consequências), `ESTUDO-VOZ.md` parada 23 |
+| **Limites assumidos: 9 min, sem session resumption, um processo** | Cada um custa código acima do ganho na demo (YAGNI). Restart derruba a Ligação. | ADR 0026 (Consequências) |
